@@ -124,29 +124,29 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [x] 1.2.5 Write migration `009_rls_policies.sql` containing all policy DDL; run against remote/hosted Supabase instance
   - [x] 1.2.6 Write unit tests asserting user A cannot SELECT a row owned by user B for each protected table — satisfies Req 12.2, Req 12.3
 
-- [ ] 1.3 AuthService implementation
-  - [~] 1.3.1 Create `supabase/functions/_shared/auth.service.ts` implementing the `AuthService` interface: `signUp`, `signIn`, `signInWithOAuth`, `signOut`, `resetPassword`, `getSession`, `getUser`, `onAuthStateChange`
-  - [~] 1.3.2 Implement `signUp`: call `supabase.auth.signUp({ email, password })`; map response to `AuthResult`; return non-null `session` on success — satisfies Req 1.1
-  - [~] 1.3.3 Implement `signIn`: call `supabase.auth.signInWithPassword`; return `AuthResult` with non-null `session` and `user` on success, non-null `error` and null `session` on credential failure — satisfies Req 1.2, Req 1.3
-  - [~] 1.3.4 Implement `signInWithOAuth` for Google provider: call `supabase.auth.signInWithOAuth({ provider: 'google' })`; trigger redirect — satisfies Req 1.5
-  - [~] 1.3.5 Implement `resetPassword`: call `supabase.auth.resetPasswordForEmail`; send time-limited OTP link — satisfies Req 1.4
-  - [~] 1.3.6 Implement `signOut`: call `supabase.auth.signOut()`; verify `SIGNED_OUT` event is emitted — satisfies Req 1.6
-  - [~] 1.3.7 Implement session auto-refresh: subscribe to `onAuthStateChange`; on `TOKEN_REFRESHED` event update local session — satisfies Req 1.7
-  - [~] 1.3.8 Implement `getSession`: return active session or null — satisfies Req 1.8
-  - [~] 1.3.9 Create `frontend/src/app/core/services/auth.service.ts` Angular service wrapping shared auth logic; expose `authState$` as an `Observable<Session | null>`
-  - [~] 1.3.10 Write unit tests: successful sign-up returns non-null session, invalid credentials return null session + non-null error, signOut triggers SIGNED_OUT, getSession returns active session
+- [x] 1.3 AuthService implementation
+  - [x] 1.3.1 Create `supabase/functions/_shared/auth.service.ts` implementing the `AuthService` interface: `signUp`, `signIn`, `signInWithOAuth`, `signOut`, `resetPassword`, `getSession`, `getUser`, `onAuthStateChange`
+  - [x] 1.3.2 Implement `signUp`: call `supabase.auth.signUp({ email, password })`; map response to `AuthResult`; return non-null `session` on success — satisfies Req 1.1
+  - [x] 1.3.3 Implement `signIn`: call `supabase.auth.signInWithPassword`; return `AuthResult` with non-null `session` and `user` on success, non-null `error` and null `session` on credential failure — satisfies Req 1.2, Req 1.3
+  - [x] 1.3.4 Implement `signInWithOAuth` for Google provider: call `supabase.auth.signInWithOAuth({ provider: 'google' })`; trigger redirect — satisfies Req 1.5
+  - [x] 1.3.5 Implement `resetPassword`: call `supabase.auth.resetPasswordForEmail`; send time-limited OTP link — satisfies Req 1.4
+  - [x] 1.3.6 Implement `signOut`: call `supabase.auth.signOut()`; verify `SIGNED_OUT` event is emitted — satisfies Req 1.6
+  - [x] 1.3.7 Implement session auto-refresh: subscribe to `onAuthStateChange`; on `TOKEN_REFRESHED` event update local session — satisfies Req 1.7
+  - [x] 1.3.8 Implement `getSession`: return active session or null — satisfies Req 1.8
+  - [x] 1.3.9 Create `frontend/src/app/core/services/auth.service.ts` Angular service wrapping shared auth logic; expose `authState$` as an `Observable<Session | null>`
+  - [x] 1.3.10 Write unit tests: successful sign-up returns non-null session, invalid credentials return null session + non-null error, signOut triggers SIGNED_OUT, getSession returns active session
 
 
-- [ ] 1.4 KeyVaultService implementation
-  - [~] 1.4.1 Create `supabase/functions/_shared/key-vault.service.ts` implementing the `KeyVaultService` interface
-  - [~] 1.4.2 Implement `storeKey(userId, keyName, value)`: encrypt the key value via Supabase Vault (`vault.create_secret`) with `pgcrypto` AES-256; associate with `userId` and `keyName` — satisfies Req 2.1
-  - [~] 1.4.3 Implement `getKey(userId, keyName)`: callable only from Edge Functions (server-side); decrypt and return raw key value from Vault — satisfies Req 2.2
-  - [~] 1.4.4 Implement `rotateKey(userId, keyName, newValue)`: update the vault secret so subsequent `getKey` calls return `newValue` — satisfies Req 2.4
-  - [~] 1.4.5 Implement `deleteKey(userId, keyName)`: remove vault secret; verify `listKeyNames` no longer returns the key — satisfies Req 2.5
-  - [~] 1.4.6 Implement `listKeyNames(userId)`: query vault metadata to return key names for `userId` only; never return another user's keys — satisfies Req 2.6
-  - [~] 1.4.7 Implement audit logging in `storeKey`, `rotateKey`, `deleteKey`: INSERT into `audit_log` capturing `action`, `keyName`, `userId`, `occurred_at` — satisfies Req 2.7, Req 11.5
-  - [~] 1.4.8 Confirm no Edge Function exposes `getKey` responses to the Angular frontend; return only key names from frontend-facing endpoints — satisfies Req 2.3
-  - [~] 1.4.9 Write unit tests: `storeKey` then `getKey` returns correct value; `rotateKey` updates value; `deleteKey` removes from `listKeyNames`; `listKeyNames` is scoped to `userId`
+- [x] 1.4 KeyVaultService implementation
+  - [x] 1.4.1 Create `supabase/functions/_shared/key-vault.service.ts` implementing the `KeyVaultService` interface
+  - [x] 1.4.2 Implement `storeKey(userId, keyName, value)`: encrypt the key value via Supabase Vault (`vault.create_secret`) with `pgcrypto` AES-256; associate with `userId` and `keyName` — satisfies Req 2.1
+  - [x] 1.4.3 Implement `getKey(userId, keyName)`: callable only from Edge Functions (server-side); decrypt and return raw key value from Vault — satisfies Req 2.2
+  - [x] 1.4.4 Implement `rotateKey(userId, keyName, newValue)`: update the vault secret so subsequent `getKey` calls return `newValue` — satisfies Req 2.4
+  - [x] 1.4.5 Implement `deleteKey(userId, keyName)`: remove vault secret; verify `listKeyNames` no longer returns the key — satisfies Req 2.5
+  - [x] 1.4.6 Implement `listKeyNames(userId)`: query vault metadata to return key names for `userId` only; never return another user's keys — satisfies Req 2.6
+  - [x] 1.4.7 Implement audit logging in `storeKey`, `rotateKey`, `deleteKey`: INSERT into `audit_log` capturing `action`, `keyName`, `userId`, `occurred_at` — satisfies Req 2.7, Req 11.5
+  - [x] 1.4.8 Confirm no Edge Function exposes `getKey` responses to the Angular frontend; return only key names from frontend-facing endpoints — satisfies Req 2.3
+  - [x] 1.4.9 Write unit tests: `storeKey` then `getKey` returns correct value; `rotateKey` updates value; `deleteKey` removes from `listKeyNames`; `listKeyNames` is scoped to `userId`
 
 - [ ] 1.5 AssetStorageService implementation
   - [~] 1.5.1 Create `supabase/functions/_shared/asset-storage.service.ts` implementing the `AssetStorageService` interface

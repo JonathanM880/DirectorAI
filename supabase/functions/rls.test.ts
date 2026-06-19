@@ -98,16 +98,20 @@ async function signInClient(email: string, password: string) {
   })
 }
 
+const rand = Math.random().toString(36).substring(2, 7);
+const TEST_EMAIL_A = `user_a_${rand}@example.com`;
+const TEST_EMAIL_B = `user_b_${rand}@example.com`;
+
 beforeAll(async () => {
   supabaseService = createClient(SUPABASE_URL, SERVICE_ROLE_KEY as string, { auth: { persistSession: false } })
 
-  const userA = await createAuthUser('a@example.com', 'Password123!')
-  const userB = await createAuthUser('b@example.com', 'Password123!')
+  const userA = await createAuthUser(TEST_EMAIL_A, 'Password123!')
+  const userB = await createAuthUser(TEST_EMAIL_B, 'Password123!')
   userAId = userA.id
   userBId = userB.id
 
-  await createProfile(userAId, 'a@example.com')
-  await createProfile(userBId, 'b@example.com')
+  await createProfile(userAId, TEST_EMAIL_A)
+  await createProfile(userBId, TEST_EMAIL_B)
   await createRowForUser('channels', userAId)
   await createRowForUser('channels', userBId)
   await createRowForUser('assets', userAId)
@@ -126,13 +130,13 @@ beforeAll(async () => {
     .insert({ user_id: userAId, action: 'published', platform: 'telegram' })
   if (auditError) throw auditError
 
-  supabaseUserA = await signInClient('a@example.com', 'Password123!')
-  supabaseUserB = await signInClient('b@example.com', 'Password123!')
+  supabaseUserA = await signInClient(TEST_EMAIL_A, 'Password123!')
+  supabaseUserB = await signInClient(TEST_EMAIL_B, 'Password123!')
 })
 
 afterAll(async () => {
-  await deleteAuthUser(userAId)
-  await deleteAuthUser(userBId)
+  if (userAId) await deleteAuthUser(userAId)
+  if (userBId) await deleteAuthUser(userBId)
 })
 
 describe('Row Level Security policies', () => {

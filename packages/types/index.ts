@@ -57,12 +57,35 @@ export interface AuthResult {
   error: AuthError | null
 }
 
+export interface AuthSubscription {
+  unsubscribe: () => void
+}
+
+export interface AuthService {
+  signUp(email: string, password: string): Promise<AuthResult>
+  signIn(email: string, password: string): Promise<AuthResult>
+  signInWithOAuth(provider: OAuthProvider): Promise<void>
+  signOut(): Promise<void>
+  resetPassword(email: string): Promise<void>
+  getSession(): Promise<Session | null>
+  getUser(): Promise<User | null>
+  onAuthStateChange(callback: (event: AuthEvent, session: Session | null) => void): AuthSubscription
+}
+
 // --- KeyVaultService -------------------------------------------------------
 
 export type KeyName =
   | 'telegram_bot_token'
   | 'openrouter_api_key'
   | 'google_calendar_refresh_token'
+
+export interface KeyVaultService {
+  storeKey(userId: string, keyName: KeyName, value: string): Promise<void>
+  getKey(userId: string, keyName: KeyName): Promise<string>
+  rotateKey(userId: string, keyName: KeyName, newValue: string): Promise<void>
+  deleteKey(userId: string, keyName: KeyName): Promise<void>
+  listKeyNames(userId: string): Promise<KeyName[]>
+}
 
 // ---------------------------------------------------------------------------
 // Module 3 – Orchestration & Publishing (referenced by Asset and GenAI too)
