@@ -20,3 +20,19 @@ COMMENT ON TABLE public.audit_log IS
   'Immutable audit log for publish events, retries, and moderation actions.';
 COMMENT ON COLUMN public.audit_log.metadata IS
   'Structured metadata describing the audit event.';
+
+-- Enforce occurred_at server-side at insert time, preventing client overrides.
+CREATE OR REPLACE FUNCTION public.enforce_audit_log_occurred_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.occurred_at = now();
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_audit_log_occurred_at
+BEFORE INSERT ON public.audit_log
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_audit_log_occurred_at();

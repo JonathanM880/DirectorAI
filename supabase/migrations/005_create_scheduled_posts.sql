@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.scheduled_posts (
   max_retries         INTEGER     NOT NULL DEFAULT 3,
   platform_message_id TEXT,
   published_at        TIMESTAMPTZ,
+  next_retry_at       TIMESTAMPTZ,
   recurrence_rule_id  UUID        REFERENCES public.recurrence_rules(id) ON DELETE SET NULL,
   parent_post_id      UUID        REFERENCES public.scheduled_posts(id) ON DELETE SET NULL,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
