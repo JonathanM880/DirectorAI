@@ -1282,14 +1282,14 @@ For a post with consecutive retry attempts at times `t1, t2, t3...`:
 
 ### Unit Testing Approach
 
-Each service is tested in isolation with mocked dependencies. The Angular frontend uses Jest + Angular Testing Library; backend Edge Functions use Deno test runner or Vitest.
+Unit tests cover pure validation, mapping, formatting, status-transition, and property logic only. Any behavior that depends on Supabase, OpenRouter, Telegram, Stripe, or Google Calendar is verified through direct calls to official provider endpoints using staging or test-mode credentials. The Angular frontend uses Jest + Angular Testing Library for component logic; backend Edge Functions use Deno test runner or Vitest for pure code paths.
 
 Key unit test targets:
-- `TelegramPublisher`: mock Telegram API responses; verify `PublishResult` structure and `retryable` flag mapping for each `TelegramApiError` code
+- `TelegramPublisher`: verify payload construction, capability limits, duplicate-publish guard, and error mapping helpers; live publish/error behavior is covered by Telegram integration tests
 - `RetryEngine`: verify backoff delay calculations, max retry enforcement, and correct status transitions
 - `BillingService.checkFeatureAccess()`: test all plan × feature combinations and all subscription statuses
-- `SchedulingEngine.tick()`: use in-memory DB mock; verify `DispatchSummary` counts, lock logic, and recurrence scheduling
-- `GenAIService.generateCopy()`: mock OpenRouter client; verify quota gate, prompt construction, and asset persistence
+- `SchedulingEngine.tick()`: verify pure dispatch summary math, status transition rules, and recurrence scheduling helpers; DB locking is covered against Supabase staging
+- `GenAIService.generateCopy()`: verify quota gate, feature gate, prompt construction, and response normalization helpers; successful generation is covered against OpenRouter directly
 
 ### Property-Based Testing Approach
 
@@ -1313,7 +1313,7 @@ test('retry count never exceeds maxRetries', () => {
       fc.array(fc.boolean(), { maxLength: 20 }),  // sequence of failures
       (maxRetries, failures) => {
         const engine = new RetryEngine({ maxRetries })
-        failures.forEach(failed => engine.simulateAttempt(failed))
+        failures.forEach(failed => engine.recordAttemptResult(failed))
         return engine.retryCount <= maxRetries
       }
     )
@@ -1323,12 +1323,12 @@ test('retry count never exceeds maxRetries', () => {
 
 ### Integration Testing Approach
 
-Integration tests run against a Supabase local instance (`supabase start`) and a mock Telegram Bot API server.
+Integration tests run only against official external services or provider-supported test environments: a hosted Supabase staging project, OpenRouter with test credentials, a real Telegram bot and private test channel, Stripe test mode or Stripe CLI signed webhook delivery, and a Google Calendar test account/calendar. No local database, in-memory database, mocked API server, MSW handler, or simulated provider response is allowed for integration coverage.
 
 Key integration test scenarios:
-1. Full publish flow: create post → tick() → verify Telegram mock received message → verify DB status = 'published'
-2. Retry flow: first tick fails (mock returns 500) → retry queued → second tick succeeds → status = 'published'
-3. Stripe webhook: send `checkout.session.completed` event → verify subscription activated → feature access granted
+1. Full publish flow: create post → tick() → verify the real Telegram test channel received the message → verify Supabase staging status = 'published'
+2. Retry flow: use real provider error conditions where available, such as revoked/invalid Telegram test credentials for non-retryable paths and provider/test-network failures for retryable paths; verify retry state in Supabase staging
+3. Stripe webhook: deliver a signed `checkout.session.completed` event through Stripe test mode or Stripe CLI → verify subscription activated → feature access granted
 4. RLS enforcement: user A cannot read user B's assets, posts, or channels
 5. Audit log immutability: attempt to UPDATE or DELETE audit_log row → verify RLS rejects it
 6. Recurrence: publish recurrent post → verify next instance scheduled with correct `scheduledAt`
@@ -1413,8 +1413,7 @@ Key integration test scenarios:
 | `fast-check` | `^3.x` | Property-based testing |
 | `vitest` | `^1.x` | Unit test runner (Edge Functions) |
 | `@testing-library/angular` | `^17.x` | Angular component testing |
-| `supabase` CLI | `^1.x` | Local DB, migrations, Edge Functions dev |
-| `msw` | `^2.x` | Mock Service Worker for API mocking in tests |
+| `supabase` CLI | `^1.x` | Remote migrations and Edge Functions dev |
 
 ---
 

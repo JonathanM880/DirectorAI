@@ -94,10 +94,10 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
 - [x] 0.1 Project scaffold and tooling setup
   - [x] 0.1.1 Initialise Angular 17 SPA under `frontend/` using the Angular CLI (`ng new director-ai-frontend --standalone --routing --style=scss`)
   - [x] 0.1.2 Configure TypeScript `strict` mode, `paths` aliases (`@/core`, `@/shared`, `@/features`), and `baseUrl` in both `tsconfig.json` files
-  - [x] 0.1.3 Initialise Supabase project locally (`supabase init`) and confirm `supabase start` succeeds; add `supabase/` directory to repo
+  - [x] 0.1.3 Initialise Supabase project configuration (`supabase init`), link it to a hosted Supabase staging project, and add `supabase/` directory to repo; do not rely on a local database for integration validation
   - [x] 0.1.4 Install and configure `vitest` + `@vitest/coverage-v8` as the test runner for Edge Functions; add `vitest.config.ts`
   - [x] 0.1.5 Install and configure `fast-check@^3.x` for property-based testing; verify import resolves in a sample test file
-  - [x] 0.1.6 Install frontend dev dependencies: `@testing-library/angular`, `msw@^2.x`, `jest-environment-jsdom`; wire `jest.config.ts`
+  - [x] 0.1.6 Install frontend dev dependencies: `@testing-library/angular`, `jest-environment-jsdom`; wire `jest.config.ts`; do not use MSW or local mocked API layers for provider integrations
   - [x] 0.1.7 Add `eslint` + `@angular-eslint` + `prettier` configs; add lint and format scripts to `package.json`
   - [x] 0.1.8 Create `.env.example` listing all required environment variables (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_PROFESSIONAL`, `STRIPE_PRICE_AGENCY`); confirm `.env` is in `.gitignore`
   - [x] 0.1.9 Create shared TypeScript type barrel `packages/types/index.ts` exporting all interfaces from the design document (`ScheduledPost`, `PublishResult`, `Asset`, `AuthResult`, etc.)
@@ -113,16 +113,16 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [x] 1.1.7 Create migration `007_create_subscriptions.sql`: table `subscriptions` with all columns from `SubscriptionRecord`; add `ai_generations_this_month INTEGER DEFAULT 0`, `posts_this_month INTEGER DEFAULT 0`, `storage_used_bytes BIGINT DEFAULT 0`
   - [x] 1.1.8 Create migration `008_create_notifications.sql`: table `notifications` with columns `id UUID PK`, `user_id UUID FK`, `type TEXT`, `severity TEXT`, `title TEXT`, `message TEXT`, `metadata JSONB`, `read BOOLEAN DEFAULT FALSE`, `created_at TIMESTAMPTZ DEFAULT now()`
   - [x] 1.1.9 Add performance indexes: `scheduled_posts(status, scheduled_at)`, `scheduled_posts(user_id, scheduled_at)`, `audit_log(user_id, occurred_at)`, `notifications(user_id, read)`, `assets(user_id, folder)`
-  - [x] 1.1.10 Run `supabase db reset` against local instance; verify all migrations apply cleanly with zero errors
+  - [x] 1.1.10 Run `supabase db push` against remote instance; verify all migrations apply cleanly with zero errors
 
 
-- [ ] 1.2 Row Level Security policies
-  - [~] 1.2.1 Enable RLS on all tables: `ALTER TABLE users_profile ENABLE ROW LEVEL SECURITY` (repeat for `channels`, `assets`, `scheduled_posts`, `audit_log`, `subscriptions`, `notifications`, `recurrence_rules`) — satisfies Req 12.1
-  - [~] 1.2.2 Create SELECT/INSERT/UPDATE/DELETE policies for `users_profile` restricting access to rows where `id = auth.uid()` — satisfies Req 12.2
-  - [~] 1.2.3 Create full CRUD policies for `channels`, `assets`, `scheduled_posts`, `subscriptions`, `recurrence_rules`, `notifications`: all policies restrict to `user_id = auth.uid()` — satisfies Req 12.2
-  - [~] 1.2.4 Create `audit_log` policies: INSERT allowed for `service_role` only; SELECT allowed for `user_id = auth.uid()`; explicitly DENY UPDATE and DENY DELETE for all roles including `service_role` — satisfies Req 11.2
-  - [~] 1.2.5 Write migration `009_rls_policies.sql` containing all policy DDL; run against local Supabase instance
-  - [~] 1.2.6 Write unit tests asserting user A cannot SELECT a row owned by user B for each protected table — satisfies Req 12.2, Req 12.3
+- [x] 1.2 Row Level Security policies
+  - [x] 1.2.1 Enable RLS on all tables: `ALTER TABLE users_profile ENABLE ROW LEVEL SECURITY` (repeat for `channels`, `assets`, `scheduled_posts`, `audit_log`, `subscriptions`, `notifications`, `recurrence_rules`) — satisfies Req 12.1
+  - [x] 1.2.2 Create SELECT/INSERT/UPDATE/DELETE policies for `users_profile` restricting access to rows where `id = auth.uid()` — satisfies Req 12.2
+  - [x] 1.2.3 Create full CRUD policies for `channels`, `assets`, `scheduled_posts`, `subscriptions`, `recurrence_rules`, `notifications`: all policies restrict to `user_id = auth.uid()` — satisfies Req 12.2
+  - [x] 1.2.4 Create `audit_log` policies: INSERT allowed for `service_role` only; SELECT allowed for `user_id = auth.uid()`; explicitly DENY UPDATE and DENY DELETE for all roles including `service_role` — satisfies Req 11.2
+  - [x] 1.2.5 Write migration `009_rls_policies.sql` containing all policy DDL; run against remote/hosted Supabase instance
+  - [x] 1.2.6 Write unit tests asserting user A cannot SELECT a row owned by user B for each protected table — satisfies Req 12.2, Req 12.3
 
 - [ ] 1.3 AuthService implementation
   - [~] 1.3.1 Create `supabase/functions/_shared/auth.service.ts` implementing the `AuthService` interface: `signUp`, `signIn`, `signInWithOAuth`, `signOut`, `resetPassword`, `getSession`, `getUser`, `onAuthStateChange`
@@ -170,7 +170,7 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [~] 2.1.6 Implement `generateImage(request)`: call OpenRouter image generation endpoint; return `GeneratedImage` with non-empty `url` and original `prompt` preserved — satisfies Req 4.2
   - [~] 2.1.7 Implement `brainstorm(request)`: call OpenRouter with `count = N`; parse response into exactly `N` content ideas; return `BrainstormResult` — satisfies Req 4.3
   - [~] 2.1.8 Create `QuotaExceededError` and `FeatureGatedError` classes; export from the types barrel
-  - [~] 2.1.9 Write unit tests (mocked OpenRouter client): quota gate fires before API call, feature gate fires before API call, successful generation returns correct structure, asset persisted with `ai_generated` source, usage counter incremented
+  - [~] 2.1.9 Write tests: pure unit tests verify quota/feature gates fire before any OpenRouter call; direct OpenRouter integration tests verify successful generation, returned structure, asset persistence with `ai_generated` source, and usage counter increment
 
 - [ ] 2.2 GenAIService streaming and regeneration
   - [~] 2.2.1 Implement `streamGenerate(request, onChunk)`: open a streaming request to OpenRouter; invoke `onChunk` callback at least once per SSE token chunk with a non-empty string — satisfies Req 4.6
@@ -199,7 +199,7 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [~] 3.2.4 Implement error mapping in `mapApiError(error)`: HTTP 5xx or network timeout → `{ code: 'NETWORK_ERROR', retryable: true }`; HTTP 401 → `{ code: 'INVALID_TOKEN', retryable: false }` — satisfies Req 5.5, Req 5.6
   - [~] 3.2.5 Implement `buildPayload(post)`: select `sendMessage`, `sendPhoto`, `sendVideo`, `sendAudio`, or `sendDocument` based on `post.content.mediaType`; apply Telegram Markdown formatting
   - [~] 3.2.6 Implement `delete` and `edit` via Telegram `deleteMessage` / `editMessageText` API endpoints
-  - [~] 3.2.7 Write unit tests with mocked Telegram API: success case returns `platformMessageId`; 5xx sets `retryable: true`; 401 sets `retryable: false`; `getCapabilities` returns correct Telegram limits
+  - [~] 3.2.7 Write tests: pure unit tests cover payload construction, error mapping helpers, and `getCapabilities`; direct Telegram Bot API integration tests against a private test channel verify success returns `platformMessageId`, invalid token maps to non-retryable 401, and retryable provider/network failures are handled correctly
 
 - [ ] 3.3 SchedulingEngine core implementation
   - [~] 3.3.1 Create `supabase/functions/scheduler/index.ts` as the cron Edge Function entry point; wire to `SchedulingEngine.tick()`
@@ -367,15 +367,15 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
 
 
 - [ ] 7.1 Full publish flow integration tests
-  - [~] 7.1.1 Set up local Supabase test instance (`supabase start`) and mock Telegram Bot API server using `msw`
-  - [~] 7.1.2 Write integration test: create user → schedule post → run `tick()` → assert mock Telegram received `sendMessage` → assert DB `status = 'published'` → assert `audit_log` record inserted — satisfies Req 11.1
-  - [~] 7.1.3 Write integration test: first `tick()` mock returns 500 → post enters `retrying` → `processQueue()` mock returns success → post enters `published` — validates full retry flow
+  - [~] 7.1.1 Set up hosted Supabase staging instance plus a real Telegram bot connected to a private test channel; no local DB, MSW, or mocked Telegram server is permitted
+  - [~] 7.1.2 Write integration test: create user → schedule post → run `tick()` → assert the real Telegram test channel received `sendMessage` → assert Supabase staging `status = 'published'` → assert `audit_log` record inserted — satisfies Req 11.1
+  - [~] 7.1.3 Write integration test using real provider/test credentials: invalid Telegram token path enters `failed`; retryable provider/network failure path enters `retrying`; successful retry publishes to the real Telegram test channel — validates full retry flow
   - [~] 7.1.4 Write integration test: verify `post_published` notification created for post owner after successful publish — satisfies Req 9.2
   - [~] 7.1.5 Write integration test: recurring post published → next instance created with `scheduledAt = original + interval` — satisfies Req 6.10
 
 - [ ] 7.2 Stripe webhook integration tests
-  - [~] 7.2.1 Write integration test: send mock `checkout.session.completed` event to webhook handler → verify subscription updated to `active` with correct `planId` — satisfies Req 10.2
-  - [~] 7.2.2 Write integration test: send `invoice.payment_failed` → verify subscription updated to `past_due` and pending posts paused — satisfies Req 10.3
+  - [~] 7.2.1 Write integration test: deliver a signed Stripe test-mode `checkout.session.completed` event to webhook handler → verify subscription updated to `active` with correct `planId` — satisfies Req 10.2
+  - [~] 7.2.2 Write integration test: deliver a signed Stripe test-mode `invoice.payment_failed` event → verify subscription updated to `past_due` and pending posts paused — satisfies Req 10.3
   - [~] 7.2.3 Write integration test: send webhook with invalid signature → verify request rejected with no DB mutation — satisfies Req 10.4
 
 - [ ] 7.3 RLS enforcement integration tests
@@ -395,7 +395,7 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
 ## Notes
 
 - **Property-based testing** uses `fast-check@^3.x`. PBT tasks are 2.3, 3.6. Each sub-task is annotated with the requirement it validates.
-- **Testing framework split**: Edge Functions (Supabase) use `vitest`; Angular frontend uses `jest` + `@testing-library/angular`; integration tests use `vitest` against a local Supabase instance; E2E uses `Playwright`.
+- **Testing framework split**: Edge Functions (Supabase) use `vitest`; Angular frontend uses `jest` + `@testing-library/angular`; integration tests use `vitest` against remote/hosted provider resources only: Supabase staging, OpenRouter, Telegram test channel, Stripe test mode, and Google Calendar test account. No local databases, in-memory databases, mocked API servers, MSW handlers, or simulated third-party responses are allowed for integration behavior.
 - **Correctness properties** from the design document are covered as follows: P1 (idempotency) → 3.6.5; P2 (retry monotonicity) → 3.6.1; P3 (max retries bound) → 3.6.2; P4 (status terminal integrity) → 3.3.8; P5 (audit log immutability) → 4.3.1; P6 (platform-agnostic scheduler) → 3.1.2; P7 (feature gate) → 2.3.1, 3.7.4; P8 (scheduled time invariant) → 3.6.4; P9 (asset isolation) → 7.3.1; P10 (backoff increasing) → 3.6.3.
 - **Security**: tasks 1.2, 1.4, 3.7 cover RLS, key vault, and Stripe webhook signature verification respectively (Req 12). All secrets must remain in Supabase project secrets, never in source-controlled files (Req 12.8).
 - **Parallel work streams**: once Phase 1 is complete, Phases 2, 3, and 5 can progress in parallel on separate branches. Phase 4 depends only on 3.3 being stable. Phase 6 depends on Phase 5 shell and individual backend services being ready.
