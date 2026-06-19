@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
-import { Client } from 'pg'
 
-const LOCAL_DB_URL = process.env.LOCAL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
-
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const ANON_KEY = process.env.SUPABASE_ANON_KEY
 
@@ -12,7 +9,6 @@ if (!SERVICE_ROLE_KEY || !ANON_KEY) {
   throw new Error('Faltan las credenciales de Supabase en las variables de entorno.')
 }
 
-let pgClient: Client
 let supabaseService: ReturnType<typeof createClient>
 let supabaseUserA: ReturnType<typeof createClient>
 let supabaseUserB: ReturnType<typeof createClient>
@@ -36,35 +32,73 @@ async function deleteAuthUser(uid: string) {
 }
 
 async function createProfile(userId: string, email: string) {
-  await pgClient.query(
-    `INSERT INTO public.users_profile (id, email, timezone, plan_id, onboarding_completed) VALUES ($1, $2, 'UTC', 'starter', false)`,
-    [userId, email],
-  )
+  const { error } = await supabaseService
+    .from('users_profile')
+    .insert({ id: userId, email, timezone: 'UTC', plan_id: 'starter', onboarding_completed: false })
+  if (error) throw error
 }
 
 async function createRowForUser(table: string, userId: string) {
-  const inserts: Record<string, string> = {
-    channels: `INSERT INTO public.channels (id, user_id, platform, name, channel_identifier) VALUES (gen_random_uuid(), $1, 'telegram', 'Test', 'test') RETURNING id`,
-    assets: `INSERT INTO public.assets (id, user_id, filename, mime_type, size_bytes, storage_path) VALUES (gen_random_uuid(), $1, 'file.png', 'image/png', 1024, 'assets/test.png') RETURNING id`,
-    scheduled_posts: `INSERT INTO public.scheduled_posts (id, user_id, channel_id, scheduled_at, status, media_asset_ids) VALUES (gen_random_uuid(), $1, (SELECT id FROM public.channels WHERE user_id = $1 LIMIT 1), now() + interval '1 day', 'scheduled', '{}') RETURNING id`,
-    subscriptions: `INSERT INTO public.subscriptions (id, user_id, stripe_customer_id, stripe_subscription_id, plan_id, status, current_period_start, current_period_end) VALUES (gen_random_uuid(), $1, 'cust_test', 'sub_test', 'starter', 'active', now(), now() + interval '1 month') RETURNING id`,
-    notifications: `INSERT INTO public.notifications (id, user_id, type, severity, title, message) VALUES (gen_random_uuid(), $1, 'info', 'low', 'Test', 'Message') RETURNING id`,
-    recurrence_rules: `INSERT INTO public.recurrence_rules (id, user_id, frequency) VALUES (gen_random_uuid(), $1, 'daily') RETURNING id`,
+  let data: any = {}
+  if (table === 'channels') {
+    data = { platform: 'telegram', name: 'Test', channel_identifier: 'test', user_id: userId }
+  } else if (table === 'assets') {
+    data = { filename: 'file.png', mime_type: 'image/png', size_bytes: 1024, storage_path: 'assets/test.png', source: 'user_upload', user_id: userId }
+  } else if (table === 'scheduled_posts') {
+    const { data: channelData, error: channelError } = await supabaseService
+      .from('channels')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1)
+      .single()
+    if (channelError) throw channelError
+    data = {
+      channel_id: channelData.id,
+      scheduled_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      status: 'scheduled',
+      media_asset_ids: [],
+      user_id: userId
+    }
+  } else if (table === 'subscriptions') {
+    data = {
+      stripe_customer_id: 'cust_test',
+      stripe_subscription_id: 'sub_test',
+      plan_id: 'starter',
+      status: 'active',
+      current_period_start: new Date().toISOString(),
+      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      user_id: userId
+    }
+  } else if (table === 'notifications') {
+    data = { type: 'info', severity: 'low', title: 'Test', message: 'Message', user_id: userId }
+  } else if (table === 'recurrence_rules') {
+    data = { frequency: 'daily', user_id: userId }
   }
-  const res = await pgClient.query(inserts[table], [userId])
-  return res.rows[0].id
+
+  const { data: insertedData, error } = await supabaseService
+    .from(table)
+    .insert(data)
+    .select('id')
+    .single()
+  if (error) throw error
+  return insertedData.id
 }
 
 async function signInClient(email: string, password: string) {
   const client = createClient(SUPABASE_URL, ANON_KEY as string, { auth: { persistSession: false } })
   const { data, error } = await client.auth.signInWithPassword({ email, password })
   if (error || !data.session) throw error ?? new Error('Sign in failed')
-  return createClient(SUPABASE_URL, data.session.access_token, { auth: { persistSession: false } })
+  return createClient(SUPABASE_URL, ANON_KEY as string, {
+    auth: { persistSession: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${data.session.access_token}`
+      }
+    }
+  })
 }
 
 beforeAll(async () => {
-  pgClient = new Client({ connectionString: LOCAL_DB_URL })
-  await pgClient.connect()
   supabaseService = createClient(SUPABASE_URL, SERVICE_ROLE_KEY as string, { auth: { persistSession: false } })
 
   const userA = await createAuthUser('a@example.com', 'Password123!')
@@ -87,10 +121,10 @@ beforeAll(async () => {
   await createRowForUser('recurrence_rules', userAId)
   await createRowForUser('recurrence_rules', userBId)
 
-  await pgClient.query(
-    `INSERT INTO public.audit_log (id, user_id, action, platform) VALUES (gen_random_uuid(), $1, 'published', 'telegram')`,
-    [userAId],
-  )
+  const { error: auditError } = await supabaseService
+    .from('audit_log')
+    .insert({ user_id: userAId, action: 'published', platform: 'telegram' })
+  if (auditError) throw auditError
 
   supabaseUserA = await signInClient('a@example.com', 'Password123!')
   supabaseUserB = await signInClient('b@example.com', 'Password123!')
@@ -99,7 +133,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await deleteAuthUser(userAId)
   await deleteAuthUser(userBId)
-  await pgClient.end()
 })
 
 describe('Row Level Security policies', () => {

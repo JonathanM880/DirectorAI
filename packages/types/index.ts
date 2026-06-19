@@ -153,6 +153,7 @@ export interface ScheduledPost {
   maxRetries: number
   platformMessageId?: string
   publishedAt?: Date
+  nextRetryAt?: Date
   recurrenceRule?: RecurrenceRule
   createdAt: Date
   updatedAt: Date
@@ -472,6 +473,7 @@ export interface ScheduledPostRecord {
   maxRetries: number
   platformMessageId?: string
   publishedAt?: Date
+  nextRetryAt?: Date
   recurrenceRuleId?: string
   parentPostId?: string
   createdAt: Date

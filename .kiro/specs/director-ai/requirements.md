@@ -8,6 +8,12 @@ This document derives requirements from the approved design document, capturing 
 
 ---
 
+## External Integration Policy
+
+All third-party integrations SHALL call the official external service endpoints directly: Supabase, OpenRouter, Telegram Bot API, Stripe, and Google Calendar. The implementation SHALL NOT use mocked APIs, fake local API servers, local databases, in-memory database substitutes, or simulated service responses for any integration behavior. Tests that validate integration behavior SHALL use official sandbox/test-mode resources or dedicated staging resources from the provider.
+
+---
+
 ## Glossary
 
 - **AuthService**: The service responsible for all authentication operations, wrapping Supabase Auth.
