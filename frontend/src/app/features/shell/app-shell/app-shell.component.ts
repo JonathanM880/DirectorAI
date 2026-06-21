@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { BroadcastTickerComponent } from '../broadcast-ticker/broadcast-ticker.component';
 import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
@@ -11,8 +11,6 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
   imports: [
     CommonModule,
     RouterOutlet,
-    RouterLink,
-    RouterLinkActive,
     SidebarComponent,
     BroadcastTickerComponent,
     NotificationBellComponent
