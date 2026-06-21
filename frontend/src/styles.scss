@@ -1,1 +1,33 @@
-/* You can add global styles to this file, and also import other style files */
+@import './styles/tokens.scss';
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font-body);
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+}
+
+a {
+  color: var(--color-signal);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
