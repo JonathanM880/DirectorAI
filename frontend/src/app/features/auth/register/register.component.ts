@@ -1,13 +1,13 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { AngularAuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
     <div class="auth-container">
       <div class="auth-card">
@@ -115,18 +115,30 @@ export class RegisterComponent {
     this.successMessage = null;
 
     try {
+      console.log('Starting sign up...');
       const { email, password } = this.registerForm.value;
+      console.log('Calling authService.signUp with email:', email);
+      
       const result = await this.authService.signUp(email, password);
+      console.log('Sign up result:', result);
 
       if (result.error) {
+        console.error('Sign up error:', result.error);
         this.errorMessage = result.error.message;
         return;
       }
 
-      this.successMessage = 'Account created! Please check your email to verify your account.';
+      if (result.session) {
+        console.log('Session created, navigating...');
+        this.router.navigateByUrl('/');
+      } else {
+        this.successMessage = 'Account created! Please check your email to verify your account.';
+      }
     } catch (err) {
+      console.error('Unexpected error during sign up:', err);
       this.errorMessage = 'An unexpected error occurred. Please try again.';
     } finally {
+      console.log('Setting isLoading to false');
       this.isLoading = false;
     }
   }
