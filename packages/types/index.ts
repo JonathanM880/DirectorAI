@@ -550,7 +550,7 @@ export interface SubscriptionRecord {
 
 /** Thrown when a user has exhausted their monthly AI generation quota. */
 export class QuotaExceededError extends Error {
-  readonly name = 'QuotaExceededError'
+  override readonly name = 'QuotaExceededError'
   constructor(
     message: string,
     public readonly limit: number,
@@ -563,7 +563,7 @@ export class QuotaExceededError extends Error {
 
 /** Thrown when a user attempts to use a feature their plan does not include. */
 export class FeatureGatedError extends Error {
-  readonly name = 'FeatureGatedError'
+  override readonly name = 'FeatureGatedError'
   constructor(
     message: string,
     public readonly feature: Feature,
@@ -575,7 +575,7 @@ export class FeatureGatedError extends Error {
 
 /** Thrown when an uploaded asset exceeds the allowed size limit. */
 export class AssetTooLargeError extends Error {
-  readonly name = 'AssetTooLargeError'
+  override readonly name = 'AssetTooLargeError'
   constructor(
     message: string,
     public readonly maxBytes: number,
@@ -588,7 +588,7 @@ export class AssetTooLargeError extends Error {
 
 /** Thrown when an uploaded file has an unsupported MIME type. */
 export class UnsupportedMimeTypeError extends Error {
-  readonly name = 'UnsupportedMimeTypeError'
+  override readonly name = 'UnsupportedMimeTypeError'
   constructor(
     message: string,
     public readonly mimeType: string,
