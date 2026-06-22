@@ -413,6 +413,26 @@ export interface AlertEvent {
   metadata?: Record<string, unknown>
 }
 
+export interface Notification {
+  id: string
+  userId: string
+  type: AlertType
+  severity: 'info' | 'warning' | 'error' | 'success'
+  title: string
+  message: string
+  metadata: Record<string, unknown>
+  read: boolean
+  createdAt: Date
+}
+
+export interface AlertService {
+  notify(userId: string, event: AlertEvent): Promise<void>
+  getNotifications(userId: string, unreadOnly?: boolean): Promise<Notification[]>
+  markAsRead(notificationId: string): Promise<void>
+  markAllAsRead(userId: string): Promise<void>
+  subscribeToRealtime(userId: string, callback: (n: Notification) => void): Unsubscribe
+}
+
 // ---------------------------------------------------------------------------
 // Module 3 – Billing Service & Feature Gating
 // ---------------------------------------------------------------------------

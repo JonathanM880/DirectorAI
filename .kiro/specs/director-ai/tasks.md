@@ -260,56 +260,56 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [~] 4.1.9 Create Telegram metrics polling cron (`supabase/functions/metrics-poller/index.ts`): call Telegram `getUpdates`; extract views and reactions; call `ingestMetrics` for recent published posts
   - [~] 4.1.10 Write unit tests: `ingestMetrics` persists and associates correctly; `getEngagementTrend` returns correct length for each granularity; gaps filled with zero; values non-negative
 
-- [ ] 4.2 AlertService implementation
-  - [~] 4.2.1 Create `supabase/functions/_shared/alert.service.ts` implementing the `AlertService` interface
-  - [~] 4.2.2 Implement `notify(userId, alertEvent)`: INSERT a `Notification` record into `notifications`; verify retrievable via `getNotifications(userId)` — satisfies Req 9.1
-  - [~] 4.2.3 Implement `getNotifications(userId, unreadOnly?)`: query `notifications WHERE user_id = userId`; if `unreadOnly = true`, filter by `read = false` — satisfies Req 9.1
-  - [~] 4.2.4 Implement `markAsRead(notificationId)`: UPDATE `read = true`; verify notification no longer appears in `getNotifications(userId, true)` — satisfies Req 9.5
-  - [~] 4.2.5 Implement `markAllAsRead(userId)`: UPDATE all notifications for user to `read = true`; verify `getNotifications(userId, true)` returns empty array — satisfies Req 9.6
-  - [~] 4.2.6 Implement `subscribeToRealtime(userId, callback)`: open Supabase Realtime channel filtered to `notifications WHERE user_id = userId`; invoke `callback` on INSERT events — satisfies Req 9.7
-  - [~] 4.2.7 Wire `post_published` alert in `SchedulingEngine.tick()` on successful publish — satisfies Req 9.2
-  - [~] 4.2.8 Wire `retry_exhausted` alert in `RetryEngine` when retries are exhausted — satisfies Req 9.3
-  - [~] 4.2.9 Wire `post_retrying` alert in `RetryEngine.enqueue()` when a post enters retrying state — satisfies Req 9.4
-  - [~] 4.2.10 Wire billing alerts (`subscription_renewed`, `payment_failed`, `subscription_expired`) in `BillingService.handleWebhookEvent()` — satisfies Req 9.8
-  - [~] 4.2.11 Write unit tests: `notify` persists and is retrievable; `markAsRead` removes from unread list; `markAllAsRead` empties unread list
+- [x] 4.2 AlertService implementation
+  - [x] 4.2.1 Create `supabase/functions/_shared/alert.service.ts` implementing the `AlertService` interface
+  - [x] 4.2.2 Implement `notify(userId, alertEvent)`: INSERT a `Notification` record into `notifications`; verify retrievable via `getNotifications(userId)` — satisfies Req 9.1
+  - [x] 4.2.3 Implement `getNotifications(userId, unreadOnly?)`: query `notifications WHERE user_id = userId`; if `unreadOnly = true`, filter by `read = false` — satisfies Req 9.1
+  - [x] 4.2.4 Implement `markAsRead(notificationId)`: UPDATE `read = true`; verify notification no longer appears in `getNotifications(userId, true)` — satisfies Req 9.5
+  - [x] 4.2.5 Implement `markAllAsRead(userId)`: UPDATE all notifications for user to `read = true`; verify `getNotifications(userId, true)` returns empty array — satisfies Req 9.6
+  - [x] 4.2.6 Implement `subscribeToRealtime(userId, callback)`: open Supabase Realtime channel filtered to `notifications WHERE user_id = userId`; invoke `callback` on INSERT events — satisfies Req 9.7
+  - [x] 4.2.7 Wire `post_published` alert in `SchedulingEngine.tick()` on successful publish — satisfies Req 9.2
+  - [x] 4.2.8 Wire `retry_exhausted` alert in `RetryEngine` when retries are exhausted — satisfies Req 9.3
+  - [x] 4.2.9 Wire `post_retrying` alert in `RetryEngine.enqueue()` when a post enters retrying state — satisfies Req 9.4
+  - [x] 4.2.10 Wire billing alerts (`subscription_renewed`, `payment_failed`, `subscription_expired`) in `BillingService.handleWebhookEvent()` — satisfies Req 9.8
+  - [x] 4.2.11 Write unit tests: `notify` persists and is retrievable; `markAsRead` removes from unread list; `markAllAsRead` empties unread list
 
 
-- [ ] 4.3 Audit log enforcement and immutability
-  - [~] 4.3.1 Verify RLS policy from 1.2.4 blocks UPDATE and DELETE on `audit_log` for all roles; write integration test attempting UPDATE via `service_role` and asserting rejection — satisfies Req 11.2
-  - [~] 4.3.2 Confirm `occurred_at` server-side default prevents client override; add trigger or CHECK constraint to migration `006` if needed — satisfies Req 11.3
-  - [~] 4.3.3 Verify `audit_log` SELECT RLS policy restricts results to `user_id = auth.uid()` — satisfies Req 11.4
-  - [~] 4.3.4 Confirm every publish attempt (success, failure, retry) inserts audit record with `userId`, `postId`, `action`, `platform`, `platformMessageId`, `errorCode`, `occurredAt` — satisfies Req 11.1
-  - [~] 4.3.5 Write integration test: INSERT audit record; attempt DELETE → rejected; attempt UPDATE → rejected; SELECT from different user → empty result
+- [x] 4.3 Audit log enforcement and immutability
+  - [x] 4.3.1 Verify RLS policy from 1.2.4 blocks UPDATE and DELETE on `audit_log` for all roles; write integration test attempting UPDATE via `service_role` and asserting rejection — satisfies Req 11.2
+  - [x] 4.3.2 Confirm `occurred_at` server-side default prevents client override; add trigger or CHECK constraint to migration `006` if needed — satisfies Req 11.3
+  - [x] 4.3.3 Verify `audit_log` SELECT RLS policy restricts results to `user_id = auth.uid()` — satisfies Req 11.4
+  - [ ] 4.3.4 Confirm every publish attempt (success, failure, retry) inserts audit record with `userId`, `postId`, `action`, `platform`, `platformMessageId`, `errorCode`, `occurredAt` — satisfies Req 11.1
+  - [x] 4.3.5 Write integration test: INSERT audit record; attempt DELETE → rejected; attempt UPDATE → rejected; SELECT from different user → empty result
 
-- [ ] 5.1 Angular project setup and routing
-  - [~] 5.1.1 Confirm Angular 17 SPA initialised from 0.1.1; configure `app.config.ts` with `provideRouter`, `provideHttpClient`, and Supabase client provider
-  - [~] 5.1.2 Define lazy-loaded route modules: `AuthModule` (`/auth`), `DashboardModule` (`/dashboard`), `StudioModule` (`/studio`), `AssetsModule` (`/assets`), `CalendarModule` (`/calendar`), `MetricsModule` (`/metrics`), `AutomationModule` (`/automation`), `SettingsModule` (`/settings`) — satisfies Req 15.1
-  - [~] 5.1.3 Implement `AuthGuard`: redirect unauthenticated users to `/auth/login` when navigating to any protected route — satisfies Req 15.2
-  - [~] 5.1.4 Implement `FeatureGateGuard`: check `BillingService.checkFeatureAccess` for the route-required feature; redirect to `/settings/billing` with upgrade prompt if access denied — satisfies Req 15.3
-  - [~] 5.1.5 Register `AuthGuard` on all authenticated routes; register `FeatureGateGuard` on `/studio` (ai_generation), `/metrics` (analytics), `/automation` (recurrence_rules)
-  - [~] 5.1.6 Write unit tests: unauthenticated navigation to `/dashboard` redirects to `/auth/login`; feature-gated navigation redirects to billing page
+- [x] 5.1 Angular project setup and routing
+  - [x] 5.1.1 Confirm Angular 17 SPA initialised from 0.1.1; configure `app.config.ts` with `provideRouter`, `provideHttpClient`, and Supabase client provider
+  - [x] 5.1.2 Define lazy-loaded route modules: `AuthModule` (`/auth`), `DashboardModule` (`/dashboard`), `StudioModule` (`/studio`), `AssetsModule` (`/assets`), `CalendarModule` (`/calendar`), `MetricsModule` (`/metrics`), `AutomationModule` (`/automation`), `SettingsModule` (`/settings`) — satisfies Req 15.1
+  - [x] 5.1.3 Implement `AuthGuard`: redirect unauthenticated users to `/auth/login` when navigating to any protected route — satisfies Req 15.2
+  - [x] 5.1.4 Implement `FeatureGateGuard`: check `BillingService.checkFeatureAccess` for the route-required feature; redirect to `/settings/billing` with upgrade prompt if access denied — satisfies Req 15.3
+  - [x] 5.1.5 Register `AuthGuard` on all authenticated routes; register `FeatureGateGuard` on `/studio` (ai_generation), `/metrics` (analytics), `/automation` (recurrence_rules)
+  - [x] 5.1.6 Write unit tests: unauthenticated navigation to `/dashboard` redirects to `/auth/login`; feature-gated navigation redirects to billing page
 
 
-- [ ] 5.2 Auth views and guards
-  - [~] 5.2.1 Create `AuthModule` with sub-routes: `/auth/login`, `/auth/register`, `/auth/recover`
-  - [~] 5.2.2 Implement `LoginComponent`: email + password form; call `AuthService.signIn`; navigate to `/dashboard` on success; display field-level error messages using active voice on failure
-  - [~] 5.2.3 Implement `RegisterComponent`: email + password form with confirmation; call `AuthService.signUp`; display success message directing user to verify email
-  - [~] 5.2.4 Implement `RecoverComponent`: email input; call `AuthService.resetPassword`; display confirmation message
-  - [~] 5.2.5 Add "Sign in with Google" button to `LoginComponent`; call `AuthService.signInWithOAuth('google')` — satisfies Req 1.5
-  - [~] 5.2.6 Style all auth views: ink background, centered card, high-contrast labels, visible focus rings, no sidebar
+- [x] 5.2 Auth views and guards
+  - [x] 5.2.1 Create `AuthModule` with sub-routes: `/auth/login`, `/auth/register`, `/auth/recover`
+  - [x] 5.2.2 Implement `LoginComponent`: email + password form; call `AuthService.signIn`; navigate to `/dashboard` on success; display field-level error messages using active voice on failure
+  - [x] 5.2.3 Implement `RegisterComponent`: email + password form with confirmation; call `AuthService.signUp`; display success message directing user to verify email
+  - [x] 5.2.4 Implement `RecoverComponent`: email input; call `AuthService.resetPassword`; display confirmation message
+  - [x] 5.2.5 Add "Sign in with Google" button to `LoginComponent`; call `AuthService.signInWithOAuth('google')` — satisfies Req 1.5
+  - [x] 5.2.6 Style all auth views: ink background, centered card, high-contrast labels, visible focus rings, no sidebar
 
-- [ ] 5.3 Design system and tokens
-  - [~] 5.3.1 Define CSS custom properties in `src/styles/tokens.scss`: `--color-ink (#0D0F12)`, `--color-paper (#F5F4F0)`, `--color-signal (#E8C24A)`, `--color-live (#3EC88A)`, `--color-fault (#D94F3D)`, `--color-steel (#2A2D35)`
-  - [~] 5.3.2 Configure typography: `Druk Wide` / `Aktiv Grotesk Condensed` for display headings (uppercase sparingly), `Inter` for body copy, `JetBrains Mono` for data and utility text
-  - [~] 5.3.3 Implement 8px spacing grid utility classes; establish generous margin defaults for section spacing
-  - [~] 5.3.4 Define page transition animation: horizontal slide 150ms ease-out; chart mount animation 300ms stagger
-  - [~] 5.3.5 Create shared `StatusBadgeComponent` mapping `PostStatus` to design-token colors: `'published'` → `--color-live`, `'scheduled'` → `--color-signal`, `'failed'` → `--color-fault`
+- [x] 5.3 Design system and tokens
+  - [x] 5.3.1 Define CSS custom properties in `src/styles/tokens.scss`: `--color-ink (#0D0F12)`, `--color-paper (#F5F4F0)`, `--color-signal (#E8C24A)`, `--color-live (#3EC88A)`, `--color-fault (#D94F3D)`, `--color-steel (#2A2D35)`
+  - [x] 5.3.2 Configure typography: `Druk Wide` / `Aktiv Grotesk Condensed` for display headings (uppercase sparingly), `Inter` for body copy, `JetBrains Mono` for data and utility text
+  - [x] 5.3.3 Implement 8px spacing grid utility classes; establish generous margin defaults for section spacing
+  - [x] 5.3.4 Define page transition animation: horizontal slide 150ms ease-out; chart mount animation 300ms stagger
+  - [x] 5.3.5 Create shared `StatusBadgeComponent` mapping `PostStatus` to design-token colors: `'published'` → `--color-live`, `'scheduled'` → `--color-signal`, `'failed'` → `--color-fault`
 
-- [ ] 5.4 Global shell and broadcast ticker
-  - [~] 5.4.1 Create `AppShellComponent` as authenticated layout wrapper: left sidebar navigation, main content `<router-outlet>`, bottom broadcast ticker bar
-  - [~] 5.4.2 Implement `BroadcastTickerComponent`: subscribe to `AlertService.getNotifications(userId)`; display last 3 published post titles with `timestamp` and platform icon; scroll horizontally at 60px/s; pause on hover — satisfies Req 15.4
-  - [~] 5.4.3 Implement sidebar navigation links for all 7 authenticated routes; highlight active route; show plan tier badge
-  - [~] 5.4.4 Implement `NotificationBellComponent`: subscribe to `AlertService.subscribeToRealtime`; badge shows unread count; dropdown lists recent notifications with `markAsRead` action
+- [x] 5.4 Global shell and broadcast ticker
+  - [x] 5.4.1 Create `AppShellComponent` as authenticated layout wrapper: left sidebar navigation, main content `<router-outlet>`, bottom broadcast ticker bar
+  - [x] 5.4.2 Implement `BroadcastTickerComponent`: subscribe to `AlertService.getNotifications(userId)`; display last 3 published post titles with `timestamp` and platform icon; scroll horizontally at 60px/s; pause on hover — satisfies Req 15.4
+  - [x] 5.4.3 Implement sidebar navigation links for all 7 authenticated routes; highlight active route; show plan tier badge
+  - [x] 5.4.4 Implement `NotificationBellComponent`: subscribe to `AlertService.subscribeToRealtime`; badge shows unread count; dropdown lists recent notifications with `markAsRead` action
 
 
 - [ ] 6.1 Dashboard view (`/dashboard`)
