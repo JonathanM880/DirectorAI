@@ -1,2 +1,2 @@
 export const SUPABASE_URL = 'https://dnrbgoxvxkiczjtpdevu.supabase.co';
-export const SUPABASE_ANON_KEY = 'eyJhbG...G-EA';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRucmJnb3h2eGtpY3pqdHBkZXZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NDM1NzcsImV4cCI6MjA5NzMxOTU3N30.OMAjndlkrYZcU9dkBYOyO8UzW3CqmPpgGFbk5qXG-EA';
