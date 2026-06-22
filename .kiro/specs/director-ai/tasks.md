@@ -183,23 +183,23 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [~] 2.3.1 Write property test for Feature Gate Consistency (Property 7): for any `userId` with a non-active subscription and any valid `Feature` value, `generateCopy` always throws `FeatureGatedError` before any OpenRouter call is made — **Validates: Requirement 4.5**
   - [~] 2.3.2 Write property test for Quota Gate: for arbitrary `aiGenerationsThisMonth` values ≥ `aiGenerationsLimit`, `generateCopy` always throws `QuotaExceededError` without calling OpenRouter; verify no false positives when count is below limit — **Validates: Requirement 4.4**
 
-- [ ] 3.1 SocialMediaPublisher interface and publisher registry
-  - [~] 3.1.1 Create `supabase/functions/_shared/publisher/social-media-publisher.interface.ts` declaring the `SocialMediaPublisher` interface with methods: `publish`, `delete`, `edit`, `getCapabilities`, `validatePost` — satisfies Req 5.1
-  - [~] 3.1.2 Create `PublisherRegistry` class with `register(platform, publisher)` and `get(platform)` methods; ensure `SchedulingEngine` only interacts with `SocialMediaPublisher` interface, never concrete classes — satisfies Property 6
-  - [~] 3.1.3 Implement the `validatePost(post)` happy path: if `post.content.text` length ≤ `capabilities.maxTextLength` and `mediaType` is supported, return `{ valid: true, errors: [] }` — satisfies Req 5.2
-  - [~] 3.1.4 Implement the violation path of `validatePost`: if any constraint is violated, return `{ valid: false, errors: [descriptive message] }` — satisfies Req 5.3
-  - [~] 3.1.5 Implement the duplicate-publish guard: if `publish` is called on a post where `post.status === 'published'`, return `PublishResult` with `error.code === 'CONTENT_REJECTED'` without calling any platform API — satisfies Req 5.7
-  - [~] 3.1.6 Write unit tests: valid post returns `valid = true`; text-too-long returns `valid = false` with message; unsupported media returns `valid = false`; already-published post triggers `CONTENT_REJECTED`
+- [x] 3.1 SocialMediaPublisher interface and publisher registry
+  - [x] 3.1.1 Create `supabase/functions/_shared/publisher/social-media-publisher.interface.ts` declaring the `SocialMediaPublisher` interface with methods: `publish`, `delete`, `edit`, `getCapabilities`, `validatePost` — satisfies Req 5.1
+  - [x] 3.1.2 Create `PublisherRegistry` class with `register(platform, publisher)` and `get(platform)` methods; ensure `SchedulingEngine` only interacts with `SocialMediaPublisher` interface, never concrete classes — satisfies Property 6
+  - [x] 3.1.3 Implement the `validatePost(post)` happy path: if `post.content.text` length ≤ `capabilities.maxTextLength` and `mediaType` is supported, return `{ valid: true, errors: [] }` — satisfies Req 5.2
+  - [x] 3.1.4 Implement the violation path of `validatePost`: if any constraint is violated, return `{ valid: false, errors: [descriptive message] }` — satisfies Req 5.3
+  - [x] 3.1.5 Implement the duplicate-publish guard: if `publish` is called on a post where `post.status === 'published'`, return `PublishResult` with `error.code === 'CONTENT_REJECTED'` without calling any platform API — satisfies Req 5.7
+  - [x] 3.1.6 Write unit tests: valid post returns `valid = true`; text-too-long returns `valid = false` with message; unsupported media returns `valid = false`; already-published post triggers `CONTENT_REJECTED`
 
 
-- [ ] 3.2 TelegramPublisher implementation
-  - [~] 3.2.1 Create `supabase/functions/_shared/publisher/telegram.publisher.ts` implementing `SocialMediaPublisher` with `platform = 'telegram'`
-  - [~] 3.2.2 Implement `getCapabilities()`: return `PlatformCapabilities` with `maxTextLength: 4096`, `supportsImages: true`, `supportsVideo: true`, `supportsAudio: true`, `supportsPDFs: true`, `supportsCarousel: false`, `supportsScheduledEdit: false` — satisfies Req 5.8
-  - [~] 3.2.3 Implement `publish(post, channel)`: extract `telegram_bot_token` from `channel.credentials`; build `TelegramSendPayload` via private `buildPayload(post)`; make exactly one HTTP call to Telegram Bot API; return `PublishResult` with `success: true` and non-empty `platformMessageId` on success — satisfies Req 5.4
-  - [~] 3.2.4 Implement error mapping in `mapApiError(error)`: HTTP 5xx or network timeout → `{ code: 'NETWORK_ERROR', retryable: true }`; HTTP 401 → `{ code: 'INVALID_TOKEN', retryable: false }` — satisfies Req 5.5, Req 5.6
-  - [~] 3.2.5 Implement `buildPayload(post)`: select `sendMessage`, `sendPhoto`, `sendVideo`, `sendAudio`, or `sendDocument` based on `post.content.mediaType`; apply Telegram Markdown formatting
-  - [~] 3.2.6 Implement `delete` and `edit` via Telegram `deleteMessage` / `editMessageText` API endpoints
-  - [~] 3.2.7 Write tests: pure unit tests cover payload construction, error mapping helpers, and `getCapabilities`; direct Telegram Bot API integration tests against a private test channel verify success returns `platformMessageId`, invalid token maps to non-retryable 401, and retryable provider/network failures are handled correctly
+- [x] 3.2 TelegramPublisher implementation
+  - [x] 3.2.1 Create `supabase/functions/_shared/publisher/telegram.publisher.ts` implementing `SocialMediaPublisher` with `platform = 'telegram'`
+  - [x] 3.2.2 Implement `getCapabilities()`: return `PlatformCapabilities` with `maxTextLength: 4096`, `supportsImages: true`, `supportsVideo: true`, `supportsAudio: true`, `supportsPDFs: true`, `supportsCarousel: false`, `supportsScheduledEdit: false` — satisfies Req 5.8
+  - [x] 3.2.3 Implement `publish(post, channel)`: extract `telegram_bot_token` from `channel.credentials`; build `TelegramSendPayload` via private `buildPayload(post)`; make exactly one HTTP call to Telegram Bot API; return `PublishResult` with `success: true` and non-empty `platformMessageId` on success — satisfies Req 5.4
+  - [x] 3.2.4 Implement error mapping in `mapApiError(error)`: HTTP 5xx or network timeout → `{ code: 'NETWORK_ERROR', retryable: true }`; HTTP 401 → `{ code: 'INVALID_TOKEN', retryable: false }` — satisfies Req 5.5, Req 5.6
+  - [x] 3.2.5 Implement `buildPayload(post)`: select `sendMessage`, `sendPhoto`, `sendVideo`, `sendAudio`, or `sendDocument` based on `post.content.mediaType`; apply Telegram Markdown formatting
+  - [x] 3.2.6 Implement `delete` and `edit` via Telegram `deleteMessage` / `editMessageText` API endpoints
+  - [x] 3.2.7 Write tests: pure unit tests cover payload construction, error mapping helpers, and `getCapabilities`; direct Telegram Bot API integration tests against a private test channel verify success returns `platformMessageId`, invalid token maps to non-retryable 401, and retryable provider/network failures are handled correctly
 
 - [ ] 3.3 SchedulingEngine core implementation
   - [~] 3.3.1 Create `supabase/functions/scheduler/index.ts` as the cron Edge Function entry point; wire to `SchedulingEngine.tick()`
