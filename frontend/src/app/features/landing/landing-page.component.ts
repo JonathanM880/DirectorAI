@@ -17,11 +17,11 @@ export class LandingPageComponent {
   protected menuState = signal(false);
   protected isScrolled = signal(false);
 
-  readonly menuItems = [
-    { name: 'Features', href: '#features' },
-    { name: 'Solution', href: '#solution' },
-    { name: 'Pricing', href: '#pricing' },
-    { name: 'About', href: '#about' },
+  readonly menuItems: { name: string; href: string }[] = [
+    // { name: 'Features', href: '#features' },
+    // { name: 'Solution', href: '#solution' },
+    // { name: 'Pricing', href: '#pricing' },
+    // { name: 'About', href: '#about' },
   ];
 
   readonly customers = [
