@@ -337,6 +337,14 @@ export interface RetryRecord {
   outcome: 'success' | 'failed'
 }
 
+export interface RetryEngine {
+  enqueue(post: ScheduledPost, error: PublishError): Promise<void>
+  processQueue(): Promise<void>
+  getRetryStatus(postId: string): Promise<RetryStatus>
+  cancelRetry(postId: string): Promise<void>
+  getRetryHistory(userId: string, limit?: number): Promise<RetryRecord[]>
+}
+
 // ---------------------------------------------------------------------------
 // Module 4 – Metrics Service
 // ---------------------------------------------------------------------------

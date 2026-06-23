@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import fc from 'fast-check';
 import { SchedulingEngine } from './scheduling-engine';
-import { PublisherRegistry } from '../_shared/publisher/social-media-publisher.interface';
+import { PublisherRegistry, BasePublisher } from '../_shared/publisher/social-media-publisher.interface';
 import { TelegramPublisher } from '../_shared/publisher/telegram.publisher';
 import {
   ScheduledPost,
@@ -9,6 +10,8 @@ import {
   PostStatus,
   ChannelConfig,
   RecurrenceRule,
+  PlatformCapabilities,
+  PublishResult,
 } from '@director-ai/types';
 import { createClient } from '@supabase/supabase-js';
 
@@ -745,5 +748,145 @@ describe('SchedulingEngine', () => {
       // Should only return posts for user-1, not any other user
       expect(result).toHaveLength(0);
     });
+  });
+
+  describe('Property 8: Scheduled Time Invariant', () => {
+    it('schedulePost always returns post.scheduledAt > post.createdAt for future timestamps', () => {
+      return fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 1000, max: 365 * 24 * 60 * 60 * 1000 }),
+          async (offsetMs) => {
+            const scheduledAt = new Date(Date.now() + offsetMs);
+            const request: CreatePostRequest = {
+              userId: 'user-1',
+              channelId: 'channel-1',
+              content: { text: 'Property test post' },
+              scheduledAt,
+            };
+
+            mockSupabase.from.mockReturnValue({
+              select: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  eq: vi.fn(() => ({
+                    single: vi.fn(() => ({
+                      data: {
+                        id: 'channel-1',
+                        platform: 'telegram',
+                        user_id: 'user-1',
+                      },
+                      error: null,
+                    })),
+                  })),
+                })),
+              })),
+              insert: vi.fn(() => ({
+                select: vi.fn(() => ({
+                  single: vi.fn(() => {
+                    const createdAt = new Date();
+                    return {
+                      data: {
+                        id: 'post-prop',
+                        user_id: 'user-1',
+                        channel_id: 'channel-1',
+                        platform: 'telegram',
+                        text_content: request.content.text,
+                        media_asset_ids: [],
+                        media_type: null,
+                        scheduled_at: scheduledAt.toISOString(),
+                        status: 'scheduled',
+                        retry_count: 0,
+                        max_retries: 3,
+                        platform_message_id: null,
+                        published_at: null,
+                        next_retry_at: null,
+                        recurrence_rule_id: null,
+                        parent_post_id: null,
+                        created_at: createdAt.toISOString(),
+                        updated_at: createdAt.toISOString(),
+                      },
+                      error: null,
+                    };
+                  }),
+                })),
+              })),
+            });
+
+            const post = await schedulingEngine.schedulePost(request);
+            expect(post.scheduledAt.getTime()).toBeGreaterThan(post.createdAt.getTime());
+          },
+        ),
+        { numRuns: 25 },
+      );
+    });
+  });
+});
+
+class IdempotencyTestPublisher extends BasePublisher {
+  readonly platform: SocialPlatform = 'telegram';
+  protected capabilities: PlatformCapabilities = {
+    maxTextLength: 4096,
+    supportsImages: true,
+    supportsVideo: true,
+    supportsAudio: true,
+    supportsPDFs: true,
+    supportsCarousel: false,
+    supportsScheduledEdit: false,
+  };
+
+  protected async doPublish(): Promise<PublishResult> {
+    return {
+      success: true,
+      platformMessageId: 'should-not-be-called',
+      publishedAt: new Date(),
+      platform: 'telegram',
+    };
+  }
+
+  async delete(): Promise<void> {}
+  async edit(): Promise<PublishResult> {
+    return this.doPublish();
+  }
+}
+
+describe('Property 1: Publishing Idempotency', () => {
+  it('publish on already-published post always returns CONTENT_REJECTED', () => {
+    return fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          id: fc.uuid(),
+          userId: fc.uuid(),
+          channelId: fc.uuid(),
+          text: fc.string({ maxLength: 100 }),
+        }),
+        async ({ id, userId, channelId, text }) => {
+          const publisher = new IdempotencyTestPublisher();
+          const channel: ChannelConfig = {
+            platform: 'telegram',
+            channelId,
+            credentials: {},
+          };
+          const post: ScheduledPost = {
+            id,
+            userId,
+            platform: 'telegram',
+            channelId,
+            content: { text },
+            scheduledAt: new Date(Date.now() + 3600000),
+            status: 'published' as PostStatus,
+            retryCount: 0,
+            maxRetries: 3,
+            platformMessageId: 'existing-msg',
+            publishedAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+
+          const result = await publisher.publish(post, channel);
+          expect(result.success).toBe(false);
+          expect(result.error?.code).toBe('CONTENT_REJECTED');
+        },
+      ),
+      { numRuns: 25 },
+    );
   });
 });
