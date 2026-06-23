@@ -1,6 +1,31 @@
 @use "tailwindcss";
 @use './styles/tokens.scss';
 
+@theme {
+  /* Core colors (shadcn-style naming for Tailwind v4 utilities) */
+  --color-background: var(--color-ink);
+  --color-foreground: var(--color-paper);
+  --color-muted: var(--color-steel);
+  --color-muted-foreground: var(--color-gray-400);
+  --color-accent: var(--color-signal);
+  --color-accent-foreground: var(--color-paper);
+  --color-primary: var(--color-signal);
+  --color-primary-foreground: var(--color-ink);
+  --color-secondary: var(--color-steel);
+  --color-secondary-foreground: var(--color-paper);
+  --color-destructive: var(--color-fault);
+  --color-destructive-foreground: var(--color-paper);
+  --color-border: rgba(245, 244, 240, 0.1);
+  --color-input: var(--color-steel);
+  --color-ring: var(--color-signal);
+
+  /* Card / popover */
+  --color-card: var(--color-ink);
+  --color-card-foreground: var(--color-paper);
+  --color-popover: var(--color-ink);
+  --color-popover-foreground: var(--color-paper);
+}
+
 * {
   box-sizing: border-box;
 }

@@ -25,14 +25,14 @@ export class LandingPageComponent {
   ];
 
   readonly customers = [
-    { src: 'https://html.tailus.io/blocks/customers/nvidia.svg', alt: 'Nvidia Logo', height: 'h-5' },
-    { src: 'https://html.tailus.io/blocks/customers/column.svg', alt: 'Column Logo', height: 'h-4' },
-    { src: 'https://html.tailus.io/blocks/customers/github.svg', alt: 'GitHub Logo', height: 'h-4' },
-    { src: 'https://html.tailus.io/blocks/customers/nike.svg', alt: 'Nike Logo', height: 'h-5' },
-    { src: 'https://html.tailus.io/blocks/customers/lemonsqueezy.svg', alt: 'Lemon Squeezy Logo', height: 'h-5' },
-    { src: 'https://html.tailus.io/blocks/customers/laravel.svg', alt: 'Laravel Logo', height: 'h-4' },
-    { src: 'https://html.tailus.io/blocks/customers/lilly.svg', alt: 'Lilly Logo', height: 'h-7' },
-    { src: 'https://html.tailus.io/blocks/customers/openai.svg', alt: 'OpenAI Logo', height: 'h-6' },
+    { name: 'Nvidia' },
+    { name: 'Column' },
+    { name: 'GitHub' },
+    { name: 'Nike' },
+    { name: 'Lemon Squeezy' },
+    { name: 'Laravel' },
+    { name: 'Lilly' },
+    { name: 'OpenAI' },
   ];
 
   @HostListener('window:scroll')
