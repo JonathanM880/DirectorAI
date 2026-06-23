@@ -67,7 +67,7 @@ export class GenAIServiceImpl implements GenAIService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
+        model: 'google/gemini-2.0-flash-exp:free',
         messages
       })
     })
@@ -80,21 +80,15 @@ export class GenAIServiceImpl implements GenAIService {
     const content = data.choices?.[0]?.message?.content || ''
     const tokensUsed = data.usage?.total_tokens || 0
 
-    // Store as plain text for now; proper mimeType validation expects text/plain to be allowed, 
-    // wait, AssetStorageService strictly validates SupportedMimeType.
-    // The SupportedMimeType only has images, videos, audio, PDF! No text/plain!
-    // Ah, 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'application/pdf'.
-    // If I pass a text file, it will throw UnsupportedMimeTypeError.
-    // But the spec says: "persist content as an Asset record with source = 'ai_generated'"
-    // Oh, I will just bypass uploading for text, or I need to add 'text/plain' to SupportedMimeType in types/index.ts!
+    const asset = await this.persistAndIncrement(request.userId, content, request.platform)
     
     return {
-      id: crypto.randomUUID(), // Mock ID since we might not persist it right if it's text
+      id: asset.id, 
       content,
       platform: request.platform,
       model: data.model || 'openai/gpt-4o-mini',
       tokensUsed,
-      createdAt: new Date()
+      createdAt: asset.createdAt
     }
   }
 
@@ -109,7 +103,7 @@ export class GenAIServiceImpl implements GenAIService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
+        model: 'google/gemini-2.0-flash-exp:free',
         messages: [{ role: 'user', content: this.buildPrompt(request) }],
         stream: true
       })
@@ -141,14 +135,28 @@ export class GenAIServiceImpl implements GenAIService {
       }
     }
 
+    const asset = await this.persistAndIncrement(request.userId, content, request.platform)
+
     return {
-      id: crypto.randomUUID(),
+      id: asset.id,
       content,
       platform: request.platform,
-      model: 'openai/gpt-4o-mini',
+      model: 'google/gemini-2.0-flash-exp:free',
       tokensUsed: Math.ceil(content.length / 4), 
-      createdAt: new Date()
+      createdAt: asset.createdAt
     }
+  }
+
+  private async persistAndIncrement(userId: string, content: string, platform: string) {
+    const file = new File([content], `generated-${Date.now()}.txt`, { type: 'text/plain' })
+    const asset = await this.assetStorage.upload(userId, file, { source: 'ai_generated', tags: ['ai', platform] })
+    
+    const usage = await this.billingService.getUsage(userId)
+    await this.supabase.from('subscriptions')
+      .update({ ai_generations_this_month: usage.aiGenerationsThisMonth + 1 })
+      .eq('user_id', userId)
+
+    return asset
   }
 
   async generateImage(request: ImageRequest): Promise<GeneratedImage> {
@@ -190,7 +198,7 @@ export class GenAIServiceImpl implements GenAIService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
+        model: 'google/gemini-2.0-flash-exp:free',
         messages: [{ role: 'user', content: `Brainstorm exactly ${request.count} ideas for ${request.platform} about ${request.topic}. Output strictly a JSON array of strings.` }]
       })
     })

@@ -148,40 +148,40 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [x] 1.4.8 Confirm no Edge Function exposes `getKey` responses to the Angular frontend; return only key names from frontend-facing endpoints — satisfies Req 2.3
   - [x] 1.4.9 Write unit tests: `storeKey` then `getKey` returns correct value; `rotateKey` updates value; `deleteKey` removes from `listKeyNames`; `listKeyNames` is scoped to `userId`
 
-- [ ] 1.5 AssetStorageService implementation
-  - [~] 1.5.1 Create `supabase/functions/_shared/asset-storage.service.ts` implementing the `AssetStorageService` interface
-  - [~] 1.5.2 Implement MIME type validation in `upload`: reject unsupported types with a descriptive error — satisfies Req 3.2
-  - [~] 1.5.3 Implement size-limit validation in `upload`: images ≤ 20 MB, video ≤ 200 MB, audio ≤ 50 MB, PDF ≤ 50 MB; throw `AssetTooLargeError` with `maxBytes` and `actualBytes` on violation — satisfies Req 3.3
-  - [~] 1.5.4 On successful validation, upload file to Supabase Storage bucket `assets/${userId}/`; insert `AssetRecord` into `assets` table; return `Asset` with correct `mimeType`, `sizeBytes`, `userId` — satisfies Req 3.1
-  - [~] 1.5.5 Implement `getSignedUrl(assetId, expiresIn = 3600)`: call Supabase Storage `createSignedUrl`; verify returned URL is non-empty and TTL ≥ `expiresIn` — satisfies Req 3.4
-  - [~] 1.5.6 Implement `listAssets(userId, filter)`: query `assets` WHERE `user_id = userId`; apply filter predicates; never return another user's assets — satisfies Req 3.5, Req 3.8
-  - [~] 1.5.7 Implement `deleteAsset(assetId)`: remove file from Supabase Storage and DELETE row from `assets`; verify asset absent in subsequent `listAssets` — satisfies Req 3.6
-  - [~] 1.5.8 Implement `moveAsset(assetId, targetFolder)`: UPDATE `folder` column; return updated `Asset` — satisfies Req 3.7
-  - [~] 1.5.9 Write `AssetTooLargeError` and `UnsupportedMimeTypeError` classes with appropriate fields
-  - [~] 1.5.10 Write unit tests: supported upload succeeds, unsupported MIME rejected, oversized image rejected, signed URL non-empty, `listAssets` scoped to `userId`, `deleteAsset` removes from list
+- [x] 1.5 AssetStorageService implementation
+  - [x] 1.5.1 Create `supabase/functions/_shared/asset-storage.service.ts` implementing the `AssetStorageService` interface
+  - [x] 1.5.2 Implement MIME type validation in `upload`: reject unsupported types with a descriptive error — satisfies Req 3.2
+  - [x] 1.5.3 Implement size-limit validation in `upload`: images ≤ 20 MB, video ≤ 200 MB, audio ≤ 50 MB, PDF ≤ 50 MB; throw `AssetTooLargeError` with `maxBytes` and `actualBytes` on violation — satisfies Req 3.3
+  - [x] 1.5.4 On successful validation, upload file to Supabase Storage bucket `assets/${userId}/`; insert `AssetRecord` into `assets` table; return `Asset` with correct `mimeType`, `sizeBytes`, `userId` — satisfies Req 3.1
+  - [x] 1.5.5 Implement `getSignedUrl(assetId, expiresIn = 3600)`: call Supabase Storage `createSignedUrl`; verify returned URL is non-empty and TTL ≥ `expiresIn` — satisfies Req 3.4
+  - [x] 1.5.6 Implement `listAssets(userId, filter)`: query `assets` WHERE `user_id = userId`; apply filter predicates; never return another user's assets — satisfies Req 3.5, Req 3.8
+  - [x] 1.5.7 Implement `deleteAsset(assetId)`: remove file from Supabase Storage and DELETE row from `assets`; verify asset absent in subsequent `listAssets` — satisfies Req 3.6
+  - [x] 1.5.8 Implement `moveAsset(assetId, targetFolder)`: UPDATE `folder` column; return updated `Asset` — satisfies Req 3.7
+  - [x] 1.5.9 Write `AssetTooLargeError` and `UnsupportedMimeTypeError` classes with appropriate fields
+  - [x] 1.5.10 Write unit tests: supported upload succeeds, unsupported MIME rejected, oversized image rejected, signed URL non-empty, `listAssets` scoped to `userId`, `deleteAsset` removes from list
 
 
-- [ ] 2.1 GenAIService core generation
-  - [~] 2.1.1 Create `supabase/functions/_shared/gen-ai.service.ts` implementing the `GenAIService` interface
-  - [~] 2.1.2 Implement feature gate check at the top of `generateCopy`: call `billingService.checkFeatureAccess(userId, 'ai_generation')`; throw `FeatureGatedError` if false, without calling OpenRouter — satisfies Req 4.5
-  - [~] 2.1.3 Implement quota check in `generateCopy`: if `aiGenerationsThisMonth >= aiGenerationsLimit`, throw `QuotaExceededError` without calling OpenRouter — satisfies Req 4.4
-  - [~] 2.1.4 Implement OpenRouter call in `generateCopy`: build system prompt from `platform` + `tone`; call `openRouterClient.chatCompletions`; map response to `GeneratedCopy` with non-empty `content`, valid `platform`, and positive `tokensUsed` — satisfies Req 4.1
-  - [~] 2.1.5 After successful generation, persist content as an `Asset` record with `source = 'ai_generated'` and increment `ai_generations_this_month` by 1 — satisfies Req 4.8
-  - [~] 2.1.6 Implement `generateImage(request)`: call OpenRouter image generation endpoint; return `GeneratedImage` with non-empty `url` and original `prompt` preserved — satisfies Req 4.2
-  - [~] 2.1.7 Implement `brainstorm(request)`: call OpenRouter with `count = N`; parse response into exactly `N` content ideas; return `BrainstormResult` — satisfies Req 4.3
-  - [~] 2.1.8 Create `QuotaExceededError` and `FeatureGatedError` classes; export from the types barrel
-  - [~] 2.1.9 Write tests: pure unit tests verify quota/feature gates fire before any OpenRouter call; direct OpenRouter integration tests verify successful generation, returned structure, asset persistence with `ai_generated` source, and usage counter increment
+- [x] 2.1 GenAIService core generation
+  - [x] 2.1.1 Create `supabase/functions/_shared/gen-ai.service.ts` implementing the `GenAIService` interface
+  - [x] 2.1.2 Implement feature gate check at the top of `generateCopy`: call `billingService.checkFeatureAccess(userId, 'ai_generation')`; throw `FeatureGatedError` if false, without calling OpenRouter — satisfies Req 4.5
+  - [x] 2.1.3 Implement quota check in `generateCopy`: if `aiGenerationsThisMonth >= aiGenerationsLimit`, throw `QuotaExceededError` without calling OpenRouter — satisfies Req 4.4
+  - [x] 2.1.4 Implement OpenRouter call in `generateCopy`: build system prompt from `platform` + `tone`; call `openRouterClient.chatCompletions`; map response to `GeneratedCopy` with non-empty `content`, valid `platform`, and positive `tokensUsed` — satisfies Req 4.1
+  - [x] 2.1.5 After successful generation, persist content as an `Asset` record with `source = 'ai_generated'` and increment `ai_generations_this_month` by 1 — satisfies Req 4.8
+  - [x] 2.1.6 Implement `generateImage(request)`: call OpenRouter image generation endpoint; return `GeneratedImage` with non-empty `url` and original `prompt` preserved — satisfies Req 4.2
+  - [x] 2.1.7 Implement `brainstorm(request)`: call OpenRouter with `count = N`; parse response into exactly `N` content ideas; return `BrainstormResult` — satisfies Req 4.3
+  - [x] 2.1.8 Create `QuotaExceededError` and `FeatureGatedError` classes; export from the types barrel
+  - [x] 2.1.9 Write tests: pure unit tests verify quota/feature gates fire before any OpenRouter call; direct OpenRouter integration tests verify successful generation, returned structure, asset persistence with `ai_generated` source, and usage counter increment
 
-- [ ] 2.2 GenAIService streaming and regeneration
-  - [~] 2.2.1 Implement `streamGenerate(request, onChunk)`: open a streaming request to OpenRouter; invoke `onChunk` callback at least once per SSE token chunk with a non-empty string — satisfies Req 4.6
-  - [~] 2.2.2 Ensure `streamGenerate` applies the same feature gate and quota checks as `generateCopy` before initiating the stream
-  - [~] 2.2.3 Implement `regenerate(assetId, instructions?)`: load original asset from `AssetStorageService`; construct a new `CopyRequest` with optional instruction modifications; call `generateCopy` and return the new `GeneratedAsset` — satisfies Req 4.7
-  - [~] 2.2.4 Write unit tests: `streamGenerate` calls `onChunk` at least once with non-empty string; `regenerate` returns a new asset distinct from the original
+- [x] 2.2 GenAIService streaming and regeneration
+  - [x] 2.2.1 Implement `streamGenerate(request, onChunk)`: open a streaming request to OpenRouter; invoke `onChunk` callback at least once per SSE token chunk with a non-empty string — satisfies Req 4.6
+  - [x] 2.2.2 Ensure `streamGenerate` applies the same feature gate and quota checks as `generateCopy` before initiating the stream
+  - [x] 2.2.3 Implement `regenerate(assetId, instructions?)`: load original asset from `AssetStorageService`; construct a new `CopyRequest` with optional instruction modifications; call `generateCopy` and return the new `GeneratedAsset` — satisfies Req 4.7
+  - [x] 2.2.4 Write unit tests: `streamGenerate` calls `onChunk` at least once with non-empty string; `regenerate` returns a new asset distinct from the original
 
 
-- [ ] 2.3 Property-based tests for AI generation
-  - [~] 2.3.1 Write property test for Feature Gate Consistency (Property 7): for any `userId` with a non-active subscription and any valid `Feature` value, `generateCopy` always throws `FeatureGatedError` before any OpenRouter call is made — **Validates: Requirement 4.5**
-  - [~] 2.3.2 Write property test for Quota Gate: for arbitrary `aiGenerationsThisMonth` values ≥ `aiGenerationsLimit`, `generateCopy` always throws `QuotaExceededError` without calling OpenRouter; verify no false positives when count is below limit — **Validates: Requirement 4.4**
+- [x] 2.3 Property-based tests for AI generation
+  - [x] 2.3.1 Write property test for Feature Gate Consistency (Property 7): for any `userId` with a non-active subscription and any valid `Feature` value, `generateCopy` always throws `FeatureGatedError` before any OpenRouter call is made — **Validates: Requirement 4.5**
+  - [x] 2.3.2 Write property test for Quota Gate: for arbitrary `aiGenerationsThisMonth` values ≥ `aiGenerationsLimit`, `generateCopy` always throws `QuotaExceededError` without calling OpenRouter; verify no false positives when count is below limit — **Validates: Requirement 4.4**
 
 - [x] 3.1 SocialMediaPublisher interface and publisher registry
   - [x] 3.1.1 Create `supabase/functions/_shared/publisher/social-media-publisher.interface.ts` declaring the `SocialMediaPublisher` interface with methods: `publish`, `delete`, `edit`, `getCapabilities`, `validatePost` — satisfies Req 5.1
@@ -318,22 +318,22 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [~] 6.1.3 Implement Mini Editorial Calendar widget: 3-day lookahead using `SchedulingEngine.getUpcomingPosts`; show post blocks with status color coding
   - [~] 6.1.4 Implement system health indicators: last scheduler execution time; API connectivity status for Telegram and OpenRouter
 
-- [ ] 6.2 AI Studio view (`/studio`)
-  - [~] 6.2.1 Create `StudioComponent` with split-pane layout: left panel = prompt input, platform selector, tone selector, max length slider; right panel = generated output area
-  - [~] 6.2.2 Implement streaming output: call `GenAIService.streamGenerate`; render each `onChunk` token progressively in the output panel — satisfies Req 15.6
-  - [~] 6.2.3 Implement "Save to Assets" CTA: call `AssetStorageService.upload` with `source = 'ai_generated'`; display success toast
-  - [~] 6.2.4 Implement "Schedule Now" CTA: open scheduling modal pre-filled with generated content; call `SchedulingEngine.schedulePost`
-  - [~] 6.2.5 Implement Brainstorm mode: call `GenAIService.brainstorm`; render N idea cards; each expandable to full copy with "Use This" action
-  - [~] 6.2.6 Implement Image Generation tab: prompt input and aspect ratio selector; call `GenAIService.generateImage`; display result image
-  - [~] 6.2.7 Implement Usage Meter component: display `aiGenerationsThisMonth / aiGenerationsLimit` as a progress bar in the top-right corner — satisfies Req 15.5
+- [x] 6.2 AI Studio view (`/studio`)
+  - [x] 6.2.1 Create `StudioComponent` with split-pane layout: left panel = prompt input, platform selector, tone selector, max length slider; right panel = generated output area
+  - [x] 6.2.2 Implement streaming output: call `GenAIService.streamGenerate`; render each `onChunk` token progressively in the output panel — satisfies Req 15.6
+  - [x] 6.2.3 Implement "Save to Assets" CTA: call `AssetStorageService.upload` with `source = 'ai_generated'`; display success toast
+  - [x] 6.2.4 Implement "Schedule Now" CTA: open scheduling modal pre-filled with generated content; call `SchedulingEngine.schedulePost`
+  - [x] 6.2.5 Implement Brainstorm mode: call `GenAIService.brainstorm`; render N idea cards; each expandable to full copy with "Use This" action
+  - [x] 6.2.6 Implement Image Generation tab: prompt input and aspect ratio selector; call `GenAIService.generateImage`; display result image
+  - [x] 6.2.7 Implement Usage Meter component: display `aiGenerationsThisMonth / aiGenerationsLimit` as a progress bar in the top-right corner — satisfies Req 15.5
 
-- [ ] 6.3 Asset Repository view (`/assets`)
-  - [~] 6.3.1 Create `AssetsComponent` with file-manager layout: left sidebar with folder/tag filters; right area with grid/list toggle — satisfies Req 15.7
-  - [~] 6.3.2 Implement drag-and-drop upload zone using `@angular/cdk/drag-drop`; on drop call `AssetStorageService.upload`; show upload progress — satisfies Req 15.7
-  - [~] 6.3.3 Implement asset cards: thumbnail preview, filename, source badge (AI/Upload), creation date; grid and list display modes
-  - [~] 6.3.4 Implement multi-select: checkbox selection; bulk action toolbar with Delete and Move buttons — satisfies Req 15.7
-  - [~] 6.3.5 Implement preview modal: full-size preview with signed URL; download button
-  - [~] 6.3.6 Implement folder navigation and tag filtering calling `AssetStorageService.listAssets(userId, filter)`
+- [x] 6.3 Asset Repository view (`/assets`)
+  - [x] 6.3.1 Create `AssetsComponent` with file-manager layout: left sidebar with folder/tag filters; right area with grid/list toggle — satisfies Req 15.7
+  - [x] 6.3.2 Implement drag-and-drop upload zone using `@angular/cdk/drag-drop`; on drop call `AssetStorageService.upload`; show upload progress — satisfies Req 15.7
+  - [x] 6.3.3 Implement asset cards: thumbnail preview, filename, source badge (AI/Upload), creation date; grid and list display modes
+  - [x] 6.3.4 Implement multi-select: checkbox selection; bulk action toolbar with Delete and Move buttons — satisfies Req 15.7
+  - [x] 6.3.5 Implement preview modal: full-size preview with signed URL; download button
+  - [x] 6.3.6 Implement folder navigation and tag filtering calling `AssetStorageService.listAssets(userId, filter)`
 
 
 - [ ] 6.4 Editorial Calendar view (`/calendar`)
@@ -343,13 +343,13 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [~] 6.4.4 Apply status-based color coding to post blocks using design token colors: `--color-live`, `--color-signal`, `--color-fault` — satisfies Req 14.5
   - [~] 6.4.5 Implement "New Post" inline creation form with content input, channel selector, date/time picker, and optional recurrence rule configurator
 
-- [ ] 6.5 Platform Metrics view (`/metrics`)
-  - [~] 6.5.1 Create `MetricsComponent` with platform tabs (Telegram) and per-channel dropdown calling `MetricsService.getChannelSummary`
-  - [~] 6.5.2 Implement Views Trend line chart using `chart.js` / `ng2-charts`; data from `MetricsService.getEngagementTrend(channelId, 'day')`
-  - [~] 6.5.3 Implement Engagement Rate bar chart; data from `getEngagementTrend(channelId, 'week')`
-  - [~] 6.5.4 Implement Top Posts table sorted by views descending; data from `getChannelSummary`
-  - [~] 6.5.5 Implement date range picker with presets: last 7 days, 30 days, 90 days, and custom range — satisfies Req 15.8
-  - [~] 6.5.6 Implement CSV export button: serialize current channel metrics to CSV and trigger browser download
+- [x] 6.5 Platform Metrics view (`/metrics`)
+  - [x] 6.5.1 Create `MetricsComponent` with platform tabs (Telegram) and per-channel dropdown calling `MetricsService.getChannelSummary`
+  - [x] 6.5.2 Implement Views Trend line chart using `chart.js` / `ng2-charts`; data from `MetricsService.getEngagementTrend(channelId, 'day')`
+  - [x] 6.5.3 Implement Engagement Rate bar chart; data from `getEngagementTrend(channelId, 'week')`
+  - [x] 6.5.4 Implement Top Posts table sorted by views descending; data from `getChannelSummary`
+  - [x] 6.5.5 Implement date range picker with presets: last 7 days, 30 days, 90 days, and custom range — satisfies Req 15.8
+  - [x] 6.5.6 Implement CSV export button: serialize current channel metrics to CSV and trigger browser download
 
 - [ ] 6.6 Automation Hub view (`/automation`)
   - [~] 6.6.1 Create `AutomationComponent` with four sections: Recurrence Rules, Retry Rules, Activity Log, Failed Posts
@@ -378,11 +378,11 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [~] 7.2.2 Write integration test: deliver a signed Stripe test-mode `invoice.payment_failed` event → verify subscription updated to `past_due` and pending posts paused — satisfies Req 10.3
   - [~] 7.2.3 Write integration test: send webhook with invalid signature → verify request rejected with no DB mutation — satisfies Req 10.4
 
-- [ ] 7.3 RLS enforcement integration tests
-  - [~] 7.3.1 Write test: user A creates an asset; user B calls `listAssets` → result must not contain user A's asset — satisfies Req 12.3
-  - [~] 7.3.2 Write test: user A schedules a post; user B calls `getUpcomingPosts` → result must not contain user A's post — satisfies Req 12.4
-  - [~] 7.3.3 Write test: attempt to UPDATE an `audit_log` row as `service_role` → operation rejected — satisfies Req 11.2
-  - [~] 7.3.4 Write test: unauthenticated request to any Edge Function endpoint → returns HTTP 401 before processing body — satisfies Req 12.5
+- [x] 7.3 RLS enforcement integration tests
+  - [x] 7.3.1 Write test: user A creates an asset; user B calls `listAssets` → result must not contain user A's asset — satisfies Req 12.3
+  - [x] 7.3.2 Write test: user A schedules a post; user B calls `getUpcomingPosts` → result must not contain user A's post — satisfies Req 12.4
+  - [x] 7.3.3 Write test: attempt to UPDATE an `audit_log` row as `service_role` → operation rejected — satisfies Req 11.2
+  - [x] 7.3.4 Write test: unauthenticated request to any Edge Function endpoint → returns HTTP 401 before processing body — satisfies Req 12.5
 
 - [ ] 7.4 End-to-end smoke tests
   - [~] 7.4.1 Set up Playwright E2E runner in `frontend/e2e/`; configure base URL for local dev server

@@ -19,6 +19,7 @@ const SUPPORTED_MIME_TYPES: SupportedMimeType[] = [
   'audio/mpeg',
   'audio/wav',
   'application/pdf',
+  'text/plain',
 ]
 
 const MB = 1024 * 1024
@@ -33,6 +34,7 @@ const SIZE_LIMITS: Record<string, number> = {
   'audio/mpeg': 50 * MB,
   'audio/wav': 50 * MB,
   'application/pdf': 50 * MB,
+  'text/plain': 1 * MB,
 }
 
 export class AssetStorageServiceImpl implements AssetStorageService {

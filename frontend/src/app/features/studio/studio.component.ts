@@ -208,30 +208,60 @@ export class StudioComponent implements OnInit {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
       
-      const request: CopyRequest = {
-        userId: session?.user.id || '',
-        prompt: this.prompt(),
-        platform: this.platform(),
-        tone: this.tone()
-      };
+      if (this.mode() === 'copy') {
+        const request: CopyRequest = {
+          userId: session?.user.id || '',
+          prompt: this.prompt(),
+          platform: this.platform(),
+          tone: this.tone()
+        };
 
-      this.genAiService.streamGenerate(request).subscribe({
-        next: (chunk) => {
-          this.output.update(curr => curr + chunk);
-        },
-        complete: () => {
-          this.isGenerating.set(false);
-          this.usage.update(u => u + 1); // Optimistic update
-        },
-        error: (err) => {
-          console.error('Generation error', err);
-          this.isGenerating.set(false);
-          this.output.set('Error: ' + err.message);
+        this.genAiService.streamGenerate(request).subscribe({
+          next: (chunk) => {
+            this.output.update(curr => curr + chunk);
+          },
+          complete: () => {
+            this.isGenerating.set(false);
+            this.usage.update(u => u + 1); // Optimistic update
+          },
+          error: (err) => {
+            console.error('Generation error', err);
+            this.isGenerating.set(false);
+            this.output.set('Error: ' + err.message);
+          }
+        });
+      } else if (this.mode() === 'brainstorm') {
+        const result = await this.genAiService.brainstorm({
+          topic: this.prompt(),
+          count: 5,
+          platform: this.platform()
+        });
+        // Access the ideas array inside BrainstormResult
+        this.output.set(result.ideas.join('\n\n'));
+        this.isGenerating.set(false);
+        this.usage.update(u => u + 1);
+      } else if (this.mode() === 'image') {
+        // Image generation doesn't stream, it just returns a URL or error
+        const result = await this.genAiService.generateImage({
+          prompt: this.prompt(),
+          size: '1024x1024'
+        });
+        
+        if (result.error) {
+          this.output.set('Error: ' + result.error);
+        } else {
+          // Display the image using an HTML tag in the output if it was supported,
+          // but for now we'll just display the markdown or link to it
+          this.output.set(`[Image Generated](${result.url})\n\n(Note: OpenRouter does not support free image generation, so this may be a fallback or error)`);
         }
-      });
-    } catch (err) {
+        
+        this.isGenerating.set(false);
+        this.usage.update(u => u + 1);
+      }
+    } catch (err: any) {
       console.error(err);
       this.isGenerating.set(false);
+      this.output.set('Error: ' + err.message);
     }
   }
 

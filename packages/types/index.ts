@@ -221,6 +221,7 @@ export type SupportedMimeType =
   | 'audio/mpeg'
   | 'audio/wav'
   | 'application/pdf'
+  | 'text/plain'
 
 export interface Asset {
   id: string

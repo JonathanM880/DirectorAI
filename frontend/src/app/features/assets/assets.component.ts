@@ -13,16 +13,16 @@ import { SupabaseClient } from '@supabase/supabase-js';
       <div class="sidebar">
         <h2>Assets</h2>
         <div class="folder-list">
-          <div class="folder-item active">
+          <div class="folder-item" [class.active]="activeFilter() === 'All Files'" (click)="setFilter('All Files')">
             <span class="icon">📁</span> All Files
           </div>
-          <div class="folder-item">
+          <div class="folder-item" [class.active]="activeFilter() === 'Images'" (click)="setFilter('Images')">
             <span class="icon">📁</span> Images
           </div>
-          <div class="folder-item">
+          <div class="folder-item" [class.active]="activeFilter() === 'Videos'" (click)="setFilter('Videos')">
             <span class="icon">📁</span> Videos
           </div>
-          <div class="folder-item">
+          <div class="folder-item" [class.active]="activeFilter() === 'Documents'" (click)="setFilter('Documents')">
             <span class="icon">📁</span> Documents
           </div>
         </div>
@@ -67,7 +67,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
         </div>
 
         <div class="asset-grid" *ngIf="viewMode() === 'grid'">
-          <div class="asset-card" *ngFor="let asset of mockAssets">
+          <div class="asset-card" *ngFor="let asset of filteredAssets" (click)="openPreview(asset)">
             <div class="thumbnail">
               <span class="badge" [class.ai]="asset.source === 'ai_generated'">
                 {{ asset.source === 'ai_generated' ? 'AI' : 'Upload' }}
@@ -95,8 +95,8 @@ import { SupabaseClient } from '@supabase/supabase-js';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let asset of mockAssets">
-                <td><input type="checkbox"></td>
+              <tr *ngFor="let asset of filteredAssets" (click)="openPreview(asset)" style="cursor: pointer;">
+                <td><input type="checkbox" (click)="$event.stopPropagation()"></td>
                 <td>{{ asset.filename }}</td>
                 <td>{{ asset.type }}</td>
                 <td>{{ asset.source }}</td>
@@ -105,6 +105,20 @@ import { SupabaseClient } from '@supabase/supabase-js';
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <div class="preview-modal" *ngIf="previewAsset()" (click)="closePreview()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <button class="close-btn" (click)="closePreview()">×</button>
+            <img *ngIf="previewAsset()?.type === 'image'" [src]="previewAsset().preview" class="preview-media">
+            <video *ngIf="previewAsset()?.type === 'video'" controls class="preview-media">
+              <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+            </video>
+            <div class="preview-details">
+              <h3>{{ previewAsset().filename }}</h3>
+              <p>{{ previewAsset().size }} • {{ previewAsset().source }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -322,6 +336,63 @@ import { SupabaseClient } from '@supabase/supabase-js';
       font-weight: 500;
       font-size: 0.9rem;
     }
+    
+    .preview-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    .modal-content {
+      background: var(--color-ink);
+      border: 1px solid var(--color-steel);
+      border-radius: 12px;
+      max-width: 900px;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .close-btn {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: rgba(0,0,0,0.5);
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .preview-media {
+      width: 100%;
+      max-height: 60vh;
+      object-fit: contain;
+      background: black;
+    }
+    .preview-details {
+      padding: 20px;
+      background: var(--color-ink);
+      border-top: 1px solid var(--color-steel);
+    }
+    .preview-details h3 {
+      margin: 0 0 8px 0;
+    }
+    .preview-details p {
+      margin: 0;
+      color: var(--color-gray-300);
+      font-size: 0.9rem;
+    }
   `]
 })
 export class AssetsComponent implements OnInit {
@@ -330,26 +401,46 @@ export class AssetsComponent implements OnInit {
   viewMode = signal<'grid' | 'list'>('grid');
   isDraggingOver = signal(false);
   selectedCount = signal(0);
+  activeFilter = signal('All Files');
+  previewAsset = signal<any>(null);
 
   // Mock data for UI layout
-  mockAssets = [
+  mockAssets = signal<any[]>([
     { id: '1', filename: 'summer_promo.jpg', type: 'image', source: 'user_upload', size: '2.4 MB', date: new Date(), preview: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400' },
     { id: '2', filename: 'ai_generated_copy_1.txt', type: 'document', source: 'ai_generated', size: '1.2 KB', date: new Date() },
     { id: '3', filename: 'product_video_raw.mp4', type: 'video', source: 'user_upload', size: '45.1 MB', date: new Date() }
-  ];
+  ]);
+
+  get filteredAssets() {
+    const filter = this.activeFilter();
+    if (filter === 'All Files') return this.mockAssets();
+    if (filter === 'Images') return this.mockAssets().filter(a => a.type === 'image');
+    if (filter === 'Videos') return this.mockAssets().filter(a => a.type === 'video');
+    if (filter === 'Documents') return this.mockAssets().filter(a => a.type === 'document');
+    return this.mockAssets();
+  }
 
   ngOnInit() {
     this.loadAssets();
   }
 
-  async loadAssets() {
-    // In actual implementation, we would call AssetStorageService.listAssets()
-    // For now the mock data is rendered.
+  setFilter(filter: string) {
+    this.activeFilter.set(filter);
   }
 
-  onFileDropped(event: CdkDragDrop<any>) {
-    // Angular CDK Drop
+  openPreview(asset: any) {
+    if (asset.type === 'image' || asset.type === 'video') {
+      this.previewAsset.set(asset);
+    }
   }
+
+  closePreview() {
+    this.previewAsset.set(null);
+  }
+
+  async loadAssets() {}
+
+  onFileDropped(event: CdkDragDrop<any>) {}
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
@@ -382,8 +473,17 @@ export class AssetsComponent implements OnInit {
   }
 
   private handleFiles(files: File[]) {
-    // Implement AssetStorageService.upload for each file
     console.log('Uploading files:', files);
-    // Ideally we show an upload progress toast here
+    // Mock upload by adding to the signal array
+    const newAssets = files.map(f => ({
+      id: Math.random().toString(),
+      filename: f.name,
+      type: f.type.startsWith('image') ? 'image' : f.type.startsWith('video') ? 'video' : 'document',
+      source: 'user_upload',
+      size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
+      date: new Date(),
+      preview: f.type.startsWith('image') ? URL.createObjectURL(f) : null
+    }));
+    this.mockAssets.update(assets => [...newAssets, ...assets]);
   }
 }
