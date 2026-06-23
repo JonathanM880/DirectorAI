@@ -1,0 +1,412 @@
+<div class="automation-page">
+
+  <!-- ── Page Header ──────────────────────────────────────── -->
+  <div class="page-header">
+    <h1>Automation Hub</h1>
+    <p>Manage recurrence rules, retry configuration, activity history and failed posts.</p>
+  </div>
+
+  <!-- ── Section Tabs ─────────────────────────────────────── -->
+  <div class="section-tabs" role="tablist">
+    <button
+      id="tab-recurrence"
+      role="tab"
+      [class.active]="activeTab() === 'recurrence'"
+      (click)="selectTab('recurrence')"
+      [attr.aria-selected]="activeTab() === 'recurrence'"
+    >
+      <span class="tab-icon">🔄</span>
+      Recurrence
+      @if (recurringCount > 0) {
+        <span class="tab-badge">{{ recurringCount }}</span>
+      }
+    </button>
+
+    <button
+      id="tab-retry"
+      role="tab"
+      [class.active]="activeTab() === 'retry'"
+      (click)="selectTab('retry')"
+      [attr.aria-selected]="activeTab() === 'retry'"
+    >
+      <span class="tab-icon">⚡</span>
+      Retry Rules
+    </button>
+
+    <button
+      id="tab-log"
+      role="tab"
+      [class.active]="activeTab() === 'log'"
+      (click)="selectTab('log')"
+      [attr.aria-selected]="activeTab() === 'log'"
+    >
+      <span class="tab-icon">📋</span>
+      Activity Log
+    </button>
+
+    <button
+      id="tab-failed"
+      role="tab"
+      [class.active]="activeTab() === 'failed'"
+      [class.danger]="failedCount > 0"
+      (click)="selectTab('failed')"
+      [attr.aria-selected]="activeTab() === 'failed'"
+    >
+      <span class="tab-icon">⚠️</span>
+      Failed Posts
+      @if (failedCount > 0) {
+        <span class="tab-badge">{{ failedCount }}</span>
+      }
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION 1 — RECURRENCE RULES
+  ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'recurrence') {
+    <div class="section-panel" role="tabpanel" id="panel-recurrence" aria-labelledby="tab-recurrence">
+      <div class="section-heading">
+        <div>
+          <h2>Recurrence Rules</h2>
+          <p>Active recurring posts and their schedules. Toggle to pause/resume.</p>
+        </div>
+      </div>
+
+      @if (recurrenceLoading()) {
+        <div class="loading-row">
+          <span class="spinner"></span> Loading recurring posts…
+        </div>
+      } @else if (recurringPosts().length === 0) {
+        <div class="empty-state">
+          <span>🔄</span>
+          No active recurrence rules. Schedule a post with a recurrence rule from the
+          <a (click)="navigateToCalendar()" style="color: var(--color-signal); cursor:pointer">Calendar</a>.
+        </div>
+      } @else {
+        @for (post of recurringPosts(); track post.id) {
+          <div class="rule-row">
+            <div class="rule-info">
+              <span class="rule-title">{{ post.content.text?.slice(0, 80) || '(No text content)' }}</span>
+              <div class="rule-meta">
+                <span class="rule-freq">{{ frequencyLabel(post) }}</span>
+                <span>{{ platformIcon(post.platform) }} {{ post.platform }}</span>
+                <span>Next: {{ nextRunLabel(post) }}</span>
+              </div>
+            </div>
+            <div class="rule-actions">
+              <app-status-badge [status]="post.status"></app-status-badge>
+              <label class="toggle-switch" [attr.aria-label]="'Toggle ' + post.id">
+                <input
+                  type="checkbox"
+                  [checked]="post.status === 'scheduled'"
+                  (change)="togglePostStatus(post)"
+                />
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION 2 — RETRY RULES
+  ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'retry') {
+    <div class="section-panel" role="tabpanel" id="panel-retry" aria-labelledby="tab-retry">
+      <div class="section-heading">
+        <div>
+          <h2>Retry Rules</h2>
+          <p>Configure max retry attempts per channel. Backoff uses exponential delay: MIN(1000 × 2ⁿ, 300 000) ms.</p>
+        </div>
+      </div>
+
+      @if (retryLoading()) {
+        <div class="loading-row">
+          <span class="spinner"></span> Loading channel settings…
+        </div>
+      } @else if (channelRetryConfigs().length === 0) {
+        <div class="empty-state">
+          <span>📡</span>
+          No channels connected. Add channels in Settings → Channels.
+        </div>
+      } @else {
+        <div class="retry-grid">
+          @for (config of channelRetryConfigs(); track config.channel.id) {
+            <div class="channel-retry-card">
+              <div class="channel-info">
+                <span class="platform-icon">{{ platformIcon(config.channel.platform) }}</span>
+                <div>
+                  <div class="channel-name">{{ config.channel.name }}</div>
+                  <div class="channel-platform">{{ config.channel.platform }}</div>
+                </div>
+              </div>
+              <div class="retry-input-row">
+                <label [for]="'retries-' + config.channel.id">Max Retries</label>
+                <input
+                  type="number"
+                  [id]="'retries-' + config.channel.id"
+                  [(ngModel)]="config.maxRetries"
+                  (ngModelChange)="onMaxRetriesChange(config)"
+                  min="0"
+                  max="10"
+                />
+                <button
+                  class="btn-save-retry"
+                  (click)="saveChannelRetries(config)"
+                  [disabled]="config.saving"
+                  [id]="'save-retry-' + config.channel.id"
+                >
+                  {{ config.saving ? '…' : 'Save' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Backoff preview -->
+      <div class="card backoff-preview">
+        <h3>Backoff Delay Preview ({{ previewMaxRetries() }} retries)</h3>
+        <table class="backoff-table" aria-label="Backoff delay preview">
+          <thead>
+            <tr>
+              <th>Attempt</th>
+              <th>Delay</th>
+              <th colspan="2">Visualisation</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of backoffRows(); track row.attempt) {
+              <tr>
+                <td>#{{ row.attempt }}</td>
+                <td>{{ row.label }}</td>
+                <td style="width:100%">
+                  <div class="delay-bar">
+                    <div class="bar-track">
+                      <div class="bar-fill" [style.width.%]="row.pct"></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="delay-value">{{ row.label }}</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION 3 — ACTIVITY LOG
+  ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'log') {
+    <div class="section-panel" role="tabpanel" id="panel-log" aria-labelledby="tab-log">
+      <div class="section-heading">
+        <div>
+          <h2>Activity Log</h2>
+          <p>Immutable audit trail of all publish events.</p>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="log-filters">
+        <select id="log-filter-action" [(ngModel)]="logFilterAction" (change)="applyLogFilters()" aria-label="Filter by action">
+          <option value="">All actions</option>
+          <option value="published">Published</option>
+          <option value="failed">Failed</option>
+          <option value="retried">Retried</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="edited">Edited</option>
+          <option value="deleted">Deleted</option>
+        </select>
+
+        <select id="log-filter-platform" [(ngModel)]="logFilterPlatform" (change)="applyLogFilters()" aria-label="Filter by platform">
+          <option value="">All platforms</option>
+          <option value="telegram">Telegram</option>
+          <option value="twitter">Twitter</option>
+          <option value="instagram">Instagram</option>
+          <option value="linkedin">LinkedIn</option>
+        </select>
+
+        <input
+          type="date"
+          id="log-filter-from"
+          [(ngModel)]="logFilterFrom"
+          (change)="applyLogFilters()"
+          aria-label="From date"
+          placeholder="From"
+        />
+        <input
+          type="date"
+          id="log-filter-to"
+          [(ngModel)]="logFilterTo"
+          (change)="applyLogFilters()"
+          aria-label="To date"
+          placeholder="To"
+        />
+      </div>
+
+      @if (logLoading()) {
+        <div class="loading-row">
+          <span class="spinner"></span> Loading log…
+        </div>
+      } @else if (logRows().length === 0) {
+        <div class="empty-state">
+          <span>📋</span>
+          No activity log entries match your filters.
+        </div>
+      } @else {
+        <div class="log-table-wrap">
+          <table class="log-table" aria-label="Activity log">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Platform</th>
+                <th>Post Content</th>
+                <th>Error Code</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of logRows(); track row.id) {
+                <tr>
+                  <td>
+                    <span class="action-badge" [class]="row.action">{{ row.action }}</span>
+                  </td>
+                  <td class="platform-cell">{{ platformIcon(row.platform) }} {{ row.platform }}</td>
+                  <td>
+                    <span class="post-excerpt" [title]="row.postId">Post {{ row.postId.slice(0,8) }}…</span>
+                  </td>
+                  <td>
+                    @if (row.errorCode) {
+                      <span style="font-family: var(--font-mono); font-size:0.75rem; color: var(--color-fault)">
+                        {{ row.errorCode }}
+                      </span>
+                    } @else {
+                      <span style="color: var(--color-gray-600)">—</span>
+                    }
+                  </td>
+                  <td class="date-cell">{{ formatOccurred(row.occurredAt) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <span class="pagination-info">
+              @if (logTotal() > 0) {
+                {{ logStart }} – {{ logEnd }} of {{ logTotal() }}
+              } @else {
+                No results
+              }
+            </span>
+            <div class="pagination-controls">
+              <button
+                id="log-prev"
+                (click)="goLogPage(-1)"
+                [disabled]="logPage() === 0"
+                aria-label="Previous page"
+              >‹</button>
+              <button
+                id="log-next"
+                (click)="goLogPage(1)"
+                [disabled]="logPage() >= logTotalPages - 1"
+                aria-label="Next page"
+              >›</button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION 4 — FAILED POSTS
+  ══════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'failed') {
+    <div class="section-panel" role="tabpanel" id="panel-failed" aria-labelledby="tab-failed">
+      <div class="section-heading">
+        <div>
+          <h2>Failed Posts</h2>
+          <p>Posts that exhausted all retry attempts. Re-publish to queue them again.</p>
+        </div>
+      </div>
+
+      @if (failedLoading()) {
+        <div class="loading-row">
+          <span class="spinner"></span> Loading failed posts…
+        </div>
+      } @else if (failedPosts().length === 0) {
+        <div class="empty-state">
+          <span>✅</span>
+          No failed posts. Everything is running smoothly.
+        </div>
+      } @else {
+        @for (post of failedPosts(); track post.id) {
+          <div class="failed-post-card">
+            <div class="failed-post-info">
+              <span class="failed-content">
+                {{ post.content.text?.slice(0, 120) || '(No text content)' }}
+              </span>
+              <div class="failed-meta">
+                <span class="meta-chip">{{ platformIcon(post.platform) }} {{ post.platform }}</span>
+                <span class="meta-chip fault">
+                  ⚠️ {{ post.retryCount }} / {{ post.maxRetries }} retries
+                </span>
+                <span class="meta-chip">
+                  🗓 Originally: {{ post.scheduledAt | date:'MMM d, HH:mm' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="failed-post-actions">
+              <!-- Republish form shown when this post is selected -->
+              @if (republishState()?.postId === post.id) {
+                <div class="republish-form">
+                  <input
+                    type="datetime-local"
+                    [id]="'republish-date-' + post.id"
+                    [(ngModel)]="republishState()!.newDate"
+                    aria-label="New publish date"
+                  />
+                  @if (republishState()?.error) {
+                    <span class="republish-error">⚠️ {{ republishState()!.error }}</span>
+                  }
+                  <div class="republish-actions">
+                    <button class="cancel-btn" (click)="cancelRepublish()">Cancel</button>
+                    <button
+                      class="confirm"
+                      [id]="'confirm-republish-' + post.id"
+                      (click)="confirmRepublish(post)"
+                      [disabled]="republishState()?.submitting"
+                    >
+                      {{ republishState()?.submitting ? 'Scheduling…' : '↑ Republish' }}
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <button
+                  class="btn-republish"
+                  [id]="'btn-republish-' + post.id"
+                  (click)="openRepublishForm(post)"
+                >
+                  ↑ Re-publish
+                </button>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+  }
+</div>
+
+<!-- ── Toast ─────────────────────────────────────────────── -->
+@if (toast(); as t) {
+  <div class="toast" [class]="t.type" role="status" aria-live="polite">
+    {{ t.message }}
+  </div>
+}

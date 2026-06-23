@@ -1,0 +1,275 @@
+<div class="calendar-page">
+
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <div class="calendar-header">
+    <h1>Editorial Calendar</h1>
+    <div class="header-actions">
+      <!-- View toggle -->
+      <div class="view-toggle" role="group" aria-label="Calendar view">
+        <button
+          id="view-month"
+          [class.active]="currentView() === 'dayGridMonth'"
+          (click)="setView('dayGridMonth')"
+        >Month</button>
+        <button
+          id="view-week"
+          [class.active]="currentView() === 'timeGridWeek'"
+          (click)="setView('timeGridWeek')"
+        >Week</button>
+      </div>
+
+      <!-- New Post -->
+      <button
+        id="btn-new-post"
+        class="btn-new-post"
+        (click)="openNewPostPanel()"
+        [disabled]="!hasChannels"
+        [title]="hasChannels ? 'Create a new post' : 'Connect a channel first'"
+      >
+        <span class="icon">＋</span>
+        New Post
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Loading bar ────────────────────────────────────── -->
+  @if (loading()) {
+    <div class="loading-overlay">
+      <span class="spinner"></span>
+      Loading posts…
+    </div>
+  }
+
+  <!-- ── Calendar ──────────────────────────────────────── -->
+  <div class="calendar-wrapper" [class.drawer-open]="isDrawerOpen">
+    <full-calendar [options]="calendarOptions"></full-calendar>
+  </div>
+
+  <!-- ── Side Drawer ───────────────────────────────────── -->
+  <aside
+    class="side-drawer"
+    [class.open]="isDrawerOpen"
+    role="complementary"
+    aria-label="Post details"
+    id="post-drawer"
+  >
+    @if (selectedPost(); as post) {
+      <div class="drawer-header">
+        <h3>Post Details</h3>
+        <button class="close-btn" (click)="closeDrawer()" aria-label="Close drawer">✕</button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- Status + Platform row -->
+        <div class="drawer-status-row">
+          <app-status-badge [status]="post.status"></app-status-badge>
+          <span class="drawer-platform">
+            {{ platformIcon(post.platform) }} {{ post.platform }}
+          </span>
+        </div>
+
+        <!-- Scheduled date -->
+        <div class="drawer-date">
+          <span class="date-icon">🗓</span>
+          {{ formatDate(post.scheduledAt) }}
+        </div>
+
+        <!-- Content preview -->
+        <div class="drawer-content-preview">
+          <h4>Content</h4>
+          <p>{{ post.content.text || '(No text content)' }}</p>
+        </div>
+
+        <!-- Meta grid -->
+        <div class="drawer-meta">
+          <div class="meta-item">
+            <label>Retry Count</label>
+            <span>{{ post.retryCount }} / {{ post.maxRetries }}</span>
+          </div>
+          <div class="meta-item">
+            <label>Created</label>
+            <span>{{ post.createdAt | date:'MMM d' }}</span>
+          </div>
+          @if (post.publishedAt) {
+            <div class="meta-item">
+              <label>Published</label>
+              <span>{{ formatDate(post.publishedAt) }}</span>
+            </div>
+          }
+          @if (post.nextRetryAt) {
+            <div class="meta-item">
+              <label>Next Retry</label>
+              <span>{{ formatDate(post.nextRetryAt) }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Error message -->
+        @if (drawerError()) {
+          <div class="drawer-error" role="alert">
+            ⚠️ {{ drawerError() }}
+          </div>
+        }
+
+        <!-- Actions -->
+        <div class="drawer-actions">
+          <button
+            id="drawer-btn-metrics"
+            class="btn-metrics"
+            (click)="goToMetrics()"
+          >📈 View Metrics</button>
+
+          <button
+            id="drawer-btn-edit"
+            class="btn-edit"
+            (click)="openEditForm()"
+            [disabled]="post.status === 'published' || post.status === 'cancelled'"
+          >✏️ Edit & Reschedule</button>
+
+          <button
+            id="drawer-btn-cancel"
+            class="btn-cancel"
+            (click)="cancelSelectedPost()"
+            [disabled]="post.status !== 'scheduled'"
+            [title]="post.status !== 'scheduled' ? 'Can only cancel scheduled posts' : 'Cancel this post'"
+          >🗑 Cancel Post</button>
+        </div>
+      </div>
+    }
+  </aside>
+</div>
+
+<!-- ── New Post Modal ─────────────────────────────────────── -->
+@if (newPostOpen()) {
+  <div class="new-post-overlay" (click)="closeNewPostPanel()" role="dialog" aria-modal="true" aria-label="Create new post">
+    <div class="new-post-panel" (click)="$event.stopPropagation()">
+
+      <div class="panel-header">
+        <h2>New Post</h2>
+        <button class="close-btn" (click)="closeNewPostPanel()" aria-label="Close">✕</button>
+      </div>
+
+      <div class="panel-body">
+
+        <!-- Content -->
+        <div class="form-group">
+          <label for="post-content">Content *</label>
+          <textarea
+            id="post-content"
+            name="text"
+            [(ngModel)]="newPostForm.text"
+            placeholder="Write your post content here…"
+            rows="5"
+            maxlength="4096"
+          ></textarea>
+          <div class="form-meta" style="text-align:right; font-size:0.75rem; color: var(--color-gray-500); margin-top:4px;">
+            {{ newPostForm.text.length }} / 4096
+          </div>
+        </div>
+
+        <!-- Channel -->
+        <div class="form-group">
+          <label for="post-channel">Channel *</label>
+          @if (channels().length === 0) {
+            <p style="color: var(--color-fault); font-size: 0.875rem;">
+              No channels connected. Go to Settings → Channels first.
+            </p>
+          } @else {
+            <select id="post-channel" name="channelId" [(ngModel)]="newPostForm.channelId">
+              @for (ch of channels(); track ch.id) {
+                <option [value]="ch.id">{{ platformIcon(ch.platform) }} {{ ch.name }}</option>
+              }
+            </select>
+          }
+        </div>
+
+        <!-- Scheduled At -->
+        <div class="form-group">
+          <label for="post-scheduled-at">Schedule Date & Time *</label>
+          <input
+            type="datetime-local"
+            id="post-scheduled-at"
+            name="scheduledAt"
+            [(ngModel)]="newPostForm.scheduledAt"
+          />
+        </div>
+
+        <!-- Recurrence Toggle -->
+        <div class="form-group">
+          <label class="recurrence-toggle">
+            <input
+              type="checkbox"
+              id="post-recurrence-toggle"
+              [(ngModel)]="newPostForm.enableRecurrence"
+              name="enableRecurrence"
+            />
+            <span>Enable recurring schedule</span>
+          </label>
+
+          @if (newPostForm.enableRecurrence) {
+            <div class="recurrence-config">
+              <div class="form-group" style="margin:0">
+                <label for="recurrence-frequency">Frequency</label>
+                <select
+                  id="recurrence-frequency"
+                  name="frequency"
+                  [(ngModel)]="newPostForm.recurrence.frequency"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin:0">
+                <label for="recurrence-interval">Every N</label>
+                <input
+                  type="number"
+                  id="recurrence-interval"
+                  name="interval"
+                  [(ngModel)]="newPostForm.recurrence.interval"
+                  min="1"
+                  max="30"
+                />
+              </div>
+
+              <div class="form-group" style="margin:0; grid-column: 1 / -1">
+                <label for="recurrence-end-date">End Date (optional)</label>
+                <input
+                  type="date"
+                  id="recurrence-end-date"
+                  name="endDate"
+                  [(ngModel)]="newPostForm.recurrence.endDate"
+                />
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Form error -->
+        @if (formError()) {
+          <div class="form-error" role="alert">⚠️ {{ formError() }}</div>
+        }
+      </div>
+
+      <div class="panel-footer">
+        <button class="btn-secondary" (click)="closeNewPostPanel()">Cancel</button>
+        <button
+          id="btn-submit-post"
+          class="btn-primary"
+          (click)="submitNewPost()"
+          [disabled]="submitting()"
+        >
+          {{ submitting() ? 'Scheduling…' : 'Schedule Post' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Toast ─────────────────────────────────────────────── -->
+@if (toast(); as t) {
+  <div class="toast" [class]="t.type" role="status" aria-live="polite">
+    {{ t.message }}
+  </div>
+}
