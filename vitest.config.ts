@@ -29,6 +29,9 @@ try {
 
 export default defineConfig({
   test: {
+    alias: {
+      '@director-ai/types': path.resolve(__dirname, './packages/types/index.ts')
+    },
     include: [
       'supabase/functions/**/*.test.ts',
       'supabase/functions/**/*.spec.ts',

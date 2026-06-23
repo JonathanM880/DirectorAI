@@ -10,7 +10,7 @@ DirectorAI is a full-stack content automation SaaS platform that allows business
 
 The stack integrates:
 
-- **Frontend**: Angular 17 SPA (with standalone components and SCSS).
+- **Frontend**: Angular 21 SPA (with standalone components and SCSS).
 - **Backend**: Supabase (Database, Auth, Row Level Security, Storage, Vault) and Deno-based Edge Functions.
 - **Integrations**: OpenRouter API for AI text/image generation, Stripe for billing/subscriptions, and the Telegram Bot API for publishing.
 

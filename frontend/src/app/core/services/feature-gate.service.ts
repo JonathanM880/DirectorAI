@@ -23,9 +23,7 @@ export class FeatureGateService {
   constructor(private http: HttpClient) {}
 
   checkFeatureAccess(feature: Feature): Observable<boolean> {
-    return this.http.get<FeatureAccessResponse>(`${this.apiUrl}/features/${feature}/access`).pipe(
-      map(response => response.hasAccess),
-      catchError(() => of(false))
-    );
+    // Mocked to true until Developer 3 finishes BillingService APIs
+    return of(true);
   }
 }
