@@ -5,9 +5,11 @@ import {
   PostStatus,
   SocialPlatform,
   ChannelConfig,
+  RecurrenceRule,
 } from '@director-ai/types';
 import { PublisherRegistry } from '../_shared/publisher/social-media-publisher.interface';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { RecurrenceService } from './recurrence.service';
 
 // Database row types
 interface DbScheduledPost {
@@ -48,6 +50,7 @@ interface DbChannel {
 export class SchedulingEngine {
   private publisherRegistry: PublisherRegistry;
   private supabase: any;
+  private recurrenceService: RecurrenceService;
 
   constructor(
     publisherRegistry: PublisherRegistry,
@@ -61,6 +64,7 @@ export class SchedulingEngine {
         persistSession: false,
       },
     });
+    this.recurrenceService = new RecurrenceService();
   }
 
   /**
@@ -89,6 +93,13 @@ export class SchedulingEngine {
 
     if (channelError || !channel) {
       throw new Error('Channel not found or does not belong to user');
+    }
+
+    // Validate recurrence rule if provided
+    if (request.recurrenceRule && request.recurrenceRule.endDate) {
+      if (request.recurrenceRule.endDate <= request.scheduledAt) {
+        throw new Error('Recurrence rule endDate must be after scheduledAt');
+      }
     }
 
     // Create the scheduled post
@@ -234,7 +245,34 @@ export class SchedulingEngine {
 
           summary.succeeded++;
 
-          // TODO: Handle recurrence if post.recurrenceRuleId is not null
+          // Handle recurrence if post has a recurrence rule
+          if (post.recurrenceRule) {
+            const nextScheduledAt = this.recurrenceService.scheduleNext(post);
+            
+            if (nextScheduledAt) {
+              // Create the next recurrence instance
+              const { error: insertError } = await this.supabase
+                .from('scheduled_posts')
+                .insert({
+                  user_id: post.userId,
+                  channel_id: post.channelId,
+                  platform: post.platform,
+                  text_content: post.content.text,
+                  media_asset_ids: post.content.mediaAssetIds || [],
+                  media_type: post.content.mediaType,
+                  scheduled_at: nextScheduledAt.toISOString(),
+                  status: 'scheduled',
+                  retry_count: 0,
+                  max_retries: 3,
+                  recurrence_rule_id: (dbPost as DbScheduledPost).recurrence_rule_id,
+                  parent_post_id: post.id,
+                } as any);
+
+              if (insertError) {
+                console.error(`Failed to create recurrence instance: ${insertError.message}`);
+              }
+            }
+          }
         } else {
           // Handle retry logic
           if (result.error?.retryable && post.retryCount < post.maxRetries) {

@@ -8,6 +8,7 @@ import {
   SocialPlatform,
   PostStatus,
   ChannelConfig,
+  RecurrenceRule,
 } from '@director-ai/types';
 import { createClient } from '@supabase/supabase-js';
 
@@ -220,6 +221,98 @@ describe('SchedulingEngine', () => {
         'Invariant violation: scheduledAt must be greater than createdAt'
       );
     });
+
+    it('should reject recurrence rule with endDate <= scheduledAt', async () => {
+      const request: CreatePostRequest = {
+        userId: 'user-1',
+        channelId: 'channel-1',
+        content: { text: 'Test post' },
+        scheduledAt: new Date(Date.now() + 3600000), // 1 hour in future
+        recurrenceRule: {
+          frequency: 'daily',
+          interval: 1,
+          endDate: new Date(Date.now() + 1800000), // 30 minutes in future (before scheduledAt)
+        },
+      };
+
+      // Mock channel query
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => ({
+                data: { id: 'channel-1', platform: 'telegram', user_id: 'user-1' },
+                error: null,
+              })),
+            })),
+          })),
+        })),
+      });
+
+      await expect(schedulingEngine.schedulePost(request)).rejects.toThrow(
+        'Recurrence rule endDate must be after scheduledAt'
+      );
+    });
+
+    it('should accept recurrence rule with endDate > scheduledAt', async () => {
+      const request: CreatePostRequest = {
+        userId: 'user-1',
+        channelId: 'channel-1',
+        content: { text: 'Test post' },
+        scheduledAt: new Date(Date.now() + 3600000), // 1 hour in future
+        recurrenceRule: {
+          frequency: 'daily',
+          interval: 1,
+          endDate: new Date(Date.now() + 86400000 * 7), // 7 days in future
+        },
+      };
+
+      // Mock channel query
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => ({
+                data: { id: 'channel-1', platform: 'telegram', user_id: 'user-1' },
+                error: null,
+              })),
+            })),
+          })),
+        })),
+        insert: vi.fn(() => ({
+          select: vi.fn(() => ({
+            single: vi.fn(() => ({
+              data: {
+                id: 'post-1',
+                user_id: 'user-1',
+                channel_id: 'channel-1',
+                platform: 'telegram',
+                text_content: 'Test post',
+                media_asset_ids: [],
+                media_type: null,
+                scheduled_at: request.scheduledAt.toISOString(),
+                status: 'scheduled',
+                retry_count: 0,
+                max_retries: 3,
+                platform_message_id: null,
+                published_at: null,
+                next_retry_at: null,
+                recurrence_rule_id: null,
+                parent_post_id: null,
+                created_at: new Date(Date.now() - 1000).toISOString(),
+                updated_at: new Date().toISOString(),
+              },
+              error: null,
+            })),
+          })),
+        })),
+      });
+
+      const result = await schedulingEngine.schedulePost(request);
+
+      expect(result.id).toBe('post-1');
+      expect(result.status).toBe('scheduled');
+    });
   });
 
   describe('tick', () => {
@@ -264,6 +357,80 @@ describe('SchedulingEngine', () => {
       const summary = await schedulingEngine.tick();
 
       expect(summary.processed).toBe(0);
+    });
+
+    it('should create next recurrence instance when recurring post publishes', async () => {
+      const now = new Date();
+      const scheduledAt = new Date(now.getTime() - 1000); // Just past
+
+      // Use mockImplementation to handle different table names
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === 'scheduled_posts') {
+          return {
+            update: vi.fn(() => ({
+              eq: vi.fn(() => ({ error: null })),
+            })),
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                lte: vi.fn(() => ({
+                  in: vi.fn(() => ({
+                    order: vi.fn(() => ({
+                      limit: vi.fn(() => ({
+                        data: [
+                          {
+                            id: 'post-1',
+                            user_id: 'user-1',
+                            channel_id: 'channel-1',
+                            platform: 'telegram',
+                            text_content: 'Test post',
+                            media_asset_ids: [],
+                            media_type: null,
+                            scheduled_at: scheduledAt.toISOString(),
+                            status: 'scheduled',
+                            retry_count: 0,
+                            max_retries: 3,
+                            platform_message_id: null,
+                            published_at: null,
+                            next_retry_at: null,
+                            recurrence_rule_id: 'rule-1',
+                            parent_post_id: null,
+                            created_at: new Date(now.getTime() - 3600000).toISOString(),
+                            updated_at: new Date().toISOString(),
+                          },
+                        ],
+                        error: null,
+                      })),
+                    })),
+                  })),
+                })),
+              })),
+            })),
+            insert: vi.fn(() => ({ error: null })),
+          };
+        }
+        if (table === 'subscriptions') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                data: [{ user_id: 'user-1' }],
+                error: null,
+              })),
+            })),
+          };
+        }
+        return {};
+      });
+
+      // Mock global fetch for TelegramPublisher
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ ok: true, result: { message_id: '123' } }),
+      });
+
+      const summary = await schedulingEngine.tick();
+
+      expect(summary.processed).toBe(1);
+      expect(summary.succeeded).toBe(1);
     });
 
     it('should process due posts successfully', async () => {

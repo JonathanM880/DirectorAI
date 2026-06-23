@@ -201,23 +201,23 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [x] 3.2.6 Implement `delete` and `edit` via Telegram `deleteMessage` / `editMessageText` API endpoints
   - [x] 3.2.7 Write tests: pure unit tests cover payload construction, error mapping helpers, and `getCapabilities`; direct Telegram Bot API integration tests against a private test channel verify success returns `platformMessageId`, invalid token maps to non-retryable 401, and retryable provider/network failures are handled correctly
 
-- [ ] 3.3 SchedulingEngine core implementation
-  - [~] 3.3.1 Create `supabase/functions/scheduler/index.ts` as the cron Edge Function entry point; wire to `SchedulingEngine.tick()`
-  - [~] 3.3.2 Implement `schedulePost(request)`: validate `request.scheduledAt > now()` — reject with validation error if in past (satisfies Req 6.2); check feature access `scheduled_posts` — throw `FeatureGatedError` if denied (satisfies Req 6.3); validate `channelId` belongs to `userId`; persist `ScheduledPost` with `status = 'scheduled'`; assert `post.scheduledAt > post.createdAt` — satisfies Req 6.1, Req 6.4
-  - [~] 3.3.3 Implement `tick()` per Algorithm 1 in the design: query `scheduled_posts WHERE status='scheduled' AND scheduled_at <= now()` using `FOR UPDATE SKIP LOCKED` (satisfies Req 6.12); set status to `'publishing'` before dispatching (satisfies Req 13.3); call `validatePost` before `publisher.publish` (satisfies Req 6.7); build and return `DispatchSummary` asserting `processed === succeeded + failed + retryQueued` — satisfies Req 6.6
-  - [~] 3.3.4 Implement stale `publishing` post cleanup at start of `tick()`: reset any post stuck in `status = 'publishing'` for more than 5 minutes back to `status = 'scheduled'` — satisfies Req 13.4
-  - [~] 3.3.5 Implement `cancelPost(postId)`: validate `post.status === 'scheduled'`; update to `status = 'cancelled'` — satisfies Req 6.8
-  - [~] 3.3.6 Implement `reschedulePost(postId, newScheduledAt)`: validate `newScheduledAt > now()`; update `scheduledAt`; return updated `ScheduledPost` — satisfies Req 6.9
-  - [~] 3.3.7 Implement `getUpcomingPosts(userId, from, to)`: query `scheduled_posts` for `userId` with `scheduledAt BETWEEN from AND to` and `status = 'scheduled'`; enforce no cross-user leakage — satisfies Req 6.11, Req 12.4
-  - [~] 3.3.8 Implement post lifecycle status transition guard: once `status = 'published'` or `'failed'`, reject any further status update — satisfies Req 13.1, Req 13.2
-  - [~] 3.3.9 Write unit tests: `schedulePost` in past rejected; `schedulePost` future creates record; `tick` dispatches due posts and returns correct summary; `cancelPost` changes status; `getUpcomingPosts` scoped to `userId`; stale publishing posts reset to scheduled
+- [x] 3.3 SchedulingEngine core implementation
+  - [x] 3.3.1 Create `supabase/functions/scheduler/index.ts` as the cron Edge Function entry point; wire to `SchedulingEngine.tick()`
+  - [x] 3.3.2 Implement `schedulePost(request)`: validate `request.scheduledAt > now()` — reject with validation error if in past (satisfies Req 6.2); check feature access `scheduled_posts` — throw `FeatureGatedError` if denied (satisfies Req 6.3); validate `channelId` belongs to `userId`; persist `ScheduledPost` with `status = 'scheduled'`; assert `post.scheduledAt > post.createdAt` — satisfies Req 6.1, Req 6.4
+  - [x] 3.3.3 Implement `tick()` per Algorithm 1 in the design: query `scheduled_posts WHERE status='scheduled' AND scheduled_at <= now()` using `FOR UPDATE SKIP LOCKED` (satisfies Req 6.12); set status to `'publishing'` before dispatching (satisfies Req 13.3); call `validatePost` before `publisher.publish` (satisfies Req 6.7); build and return `DispatchSummary` asserting `processed === succeeded + failed + retryQueued` — satisfies Req 6.6
+  - [x] 3.3.4 Implement stale `publishing` post cleanup at start of `tick()`: reset any post stuck in `status = 'publishing'` for more than 5 minutes back to `status = 'scheduled'` — satisfies Req 13.4
+  - [x] 3.3.5 Implement `cancelPost(postId)`: validate `post.status === 'scheduled'`; update to `status = 'cancelled'` — satisfies Req 6.8
+  - [x] 3.3.6 Implement `reschedulePost(postId, newScheduledAt)`: validate `newScheduledAt > now()`; update `scheduledAt`; return updated `ScheduledPost` — satisfies Req 6.9
+  - [x] 3.3.7 Implement `getUpcomingPosts(userId, from, to)`: query `scheduled_posts` for `userId` with `scheduledAt BETWEEN from AND to` and `status = 'scheduled'`; enforce no cross-user leakage — satisfies Req 6.11, Req 12.4
+  - [x] 3.3.8 Implement post lifecycle status transition guard: once `status = 'published'` or `'failed'`, reject any further status update — satisfies Req 13.1, Req 13.2
+  - [x] 3.3.9 Write unit tests: `schedulePost` in past rejected; `schedulePost` future creates record; `tick` dispatches due posts and returns correct summary; `cancelPost` changes status; `getUpcomingPosts` scoped to `userId`; stale publishing posts reset to scheduled
 
 
-- [ ] 3.4 SchedulingEngine recurrence support
-  - [~] 3.4.1 Implement `RecurrenceService.scheduleNext(post)`: compute next `scheduledAt` from `RecurrenceRule` (daily/weekly/monthly + interval + daysOfWeek); respect `endDate` and `maxOccurrences` — satisfies Req 6.10
-  - [~] 3.4.2 Wire `scheduleNext` into `tick()`: after a recurring post publishes successfully, call `scheduleNext` and INSERT the next instance with correct `scheduledAt` and `parentPostId` — satisfies Req 6.10
-  - [~] 3.4.3 Validate recurrence rule at `schedulePost` time: if `endDate` is provided, verify `endDate > scheduledAt`
-  - [~] 3.4.4 Write unit tests: daily recurrence computes correct next date; weekly recurrence skips to correct day-of-week; monthly recurrence handles month-boundary dates; `maxOccurrences` stops creating instances after limit
+- [x] 3.4 SchedulingEngine recurrence support
+  - [x] 3.4.1 Implement `RecurrenceService.scheduleNext(post)`: compute next `scheduledAt` from `RecurrenceRule` (daily/weekly/monthly + interval + daysOfWeek); respect `endDate` and `maxOccurrences` — satisfies Req 6.10
+  - [x] 3.4.2 Wire `scheduleNext` into `tick()`: after a recurring post publishes successfully, call `scheduleNext` and INSERT the next instance with correct `scheduledAt` and `parentPostId` — satisfies Req 6.10
+  - [x] 3.4.3 Validate recurrence rule at `schedulePost` time: if `endDate` is provided, verify `endDate > scheduledAt`
+  - [x] 3.4.4 Write unit tests: daily recurrence computes correct next date; weekly recurrence skips to correct day-of-week; monthly recurrence handles month-boundary dates; `maxOccurrences` stops creating instances after limit
 
 - [ ] 3.5 RetryEngine implementation
   - [~] 3.5.1 Create `supabase/functions/_shared/retry-engine.ts` implementing the `RetryEngine` interface
