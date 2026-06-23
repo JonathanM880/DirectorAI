@@ -1,0 +1,28 @@
+.text-muted-foreground { color: var(--color-gray-400); }
+.hover\:text-accent-foreground:hover { color: var(--color-paper); }
+.bg-muted { background-color: var(--color-steel); }
+.text-foreground { color: var(--color-paper); }
+
+.bg-foreground\/10 { background-color: rgba(245, 244, 240, 0.1); }
+.border-border { border-color: rgba(245, 244, 240, 0.1); }
+.hover\:bg-background:hover { background-color: var(--color-ink); }
+
+.dark\:border-t-white\/5 { border-top-color: rgba(255, 255, 255, 0.05); }
+.dark\:shadow-zinc-950 { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); }
+.shadow-black\/5 { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+.shadow-zinc-950\/15 { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+
+.ring-background { --tw-ring-color: var(--color-ink); }
+.dark\:inset-shadow-white\/20 { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2); }
+.inset-shadow-2xs { box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); }
+
+.bg-gradient-to-b { background-image: linear-gradient(to bottom, transparent 35%, var(--color-ink)); }
+.to-background { --tw-gradient-to: var(--color-ink); }
+.from-transparent { --tw-gradient-from: transparent; }
+.from-35\% { --tw-gradient-stops: var(--tw-gradient-from) 35%, var(--tw-gradient-to) 100%; }
+
+.text-balance { text-wrap: balance; }
+
+.aspect-15\/8 { aspect-ratio: 15 / 8; }
+
+.group-hover\:blur-xs:hover { filter: blur(4px); }

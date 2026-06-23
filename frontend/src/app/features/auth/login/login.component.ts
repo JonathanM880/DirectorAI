@@ -99,7 +99,7 @@ export class LoginComponent {
         return;
       }
 
-      const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+      const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/app';
       this.router.navigateByUrl(returnUrl);
     } catch (err) {
       this.errorMessage = 'An unexpected error occurred. Please try again.';
