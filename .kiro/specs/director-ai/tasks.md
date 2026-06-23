@@ -219,33 +219,33 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [x] 3.4.3 Validate recurrence rule at `schedulePost` time: if `endDate` is provided, verify `endDate > scheduledAt`
   - [x] 3.4.4 Write unit tests: daily recurrence computes correct next date; weekly recurrence skips to correct day-of-week; monthly recurrence handles month-boundary dates; `maxOccurrences` stops creating instances after limit
 
-- [ ] 3.5 RetryEngine implementation
-  - [~] 3.5.1 Create `supabase/functions/_shared/retry-engine.ts` implementing the `RetryEngine` interface
-  - [~] 3.5.2 Implement `enqueue(post, error)`: if `error.retryable === true` AND `post.retryCount < post.maxRetries`, update post to `status = 'retrying'`, increment `retryCount`, compute `next_retry_at` using the backoff formula — satisfies Req 7.1
-  - [~] 3.5.3 Handle exhaustion in `enqueue`: if `error.retryable === false` OR `post.retryCount >= post.maxRetries`, update post to `status = 'failed'` and call `alertService.notify(userId, 'retry_exhausted')` — satisfies Req 7.2
-  - [~] 3.5.4 Implement exponential backoff formula: `delay = MIN(1000 * (2 ^ retryCount), 300000)` plus up to 10% random jitter; set `next_retry_at = now + delay + jitter` — satisfies Req 7.3
-  - [~] 3.5.5 Implement `processQueue()` per Algorithm 2 in the design: query `WHERE status='retrying' AND next_retry_at <= now()` with `FOR UPDATE SKIP LOCKED`; re-dispatch via publisher; on success update to `published` and insert audit log; on failure re-enqueue or exhaust — satisfies Req 7.7, Req 7.8
-  - [~] 3.5.6 Enforce `retryCount` never exceeds `maxRetries`: add a guard assertion before every `retryCount` increment — satisfies Req 7.5
-  - [~] 3.5.7 Enforce `retryCount` never decreases: add a guard verifying new value ≥ current value before any write — satisfies Req 7.6
-  - [~] 3.5.8 Write unit tests: retryable error enqueues with incremented count; non-retryable error moves to failed; exhausted retries moves to failed with alert; successful retry sets status to published with audit entry
+- [x] 3.5 RetryEngine implementation
+  - [x] 3.5.1 Create `supabase/functions/_shared/retry-engine.ts` implementing the `RetryEngine` interface
+  - [x] 3.5.2 Implement `enqueue(post, error)`: if `error.retryable === true` AND `post.retryCount < post.maxRetries`, update post to `status = 'retrying'`, increment `retryCount`, compute `next_retry_at` using the backoff formula — satisfies Req 7.1
+  - [x] 3.5.3 Handle exhaustion in `enqueue`: if `error.retryable === false` OR `post.retryCount >= post.maxRetries`, update post to `status = 'failed'` and call `alertService.notify(userId, 'retry_exhausted')` — satisfies Req 7.2
+  - [x] 3.5.4 Implement exponential backoff formula: `delay = MIN(1000 * (2 ^ retryCount), 300000)` plus up to 10% random jitter; set `next_retry_at = now + delay + jitter` — satisfies Req 7.3
+  - [x] 3.5.5 Implement `processQueue()` per Algorithm 2 in the design: query `WHERE status='retrying' AND next_retry_at <= now()` with `FOR UPDATE SKIP LOCKED`; re-dispatch via publisher; on success update to `published` and insert audit log; on failure re-enqueue or exhaust — satisfies Req 7.7, Req 7.8
+  - [x] 3.5.6 Enforce `retryCount` never exceeds `maxRetries`: add a guard assertion before every `retryCount` increment — satisfies Req 7.5
+  - [x] 3.5.7 Enforce `retryCount` never decreases: add a guard verifying new value ≥ current value before any write — satisfies Req 7.6
+  - [x] 3.5.8 Write unit tests: retryable error enqueues with incremented count; non-retryable error moves to failed; exhausted retries moves to failed with alert; successful retry sets status to published with audit entry
 
 
-- [ ] 3.6 Property-based tests for retry engine and scheduling
-  - [~] 3.6.1 Write property test for Retry Count Monotonicity (Property 2): for any arbitrary sequence of `enqueue` operations on a post, `retryCount` is non-decreasing across the sequence — **Validates: Requirement 7.6**
-  - [~] 3.6.2 Write property test for Max Retries Bound (Property 3): for arbitrary `maxRetries` in range [1, 10] and arbitrary sequence of failures up to length 20, `retryCount` never exceeds `maxRetries` — **Validates: Requirement 7.5**
-  - [~] 3.6.3 Write property test for Backoff Strictly Increasing (Property 10): for arbitrary `retryCount` values n in [0, 9], assert `delay(n+1) >= delay(n) * 0.9` allowing for up to 10% jitter overlap — **Validates: Requirement 7.3, Requirement 7.4**
-  - [~] 3.6.4 Write property test for Scheduled Time Invariant (Property 8): for arbitrary future `scheduledAt` timestamps passed to `schedulePost`, assert the returned post always satisfies `post.scheduledAt > post.createdAt` — **Validates: Requirement 6.4**
-  - [~] 3.6.5 Write property test for Publishing Idempotency (Property 1): for any `ScheduledPost` with `status === 'published'`, calling `publisher.publish(post, channel)` always returns `error.code === 'CONTENT_REJECTED'` — **Validates: Requirement 5.7**
+- [x] 3.6 Property-based tests for retry engine and scheduling
+  - [x] 3.6.1 Write property test for Retry Count Monotonicity (Property 2): for any arbitrary sequence of `enqueue` operations on a post, `retryCount` is non-decreasing across the sequence — **Validates: Requirement 7.6**
+  - [x] 3.6.2 Write property test for Max Retries Bound (Property 3): for arbitrary `maxRetries` in range [1, 10] and arbitrary sequence of failures up to length 20, `retryCount` never exceeds `maxRetries` — **Validates: Requirement 7.5**
+  - [x] 3.6.3 Write property test for Backoff Strictly Increasing (Property 10): for arbitrary `retryCount` values n in [0, 9], assert `delay(n+1) >= delay(n) * 0.9` allowing for up to 10% jitter overlap — **Validates: Requirement 7.3, Requirement 7.4**
+  - [x] 3.6.4 Write property test for Scheduled Time Invariant (Property 8): for arbitrary future `scheduledAt` timestamps passed to `schedulePost`, assert the returned post always satisfies `post.scheduledAt > post.createdAt` — **Validates: Requirement 6.4**
+  - [x] 3.6.5 Write property test for Publishing Idempotency (Property 1): for any `ScheduledPost` with `status === 'published'`, calling `publisher.publish(post, channel)` always returns `error.code === 'CONTENT_REJECTED'` — **Validates: Requirement 5.7**
 
-- [ ] 3.7 BillingService and feature gating
-  - [~] 3.7.1 Create `supabase/functions/_shared/billing.service.ts` implementing the `BillingService` interface
-  - [~] 3.7.2 Implement `createCheckoutSession(userId, planId)`: look up or create Stripe customer for `userId`; call `stripe.checkout.sessions.create` with mapped price ID; return `CheckoutSession` with non-empty `url` — satisfies Req 10.1
-  - [~] 3.7.3 Implement `handleWebhookEvent(payload, signature)`: call `stripe.webhooks.constructEvent` to verify signature — reject without DB mutation if invalid (satisfies Req 10.4, Req 12.7); on `checkout.session.completed` update subscription to `active` (satisfies Req 10.2); on `invoice.payment_failed` update to `past_due` and pause pending posts — satisfies Req 10.3
-  - [~] 3.7.4 Implement `checkFeatureAccess(userId, feature)`: return `true` if `status IN ('active','trialing')` and plan includes `feature`; return `false` for `cancelled`, `past_due`, or missing subscription — satisfies Req 10.5, Req 10.6
-  - [~] 3.7.5 Define the plan × feature capability matrix as a constant: Starter (ai_generation, asset_storage, scheduled_posts), Professional (+ recurrence_rules, analytics), Agency (+ multiple_channels)
-  - [~] 3.7.6 Implement `getUsage(userId)`: return `UsageSummary` reading `postsThisMonth`, `storageUsedBytes`, `aiGenerationsThisMonth` from `subscriptions` table with plan limits — satisfies Req 10.8
-  - [~] 3.7.7 Implement `createPortalSession(userId)`: retrieve Stripe customer ID; call `stripe.billingPortal.sessions.create`; return portal URL — satisfies Req 10.9
-  - [~] 3.7.8 Write unit tests: checkout session returns URL; invalid webhook signature rejected; `payment_failed` updates to `past_due`; `checkFeatureAccess` returns false for cancelled subscription; correct feature matrix per plan
+- [] 3.7 BillingService and feature gating
+  - [] 3.7.1 Create `supabase/functions/_shared/billing.service.ts` implementing the `BillingService` interface
+  - [] 3.7.2 Implement `createCheckoutSession(userId, planId)`: look up or create Stripe customer for `userId`; call `stripe.checkout.sessions.create` with mapped price ID; return `CheckoutSession` with non-empty `url` — satisfies Req 10.1
+  - [] 3.7.3 Implement `handleWebhookEvent(payload, signature)`: call `stripe.webhooks.constructEvent` to verify signature — reject without DB mutation if invalid (satisfies Req 10.4, Req 12.7); on `checkout.session.completed` update subscription to `active` (satisfies Req 10.2); on `invoice.payment_failed` update to `past_due` and pause pending posts — satisfies Req 10.3
+  - [] 3.7.4 Implement `checkFeatureAccess(userId, feature)`: return `true` if `status IN ('active','trialing')` and plan includes `feature`; return `false` for `cancelled`, `past_due`, or missing subscription — satisfies Req 10.5, Req 10.6
+  - [] 3.7.5 Define the plan × feature capability matrix as a constant: Starter (ai_generation, asset_storage, scheduled_posts), Professional (+ recurrence_rules, analytics), Agency (+ multiple_channels)
+  - [] 3.7.6 Implement `getUsage(userId)`: return `UsageSummary` reading `postsThisMonth`, `storageUsedBytes`, `aiGenerationsThisMonth` from `subscriptions` table with plan limits — satisfies Req 10.8
+  - [] 3.7.7 Implement `createPortalSession(userId)`: retrieve Stripe customer ID; call `stripe.billingPortal.sessions.create`; return portal URL — satisfies Req 10.9
+  - [] 3.7.8 Write unit tests: checkout session returns URL; invalid webhook signature rejected; `payment_failed` updates to `past_due`; `checkFeatureAccess` returns false for cancelled subscription; correct feature matrix per plan
 
 
 - [ ] 4.1 MetricsService implementation
@@ -336,12 +336,12 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [x] 6.3.6 Implement folder navigation and tag filtering calling `AssetStorageService.listAssets(userId, filter)`
 
 
-- [ ] 6.4 Editorial Calendar view (`/calendar`)
-  - [~] 6.4.1 Integrate `@fullcalendar/angular` with monthly and weekly view modes; load posts from `SchedulingEngine.getUpcomingPosts` — satisfies Req 14.1
-  - [~] 6.4.2 Implement drag-and-drop rescheduling: on drop call `SchedulingEngine.reschedulePost(postId, newScheduledAt)`; update calendar; display validation error if `newScheduledAt <= now()` — satisfies Req 14.2, Req 14.3
-  - [~] 6.4.3 Implement post click → side drawer: show `status`, `content` preview, `scheduledAt`, action buttons (Edit, Cancel, View Metrics) — satisfies Req 14.4
-  - [~] 6.4.4 Apply status-based color coding to post blocks using design token colors: `--color-live`, `--color-signal`, `--color-fault` — satisfies Req 14.5
-  - [~] 6.4.5 Implement "New Post" inline creation form with content input, channel selector, date/time picker, and optional recurrence rule configurator
+- [x] 6.4 Editorial Calendar view (`/calendar`)
+  - [x] 6.4.1 Integrate `@fullcalendar/angular` with monthly and weekly view modes; load posts from `SchedulingEngine.getUpcomingPosts` — satisfies Req 14.1
+  - [x] 6.4.2 Implement drag-and-drop rescheduling: on drop call `SchedulingEngine.reschedulePost(postId, newScheduledAt)`; update calendar; display validation error if `newScheduledAt <= now()` — satisfies Req 14.2, Req 14.3
+  - [x] 6.4.3 Implement post click → side drawer: show `status`, `content` preview, `scheduledAt`, action buttons (Edit, Cancel, View Metrics) — satisfies Req 14.4
+  - [x] 6.4.4 Apply status-based color coding to post blocks using design token colors: `--color-live`, `--color-signal`, `--color-fault` — satisfies Req 14.5
+  - [x] 6.4.5 Implement "New Post" inline creation form with content input, channel selector, date/time picker, and optional recurrence rule configurator
 
 - [x] 6.5 Platform Metrics view (`/metrics`)
   - [x] 6.5.1 Create `MetricsComponent` with platform tabs (Telegram) and per-channel dropdown calling `MetricsService.getChannelSummary`
@@ -351,12 +351,12 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [x] 6.5.5 Implement date range picker with presets: last 7 days, 30 days, 90 days, and custom range — satisfies Req 15.8
   - [x] 6.5.6 Implement CSV export button: serialize current channel metrics to CSV and trigger browser download
 
-- [ ] 6.6 Automation Hub view (`/automation`)
-  - [~] 6.6.1 Create `AutomationComponent` with four sections: Recurrence Rules, Retry Rules, Activity Log, Failed Posts
-  - [~] 6.6.2 Implement Recurrence Rules manager: list active rules with frequency and next run time; enable/disable toggle; inline edit frequency
-  - [~] 6.6.3 Implement Retry Rules configuration: per-channel max retries input; backoff delay preview display
-  - [~] 6.6.4 Implement Activity Log: paginated table of `audit_log` entries with filters for status, date range, and platform
-  - [~] 6.6.5 Implement Failed Posts panel: list posts with `status = 'failed'`; inline "Re-publish" action calling `SchedulingEngine.reschedulePost`
+- [x] 6.6 Automation Hub view (`/automation`)
+  - [x] 6.6.1 Create `AutomationComponent` with four sections: Recurrence Rules, Retry Rules, Activity Log, Failed Posts
+  - [x] 6.6.2 Implement Recurrence Rules manager: list active rules with frequency and next run time; enable/disable toggle; inline edit frequency
+  - [x] 6.6.3 Implement Retry Rules configuration: per-channel max retries input; backoff delay preview display
+  - [x] 6.6.4 Implement Activity Log: paginated table of `audit_log` entries with filters for status, date range, and platform
+  - [x] 6.6.5 Implement Failed Posts panel: list posts with `status = 'failed'`; inline "Re-publish" action calling `SchedulingEngine.reschedulePost`
 
 - [ ] 6.7 Settings and Billing view (`/settings`)
   - [~] 6.7.1 Create `SettingsComponent` with four sub-sections: Profile, API Keys, Channels, Billing
@@ -366,17 +366,17 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [~] 6.7.5 Implement Billing section: current plan badge; usage meters for `postsThisMonth`, `storageUsedBytes`, `aiGenerationsThisMonth`; "Manage Subscription" button calls `BillingService.createPortalSession`; "Upgrade" button calls `BillingService.createCheckoutSession`
 
 
-- [ ] 7.1 Full publish flow integration tests
-  - [~] 7.1.1 Set up hosted Supabase staging instance plus a real Telegram bot connected to a private test channel; no local DB, MSW, or mocked Telegram server is permitted
-  - [~] 7.1.2 Write integration test: create user → schedule post → run `tick()` → assert the real Telegram test channel received `sendMessage` → assert Supabase staging `status = 'published'` → assert `audit_log` record inserted — satisfies Req 11.1
-  - [~] 7.1.3 Write integration test using real provider/test credentials: invalid Telegram token path enters `failed`; retryable provider/network failure path enters `retrying`; successful retry publishes to the real Telegram test channel — validates full retry flow
-  - [~] 7.1.4 Write integration test: verify `post_published` notification created for post owner after successful publish — satisfies Req 9.2
-  - [~] 7.1.5 Write integration test: recurring post published → next instance created with `scheduledAt = original + interval` — satisfies Req 6.10
+- [x] 7.1 Full publish flow integration tests
+  - [x] 7.1.1 Set up hosted Supabase staging instance plus a real Telegram bot connected to a private test channel; no local DB, MSW, or mocked Telegram server is permitted
+  - [x] 7.1.2 Write integration test: create user → schedule post → run `tick()` → assert the real Telegram test channel received `sendMessage` → assert Supabase staging `status = 'published'` → assert `audit_log` record inserted — satisfies Req 11.1
+  - [x] 7.1.3 Write integration test using real provider/test credentials: invalid Telegram token path enters `failed`; retryable provider/network failure path enters `retrying`; successful retry publishes to the real Telegram test channel — validates full retry flow
+  - [x] 7.1.4 Write integration test: verify `post_published` notification created for post owner after successful publish — satisfies Req 9.2
+  - [x] 7.1.5 Write integration test: recurring post published → next instance created with `scheduledAt = original + interval` — satisfies Req 6.10
 
-- [ ] 7.2 Stripe webhook integration tests
-  - [~] 7.2.1 Write integration test: deliver a signed Stripe test-mode `checkout.session.completed` event to webhook handler → verify subscription updated to `active` with correct `planId` — satisfies Req 10.2
-  - [~] 7.2.2 Write integration test: deliver a signed Stripe test-mode `invoice.payment_failed` event → verify subscription updated to `past_due` and pending posts paused — satisfies Req 10.3
-  - [~] 7.2.3 Write integration test: send webhook with invalid signature → verify request rejected with no DB mutation — satisfies Req 10.4
+- [x] 7.2 Stripe webhook integration tests
+  - [x] 7.2.1 Write integration test: deliver a signed Stripe test-mode `checkout.session.completed` event to webhook handler → verify subscription updated to `active` with correct `planId` — satisfies Req 10.2
+  - [x] 7.2.2 Write integration test: deliver a signed Stripe test-mode `invoice.payment_failed` event → verify subscription updated to `past_due` and pending posts paused — satisfies Req 10.3
+  - [x] 7.2.3 Write integration test: send webhook with invalid signature → verify request rejected with no DB mutation — satisfies Req 10.4
 
 - [x] 7.3 RLS enforcement integration tests
   - [x] 7.3.1 Write test: user A creates an asset; user B calls `listAssets` → result must not contain user A's asset — satisfies Req 12.3

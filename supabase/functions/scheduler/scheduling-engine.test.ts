@@ -371,7 +371,10 @@ describe('SchedulingEngine', () => {
         if (table === 'scheduled_posts') {
           return {
             update: vi.fn(() => ({
-              eq: vi.fn(() => ({ error: null })),
+              eq: vi.fn(() => ({ 
+                error: null,
+                lte: vi.fn(() => ({ error: null }))
+              })),
             })),
             select: vi.fn(() => ({
               eq: vi.fn(() => ({
@@ -421,14 +424,67 @@ describe('SchedulingEngine', () => {
             })),
           };
         }
-        return {};
+        if (table === 'channels') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                single: vi.fn(() => ({
+                  data: {
+                    id: 'channel-1',
+                    platform: 'telegram',
+                    credentials: { telegram_bot_token: 'valid' }
+                  },
+                  error: null
+                }))
+              }))
+            }))
+          };
+        }
+        if (table === 'recurrence_rules') {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                single: vi.fn(() => ({
+                  data: {
+                    id: 'rule-1',
+                    frequency: 'daily',
+                    interval: 1,
+                    end_date: null
+                  },
+                  error: null
+                }))
+              }))
+            }))
+          };
+        }
+        if (table === 'audit_log' || table === 'notifications' || table === 'scheduled_posts') {
+          return {
+            insert: vi.fn(() => ({ error: null })),
+            update: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                error: null,
+                lte: vi.fn(() => ({ error: null }))
+              }))
+            }))
+          };
+        }
+        return {
+          insert: vi.fn(() => ({ error: null })),
+          select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn(() => ({ data: {}, error: null })) })) }))
+        };
       });
 
-      // Mock global fetch for TelegramPublisher
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ ok: true, result: { message_id: '123' } }),
-      });
+      // Mock the publisher registry to return a mock publisher that succeeds
+      const mockPublisher = {
+        validatePost: vi.fn().mockReturnValue({ valid: true, errors: [] }),
+        publish: vi.fn().mockResolvedValue({
+          success: true,
+          platformMessageId: '123',
+          publishedAt: new Date(),
+          platform: 'telegram',
+        }),
+      };
+      vi.spyOn(publisherRegistry, 'get').mockReturnValue(mockPublisher as any);
 
       const summary = await schedulingEngine.tick();
 

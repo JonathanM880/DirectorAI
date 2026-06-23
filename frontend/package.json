@@ -40,6 +40,7 @@
     "@angular/cli": "21.2.9",
     "@angular/compiler-cli": "21.2.0",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.61.0",
     "@testing-library/angular": "19.4.1",
     "@types/jest": "30.0.0",
     "angular-eslint": "21.4.0",
