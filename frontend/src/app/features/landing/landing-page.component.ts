@@ -9,7 +9,7 @@ import { ArrowRightIconComponent } from './icons.component';
 @Component({
   selector: 'app-landing-page',
   standalone: true,
-  imports: [RouterLink, ButtonDirective, AnimatedGroupDirective, LogoComponent, ArrowRightIconComponent],
+  imports: [RouterLink, ButtonDirective, AnimatedGroupDirective, LogoComponent],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.scss',
 })
@@ -25,14 +25,14 @@ export class LandingPageComponent {
   ];
 
   readonly customers = [
-    { name: 'Nvidia' },
-    { name: 'Column' },
-    { name: 'GitHub' },
-    { name: 'Nike' },
-    { name: 'Lemon Squeezy' },
-    { name: 'Laravel' },
-    { name: 'Lilly' },
-    { name: 'OpenAI' },
+    { name: 'Pepe' },
+    { name: 'Juan' },
+    { name: 'Maria' },
+    { name: 'Tomas' },
+    { name: 'Pewdiepie' },
+    { name: 'Gargamel' },
+    { name: 'Edgar' },
+    { name: 'Pablo' },
   ];
 
   @HostListener('window:scroll')
