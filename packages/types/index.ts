@@ -378,6 +378,14 @@ export interface PostMetrics {
   measuredAt: Date
 }
 
+export interface MetricsService {
+  ingestMetrics(platformMessageId: string, metrics: RawPlatformMetrics): Promise<void>
+  getPostMetrics(postId: string): Promise<PostMetrics | null>
+  getChannelSummary(channelId: string, dateRange: DateRange): Promise<ChannelSummary | null>
+  getDashboardMetrics(userId: string): Promise<DashboardMetrics>
+  getEngagementTrend(channelId: string, granularity: 'day' | 'week' | 'month'): Promise<TrendPoint[]>
+}
+
 export interface ChannelSummary {
   channelId: string
   platform: SocialPlatform

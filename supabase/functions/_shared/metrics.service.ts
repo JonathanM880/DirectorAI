@@ -6,28 +6,18 @@ import {
   DateRange,
   SocialPlatform,
   RawPlatformMetrics,
+  DashboardMetrics,
+  ActivityEvent,
+  MetricsService,
 } from '@director-ai/types'
 
 /**
  * MetricsService — Supabase Edge Function implementation.
  *
  * Satisfies the MetricsService interface defined in packages/types/index.ts
- * (lines 347-406). Uses the `post_metrics` table which stores per-post
- * engagement snapshots ingested after each successful publish.
- *
- * STUB NOTE (Task 4.1):
- * All methods gracefully handle PGRST116 (table not found) so this service
- * compiles and runs even when the `post_metrics` migration has not yet been
- * applied to the staging database. The moment the table exists, live data
- * flows through automatically.
- *
- * Wiring notes:
- *  - Call `ingestMetrics` from TelegramPublisher.publish() after a successful
- *    send, passing the platform message ID and the raw metrics object.
- *  - The scheduler's tick() loop should call this after publish to seed the
- *    first metrics snapshot.
+ * Uses the `post_metrics` table which stores per-post engagement snapshots.
  */
-export class MetricsServiceImpl {
+export class MetricsServiceImpl implements MetricsService {
   constructor(private supabase: SupabaseClient) {}
 
   // ---------------------------------------------------------------------------
@@ -35,20 +25,32 @@ export class MetricsServiceImpl {
   // ---------------------------------------------------------------------------
 
   /**
-   * Upsert a raw metrics snapshot for a published post.
-   *
-   * Inserts or updates a row in `post_metrics` keyed by (postId, measuredAt).
-   * If the table does not exist yet, the error is swallowed and the call is
-   * a no-op — this prevents any caller from crashing before the migration runs.
+   * Look up post by platformMessageId and upsert its raw platform metrics.
+   * If the post is not found or table doesn't exist, handle gracefully.
    */
   async ingestMetrics(
-    postId: string,
     platformMessageId: string,
     metrics: RawPlatformMetrics,
   ): Promise<void> {
+    // 1. Look up scheduled_posts by platform_message_id to find the postId
+    const { data: post, error: lookupError } = await this.supabase
+      .from('scheduled_posts')
+      .select('id')
+      .eq('platform_message_id', platformMessageId)
+      .maybeSingle()
+
+    if (lookupError) {
+      throw lookupError
+    }
+
+    if (!post) {
+      // If post is not found, we cannot ingest metrics
+      return
+    }
+
     const { error } = await this.supabase.from('post_metrics').upsert(
       {
-        post_id: postId,
+        post_id: post.id,
         platform_message_id: platformMessageId,
         views: metrics.views,
         reactions: metrics.reactions,
@@ -56,7 +58,7 @@ export class MetricsServiceImpl {
         replies: metrics.replies,
         measured_at: metrics.measuredAt.toISOString(),
       },
-      { onConflict: 'post_id,measured_at' },
+      { onConflict: 'post_id' },
     )
 
     if (error && !isTableNotFound(error)) {
@@ -112,7 +114,7 @@ export class MetricsServiceImpl {
     // Step 1: Fetch published posts for this channel in date range
     const { data: posts, error: postsError } = await this.supabase
       .from('scheduled_posts')
-      .select('id, user_id')
+      .select('id, platform')
       .eq('channel_id', channelId)
       .eq('status', 'published')
       .gte('published_at', dateRange.from.toISOString())
@@ -122,9 +124,7 @@ export class MetricsServiceImpl {
     if (!posts || posts.length === 0) return null
 
     const postIds = posts.map((p: any) => p.id)
-    
-    // Fallback platform if we can't join channels easily here
-    const platform: SocialPlatform = 'telegram'
+    const platform: SocialPlatform = posts[0]?.platform || 'telegram'
 
     // Step 2: Fetch latest metrics for each post
     const { data: metricsRows, error: metricsError } = await this.supabase
@@ -202,73 +202,231 @@ export class MetricsServiceImpl {
   }
 
   // ---------------------------------------------------------------------------
+  // getDashboardMetrics
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Compute user dashboard metrics including total posts, failure rate,
+   * average views per post, and recent activity.
+   */
+  async getDashboardMetrics(userId: string): Promise<DashboardMetrics> {
+    const now = new Date()
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    // 1. totalPostsPublished
+    const { count: totalPostsPublished, error: pubError } = await this.supabase
+      .from('scheduled_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'published')
+
+    if (pubError) throw pubError
+
+    // 2. postsThisWeek
+    const { count: postsThisWeek, error: weekError } = await this.supabase
+      .from('scheduled_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'published')
+      .gte('published_at', oneWeekAgo.toISOString())
+
+    if (weekError) throw weekError
+
+    // 3. upcomingPostsCount
+    const { count: upcomingPostsCount, error: upcomingError } = await this.supabase
+      .from('scheduled_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'scheduled')
+      .gt('scheduled_at', now.toISOString())
+
+    if (upcomingError) throw upcomingError
+
+    // 4. avgViewsPerPost
+    const { data: publishedPosts, error: listPubError } = await this.supabase
+      .from('scheduled_posts')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('status', 'published')
+
+    if (listPubError) throw listPubError
+
+    let avgViewsPerPost = 0
+    if (publishedPosts && publishedPosts.length > 0) {
+      const pubIds = publishedPosts.map((p: any) => p.id)
+      const { data: metrics, error: metricsErr } = await this.supabase
+        .from('post_metrics')
+        .select('views')
+        .in('post_id', pubIds)
+
+      if (metricsErr && !isTableNotFound(metricsErr)) {
+        throw metricsErr
+      }
+
+      const totalViews = (metrics ?? []).reduce((sum: number, r: any) => sum + (r.views ?? 0), 0)
+      avgViewsPerPost = Math.round(totalViews / publishedPosts.length)
+    }
+
+    // 5. failureRate: failed / (published + failed + retrying)
+    const { data: statusCounts, error: countErr } = await this.supabase
+      .from('scheduled_posts')
+      .select('status')
+      .eq('user_id', userId)
+      .in('status', ['published', 'failed', 'retrying'])
+
+    if (countErr) throw countErr
+
+    let failedCount = 0
+    let attemptedCount = 0
+    for (const p of statusCounts ?? []) {
+      attemptedCount++
+      if (p.status === 'failed') {
+        failedCount++
+      }
+    }
+    const failureRate = attemptedCount > 0
+      ? parseFloat(((failedCount / attemptedCount) * 100).toFixed(2))
+      : 0
+
+    // 6. recentActivity: last 10 audit log entries
+    const { data: logs, error: logsError } = await this.supabase
+      .from('audit_log')
+      .select('id, user_id, post_id, action, platform, occurred_at')
+      .eq('user_id', userId)
+      .order('occurred_at', { ascending: false })
+      .limit(10)
+
+    if (logsError) throw logsError
+
+    const recentActivity = (logs ?? []).map((log: any): ActivityEvent => ({
+      id: log.id,
+      userId: log.user_id,
+      postId: log.post_id,
+      action: log.action as any,
+      platform: log.platform as any,
+      occurredAt: new Date(log.occurred_at),
+    }))
+
+    return {
+      totalPostsPublished: totalPostsPublished ?? 0,
+      postsThisWeek: postsThisWeek ?? 0,
+      avgViewsPerPost,
+      failureRate,
+      upcomingPostsCount: upcomingPostsCount ?? 0,
+      recentActivity,
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // getEngagementTrend
   // ---------------------------------------------------------------------------
 
   /**
-   * Return daily engagement trend points for a user within a date range.
-   * Granularity is currently always 'day'.
-   *
-   * Buckets views by day, summing across all posts. Returns an empty array if
-   * the post_metrics table does not yet exist.
+   * Return engagement trend points for a channel within the past period.
+   * Granularities: 'day' (last 30 days), 'week' (last 12 weeks), 'month' (last 12 months).
+   * Missing periods are filled with value = 0.
    */
   async getEngagementTrend(
-    userId: string,
-    dateRange: DateRange,
-    _granularity: 'day' | 'week' | 'month' = 'day',
+    channelId: string,
+    granularity: 'day' | 'week' | 'month' = 'day',
   ): Promise<TrendPoint[]> {
-    // Fetch all published posts for the user in range
+    const now = new Date()
+    let fromDate: Date
+    const trendMap = new Map<string, TrendPoint>()
+    const periods: { date: Date; label: string; key: string }[] = []
+
+    if (granularity === 'day') {
+      // Last 30 days including today (UTCDay start)
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i))
+        const key = d.toISOString().slice(0, 10) // YYYY-MM-DD
+        periods.push({ date: d, label: key, key })
+      }
+      fromDate = periods[0].date
+    } else if (granularity === 'week') {
+      // Last 12 weeks including current week
+      const currentDay = now.getUTCDay()
+      const diffToMonday = currentDay === 0 ? 6 : currentDay - 1
+      const startOfCurrentWeek = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday))
+      
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(startOfCurrentWeek.getTime() - i * 7 * 24 * 60 * 60 * 1000)
+        const key = d.toISOString().slice(0, 10)
+        periods.push({ date: d, label: key, key })
+      }
+      fromDate = periods[0].date
+    } else {
+      // granularity === 'month'
+      // Last 12 months including current month
+      const startOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(Date.UTC(startOfCurrentMonth.getUTCFullYear(), startOfCurrentMonth.getUTCMonth() - i, 1))
+        const key = d.toISOString().slice(0, 7) // YYYY-MM
+        periods.push({ date: d, label: key, key })
+      }
+      fromDate = periods[0].date
+    }
+
+    // Initialize trend points with value = 0
+    for (const p of periods) {
+      trendMap.set(p.key, {
+        date: p.date,
+        value: 0,
+        label: p.label,
+      })
+    }
+
+    // Fetch posts for the channel in range
     const { data: posts, error: postsError } = await this.supabase
       .from('scheduled_posts')
       .select('id, published_at')
-      .eq('user_id', userId)
+      .eq('channel_id', channelId)
       .eq('status', 'published')
-      .gte('published_at', dateRange.from.toISOString())
-      .lte('published_at', dateRange.to.toISOString())
+      .gte('published_at', fromDate.toISOString())
+      .lte('published_at', now.toISOString())
 
     if (postsError) throw postsError
-    if (!posts || posts.length === 0) return []
 
-    const postIds = posts.map((p: any) => p.id)
+    if (posts && posts.length > 0) {
+      const postIds = posts.map((p: any) => p.id)
+      const { data: metricsRows, error: metricsError } = await this.supabase
+        .from('post_metrics')
+        .select('post_id, views')
+        .in('post_id', postIds)
 
-    const { data: metricsRows, error: metricsError } = await this.supabase
-      .from('post_metrics')
-      .select('post_id, views, measured_at')
-      .in('post_id', postIds)
+      if (metricsError && !isTableNotFound(metricsError)) {
+        throw metricsError
+      }
 
-    if (metricsError) {
-      if (isTableNotFound(metricsError)) return [] // table not yet created
-      throw metricsError
+      const viewsMap = new Map<string, number>()
+      for (const row of metricsRows ?? []) {
+        viewsMap.set(row.post_id, Math.max(0, row.views ?? 0))
+      }
+
+      for (const post of posts) {
+        const publishedAt = new Date(post.published_at)
+        let key = ''
+        if (granularity === 'day') {
+          key = publishedAt.toISOString().slice(0, 10)
+        } else if (granularity === 'week') {
+          // Find Monday of the publishedAt date
+          const day = publishedAt.getUTCDay()
+          const diff = day === 0 ? 6 : day - 1
+          const monday = new Date(Date.UTC(publishedAt.getUTCFullYear(), publishedAt.getUTCMonth(), publishedAt.getUTCDate() - diff))
+          key = monday.toISOString().slice(0, 10)
+        } else {
+          key = publishedAt.toISOString().slice(0, 7)
+        }
+
+        const point = trendMap.get(key)
+        if (point) {
+          const views = viewsMap.get(post.id) ?? 0
+          point.value += views
+        }
+      }
     }
 
-    // Map post_id → published_at date string (YYYY-MM-DD)
-    const postDateMap = new Map<string, string>()
-    for (const post of posts) {
-      const day = new Date(post.published_at).toISOString().slice(0, 10)
-      postDateMap.set(post.id, day)
-    }
-
-    // Bucket views by day (use max snapshot per post to avoid duplicates)
-    const latestViews = new Map<string, number>()
-    for (const row of metricsRows ?? []) {
-      const current = latestViews.get(row.post_id) ?? 0
-      if ((row.views ?? 0) > current) latestViews.set(row.post_id, row.views ?? 0)
-    }
-
-    const buckets = new Map<string, number>()
-    for (const [postId, views] of latestViews) {
-      const day = postDateMap.get(postId)
-      if (!day) continue
-      buckets.set(day, (buckets.get(day) ?? 0) + views)
-    }
-
-    return Array.from(buckets.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([day, value]): TrendPoint => ({
-        date: new Date(day),
-        value,
-        label: day,
-      }))
+    return Array.from(trendMap.values()).sort((a, b) => a.date.getTime() - b.date.getTime())
   }
 }
 

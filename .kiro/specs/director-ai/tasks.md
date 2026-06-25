@@ -248,17 +248,17 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [] 3.7.8 Write unit tests: checkout session returns URL; invalid webhook signature rejected; `payment_failed` updates to `past_due`; `checkFeatureAccess` returns false for cancelled subscription; correct feature matrix per plan
 
 
-- [ ] 4.1 MetricsService implementation
-  - [~] 4.1.1 Create `supabase/functions/_shared/metrics.service.ts` implementing the `MetricsService` interface
-  - [~] 4.1.2 Create migration `010_create_post_metrics.sql`: table `post_metrics` with `post_id UUID FK`, `platform_message_id TEXT`, `views INTEGER DEFAULT 0`, `reactions JSONB DEFAULT '{}'`, `forwards INTEGER DEFAULT 0`, `replies INTEGER DEFAULT 0`, `measured_at TIMESTAMPTZ DEFAULT now()`
-  - [~] 4.1.3 Implement `ingestMetrics(platformMessageId, metrics)`: lookup `scheduled_posts` by `platformMessageId`; persist raw metrics to `post_metrics`; associate with `postId` — satisfies Req 8.1
-  - [~] 4.1.4 Implement `getPostMetrics(postId)`: query `post_metrics`; return `PostMetrics` with `views`, `reactions`, `forwards`, `replies` — satisfies Req 8.2
-  - [~] 4.1.5 Implement `getChannelSummary(channelId, dateRange)`: aggregate across all posts for channel in date range; compute `totalPosts`, `totalViews`, `avgEngagementRate`, `topPost` — satisfies Req 8.3
-  - [~] 4.1.6 Implement `getDashboardMetrics(userId)`: compute `totalPostsPublished`, `postsThisWeek`, `avgViewsPerPost`, `failureRate`, `upcomingPostsCount`, `recentActivity` — satisfies Req 8.4
-  - [~] 4.1.7 Implement `getEngagementTrend(channelId, granularity)`: generate time-series for last 30 days / 12 weeks / 12 months; fill gaps with `value = 0`; return sorted ascending by `date` — satisfies Req 8.5, Req 8.6
-  - [~] 4.1.8 Enforce `TrendPoint.value >= 0` for all returned trend points — satisfies Req 8.7
-  - [~] 4.1.9 Create Telegram metrics polling cron (`supabase/functions/metrics-poller/index.ts`): call Telegram `getUpdates`; extract views and reactions; call `ingestMetrics` for recent published posts
-  - [~] 4.1.10 Write unit tests: `ingestMetrics` persists and associates correctly; `getEngagementTrend` returns correct length for each granularity; gaps filled with zero; values non-negative
+- [x] 4.1 MetricsService implementation
+  - [x] 4.1.1 Create `supabase/functions/_shared/metrics.service.ts` implementing the `MetricsService` interface
+  - [x] 4.1.2 Create migration `010_create_post_metrics.sql`: table `post_metrics` with `post_id UUID FK`, `platform_message_id TEXT`, `views INTEGER DEFAULT 0`, `reactions JSONB DEFAULT '{}'`, `forwards INTEGER DEFAULT 0`, `replies INTEGER DEFAULT 0`, `measured_at TIMESTAMPTZ DEFAULT now()` (note: created as 014_create_post_metrics.sql due to versioning)
+  - [x] 4.1.3 Implement `ingestMetrics(platformMessageId, metrics)`: lookup `scheduled_posts` by `platformMessageId`; persist raw metrics to `post_metrics`; associate with `postId` — satisfies Req 8.1
+  - [x] 4.1.4 Implement `getPostMetrics(postId)`: query `post_metrics`; return `PostMetrics` with `views`, `reactions`, `forwards`, `replies` — satisfies Req 8.2
+  - [x] 4.1.5 Implement `getChannelSummary(channelId, dateRange)`: aggregate across all posts for channel in date range; compute `totalPosts`, `totalViews`, `avgEngagementRate`, `topPost` — satisfies Req 8.3
+  - [x] 4.1.6 Implement `getDashboardMetrics(userId)`: compute `totalPostsPublished`, `postsThisWeek`, `avgViewsPerPost`, `failureRate`, `upcomingPostsCount`, `recentActivity` — satisfies Req 8.4
+  - [x] 4.1.7 Implement `getEngagementTrend(channelId, granularity)`: generate time-series for last 30 days / 12 weeks / 12 months; fill gaps with `value = 0`; return sorted ascending by `date` — satisfies Req 8.5, Req 8.6
+  - [x] 4.1.8 Enforce `TrendPoint.value >= 0` for all returned trend points — satisfies Req 8.7
+  - [x] 4.1.9 Create Telegram metrics polling cron (`supabase/functions/metrics-poller/index.ts`): call Telegram `getUpdates`; extract views and reactions; call `ingestMetrics` for recent published posts
+  - [x] 4.1.10 Write unit tests: `ingestMetrics` persists and associates correctly; `getEngagementTrend` returns correct length for each granularity; gaps filled with zero; values non-negative
 
 - [x] 4.2 AlertService implementation
   - [x] 4.2.1 Create `supabase/functions/_shared/alert.service.ts` implementing the `AlertService` interface
