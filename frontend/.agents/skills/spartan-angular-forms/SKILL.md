@@ -1,0 +1,171 @@
+---
+name: spartan-angular-forms
+description: Reference implementation of professional forms (signup and login) using Angular Reactive Forms and Spartan/Helm components.
+---
+# Spartan Angular Forms Skill
+
+This skill provides a reference implementation for professional signup and login forms in Angular using Reactive Forms and Spartan/Helm UI components.
+
+## Implementation Guidelines
+
+- **Angular Components**:
+  - Prefer `ChangeDetectionStrategy.OnPush` for better performance.
+  - Set `encapsulation: ViewEncapsulation.None` where custom theme styles require global target styles.
+  - Inject dependencies (e.g., `FormBuilder`) using the modern `inject()` function.
+
+- **Reactive Forms Validation**:
+  - Implement form controls using `FormBuilder`.
+  - Use `Validators.required`, `Validators.email`, `Validators.minLength(8)`, etc.
+  - For passwords matching, use a cross-field validator on the group level.
+
+- **Spartan/Helm Integration**:
+  - Import the necessary modules: `ReactiveFormsModule`, `RouterLink`, `HlmCardImports`, `HlmFieldImports`, `HlmInputImports`, `HlmButtonImports`.
+  - Use `hlm-card` layout wrappers.
+  - Build fields with `hlm-field-group`, `hlm-field`, `hlm-field-description`, and `hlm-field-error`.
+  - Disable buttons while the form is invalid using `[disabled]="form.invalid"`.
+
+---
+
+## Code References
+
+### Simple Reactive Form Page Container
+
+```typescript
+import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/core';
+import { SignupForm } from './signup-form';
+
+@Component({
+	selector: 'spartan-signup-simple-reactive-form',
+	imports: [SignupForm],
+	encapsulation: ViewEncapsulation.None,
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	host: {
+		class: 'block',
+	},
+	styleUrl: '../../blocks-preview-default.css',
+	template: `
+		<div class="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+			<div class="w-full max-w-sm">
+				<spartan-simple-signup-form />
+			</div>
+		</div>
+	`,
+})
+export default class SignupSimpleReactiveFormPage {}
+```
+
+### Simple Signup Form Component
+
+```typescript
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+	AbstractControl,
+	FormBuilder,
+	ReactiveFormsModule,
+	ValidationErrors,
+	ValidatorFn,
+	Validators,
+} from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmInputImports } from '@spartan-ng/helm/input';
+
+@Component({
+	selector: 'spartan-simple-signup-form',
+	imports: [ReactiveFormsModule, RouterLink, HlmCardImports, HlmFieldImports, HlmInputImports, HlmButtonImports],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	template: `
+		<hlm-card>
+			<hlm-card-header>
+				<h3 hlmCardTitle>Create an account</h3>
+				<p hlmCardDescription>Enter your information below to create your account</p>
+			</hlm-card-header>
+			<div hlmCardContent>
+				<form [formGroup]="form" (ngSubmit)="signup()">
+					<hlm-field-group>
+						<hlm-field>
+							<label hlmFieldLabel for="name">Full Name</label>
+							<input hlmInput type="text" id="name" placeholder="John Doe" formControlName="name" />
+							<hlm-field-error validator="required">Name is required.</hlm-field-error>
+						</hlm-field>
+						<hlm-field>
+							<label hlmFieldLabel for="email">Email</label>
+							<input hlmInput type="email" id="email" placeholder="you@example.com" formControlName="email" />
+							@if (!(form.controls.email.touched && form.controls.email.invalid)) {
+								<hlm-field-description>
+									We'll use this to contact you. We will not share your email with anyone else.
+								</hlm-field-description>
+							}
+							<hlm-field-error validator="required">Email is required.</hlm-field-error>
+							<hlm-field-error validator="email">Enter a valid email address.</hlm-field-error>
+						</hlm-field>
+						<hlm-field>
+							<label hlmFieldLabel for="password">Password</label>
+							<input hlmInput type="password" id="password" formControlName="password" />
+							@if (!(form.controls.password.touched && form.controls.password.invalid)) {
+								<hlm-field-description>Must be at least 8 characters long.</hlm-field-description>
+							}
+							<hlm-field-error validator="required">Password is required.</hlm-field-error>
+							<hlm-field-error validator="minlength">Password must be at least 8 characters long.</hlm-field-error>
+						</hlm-field>
+						<hlm-field>
+							<label hlmFieldLabel for="confirmPassword">Confirm Password</label>
+							<input hlmInput type="password" id="confirmPassword" formControlName="confirmPassword" />
+							@if (
+								!(
+									form.controls.confirmPassword.touched &&
+									(form.controls.confirmPassword.invalid || form.errors?.['passwordMismatch'])
+								)
+							) {
+								<hlm-field-description>Please confirm your password.</hlm-field-description>
+							}
+							<hlm-field-error validator="required">Confirming your password is required.</hlm-field-error>
+							@if (form.errors?.['passwordMismatch'] && !form.controls.confirmPassword.errors?.['required']) {
+								<hlm-field-error forceShow>Passwords must match.</hlm-field-error>
+							}
+						</hlm-field>
+						<hlm-field>
+							<button hlmBtn type="submit" [disabled]="form.invalid">Create Account</button>
+							<button hlmBtn variant="outline" type="button">Sign up with Google</button>
+							<p hlmFieldDescription class="text-center">
+								Already have an account?
+								<a routerLink=".">Sign in</a>
+							</p>
+						</hlm-field>
+					</hlm-field-group>
+				</form>
+			</div>
+		</hlm-card>
+	`,
+})
+export class SignupForm {
+	private readonly _fb = inject(FormBuilder);
+
+	public form = this._fb.group(
+		{
+			name: ['', [Validators.required]],
+			email: ['', [Validators.required, Validators.email]],
+			password: ['', [Validators.required, Validators.minLength(8)]],
+			confirmPassword: ['', [Validators.required]],
+		},
+		{ validators: passwordMatch() },
+	);
+
+	public signup() {
+		if (this.form.valid) {
+			// signup logic here
+			console.log(this.form.value);
+		}
+	}
+}
+
+function passwordMatch(): ValidatorFn {
+	return (group: AbstractControl): ValidationErrors | null => {
+		const password = group.get('password')?.value;
+		const confirm = group.get('confirmPassword')?.value;
+		return password === confirm ? null : { passwordMismatch: true };
+	};
+}
+```
