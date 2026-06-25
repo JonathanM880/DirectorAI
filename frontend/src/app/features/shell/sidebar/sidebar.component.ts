@@ -33,16 +33,16 @@ interface NavItem {
       </div>
     </div>
   `,
-  styleUrl: './sidebar.component.scss'
+  styleUrl: './sidebar.component.scss',
 })
 export class SidebarComponent {
   navItems: NavItem[] = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/studio', label: 'AI Studio', icon: '🤖' },
-    { path: '/assets', label: 'Assets', icon: '📁' },
-    { path: '/calendar', label: 'Calendar', icon: '📅' },
-    { path: '/metrics', label: 'Metrics', icon: '📈' },
-    { path: '/automation', label: 'Automation', icon: '⚙️' },
-    { path: '/settings', label: 'Settings', icon: '🔧' }
+    { path: '/app/dashboard', label: 'Dashboard', icon: '📊' },
+    { path: '/app/studio', label: 'AI Studio', icon: '🤖' },
+    { path: '/app/assets', label: 'Assets', icon: '📁' },
+    { path: '/app/calendar', label: 'Calendar', icon: '📅' },
+    { path: '/app/metrics', label: 'Metrics', icon: '📈' },
+    { path: '/app/automation', label: 'Automation', icon: '⚙️' },
+    { path: '/app/settings', label: 'Settings', icon: '🔧' },
   ];
 }
