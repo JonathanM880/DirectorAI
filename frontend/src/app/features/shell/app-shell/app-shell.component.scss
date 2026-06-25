@@ -1,12 +1,11 @@
 .app-shell {
   display: flex;
   height: 100vh;
-  background-color: var(--color-ink);
+  background: radial-gradient(circle at 0% 0%, #232733 0%, var(--color-ink) 40%, #0d0c10 100%);
 
   .sidebar {
     width: 260px;
     flex-shrink: 0;
-    background-color: var(--color-steel);
   }
 
   .main-content {
@@ -21,8 +20,10 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--space-4) var(--space-6);
-    border-bottom: 1px solid var(--color-gray-700);
-    background-color: var(--color-steel);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: rgba(42, 45, 53, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 
     h1 {
       margin: 0;

@@ -7,10 +7,10 @@ import { AngularAuthService } from '../services/auth.service';
 describe('AuthGuard', () => {
   let guard: AuthGuard;
   let router: Router;
-  let authService: { authState$: any };
+  let authService: { getSession: jest.Mock };
 
   beforeEach(() => {
-    authService = { authState$: of(null) };
+    authService = { getSession: jest.fn().mockResolvedValue(null) };
 
     TestBed.configureTestingModule({
       providers: [
@@ -25,7 +25,7 @@ describe('AuthGuard', () => {
   });
 
   it('should allow access when user is authenticated', async () => {
-    Object.defineProperty(authService, 'authState$', { get: () => of({ access_token: 'token' }) });
+    authService.getSession.mockResolvedValue({ access_token: 'token' });
 
     const result = guard.canActivate({} as any, { url: '/dashboard' } as any);
     const value = await new Promise<any>((resolve) => {
@@ -39,7 +39,7 @@ describe('AuthGuard', () => {
   });
 
   it('should redirect to login when user is not authenticated', async () => {
-    Object.defineProperty(authService, 'authState$', { get: () => of(null) });
+    authService.getSession.mockResolvedValue(null);
 
     const mockUrlTree = { commands: ['/auth/login'] } as unknown as UrlTree;
     jest.spyOn(router, 'createUrlTree').mockReturnValue(mockUrlTree);

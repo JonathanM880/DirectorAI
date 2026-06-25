@@ -41,7 +41,8 @@ export const shellRoutes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('../settings/settings.component').then(m => m.SettingsComponent)
-      }
+      },
+      { path: '**', redirectTo: 'dashboard' }
     ]
   }
 ];

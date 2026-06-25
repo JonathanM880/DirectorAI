@@ -21,7 +21,7 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
       <div class="main-content">
         <header class="header">
           <div class="header-left">
-            <h1>DirectorAI</h1>
+            <!-- Breadcrumbs or page title could go here -->
           </div>
           <div class="header-right">
             <app-notification-bell></app-notification-bell>

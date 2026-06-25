@@ -109,10 +109,13 @@ export class LoginComponent {
   }
 
   async onSignInWithGoogle() {
+    this.isLoading = true;
+    this.errorMessage = null;
     try {
       await this.authService.signInWithOAuth('google');
     } catch (err) {
       this.errorMessage = 'Google sign-in failed. Please try again.';
+      this.isLoading = false;
     }
   }
 }

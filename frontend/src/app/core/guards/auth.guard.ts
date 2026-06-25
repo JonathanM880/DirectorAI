@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router, UrlTree } from '@angular/router';
-import { Observable, map, take } from 'rxjs';
+// removed RxJS imports that are no longer needed
 import { AngularAuthService } from '../services/auth.service';
 
 @Injectable({
@@ -9,18 +9,14 @@ import { AngularAuthService } from '../services/auth.service';
 export class AuthGuard implements CanActivate {
   constructor(private authService: AngularAuthService, private router: Router) {}
 
-  canActivate(
+  async canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
-  ): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
-    return this.authService.authState$.pipe(
-      take(1),
-      map((session) => {
-        if (session) {
-          return true;
-        }
-        return this.router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } });
-      })
-    );
+  ): Promise<boolean | UrlTree> {
+    const session = await this.authService.getSession();
+    if (session) {
+      return true;
+    }
+    return this.router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } });
   }
 }
