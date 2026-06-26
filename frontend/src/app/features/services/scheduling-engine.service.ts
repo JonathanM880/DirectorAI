@@ -169,7 +169,7 @@ export class SchedulingEngineService {
 
     const userId = await this.getUserId();
 
-    // Validate channel ownership
+    // Validate channel ownership and retrieve platform for display purposes only.
     const { data: channel, error: channelError } = await this.supabase
       .from('channels')
       .select('id, platform')
@@ -181,19 +181,36 @@ export class SchedulingEngineService {
       throw new Error('Channel not found or does not belong to user');
     }
 
+    // ─── Build insert payload ────────────────────────────────────────────────
+    // IMPORTANT: Do NOT include `platform` here. The `scheduled_posts` table
+    // has no `platform` column — the platform is derived from `channel_id` by
+    // the publishing engine at runtime. Sending it causes a Supabase schema
+    // cache error: "Could not find the 'platform' column".
+    //
+    // Media: map mediaAssetIds → media_asset_ids and resolve media_type from
+    // the content shape. Falls back to [] / null when not provided.
+    const mediaAssetIds: string[] = request.content.mediaAssetIds ?? [];
+    const mediaType = request.content.mediaType ?? null;
+
+    // Ensure scheduled_at is always a UTC ISO-8601 string that Supabase accepts.
+    const scheduledAtISO =
+      request.scheduledAt instanceof Date
+        ? request.scheduledAt.toISOString()
+        : new Date(request.scheduledAt).toISOString();
+
     const { data, error } = await this.supabase
       .from('scheduled_posts')
       .insert({
-        user_id: userId,
-        channel_id: request.channelId,
-        platform: channel.platform,
-        text_content: request.content.text ?? null,
-        media_asset_ids: request.content.mediaAssetIds ?? [],
-        media_type: request.content.mediaType ?? null,
-        scheduled_at: request.scheduledAt.toISOString(),
-        status: 'scheduled',
-        retry_count: 0,
-        max_retries: 3
+        user_id:        userId,
+        channel_id:     request.channelId,
+        // `platform` intentionally omitted — not a column on scheduled_posts
+        text_content:   request.content.text ?? null,
+        media_asset_ids: mediaAssetIds,
+        media_type:     mediaType,
+        scheduled_at:   scheduledAtISO,
+        status:         'scheduled',
+        retry_count:    0,
+        max_retries:    3,
       })
       .select()
       .single();
@@ -201,6 +218,7 @@ export class SchedulingEngineService {
     if (error || !data) throw new Error(`Failed to schedule post: ${error?.message}`);
     return this.mapRow(data);
   }
+
 
   /**
    * Update the max_retries value for all scheduled posts on a channel.
