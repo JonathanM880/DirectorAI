@@ -2,7 +2,7 @@
 
 ## Overview
 
-DirectorAI is a full-stack content automation SaaS platform that enables business owners to autonomously generate, schedule, and publish marketing content to social media channels — starting with Telegram — through an AI-powered production pipeline. The system integrates an Angular frontend with a Supabase backend, OpenRouter for AI generation, Stripe for subscription billing, and Google Calendar for scheduling, all wired through a platform-agnostic publisher interface that ensures zero-friction expansion to future social networks.
+DirectorAI is a full-stack content automation SaaS platform that enables business owners to autonomously generate, schedule, and publish marketing content to social media channels — starting with Telegram — through an AI-powered production pipeline. The system integrates an Angular frontend with a Supabase backend, OpenRouter for AI generation, and Google Calendar for scheduling, all wired through a platform-agnostic publisher interface that ensures zero-friction expansion to future social networks.
 
 The architecture is organized into four core modules: Infrastructure & Security (auth, storage, keys), Content Factory (AI generation, asset processing), Orchestration & Publishing (scheduling engine, editorial calendar, retry logic), and Data Intelligence (metrics ingestion, alert system). Every module exposes strict TypeScript interfaces and contracts; no module communicates with another except through those contracts, making the system safe to parallelize across teams or AI agents.
 
@@ -21,14 +21,12 @@ graph TD
     Supabase["Supabase (Auth · DB · Storage)"]
     OpenRouter["OpenRouter API (AI Engine)"]
     Telegram["Telegram Bot API"]
-    Stripe["Stripe (Billing)"]
     GCal["Google Calendar API"]
 
     User -->|"HTTPS / WebSocket"| Core
     Core -->|"Supabase JS SDK"| Supabase
     Core -->|"REST"| OpenRouter
     Core -->|"Bot API"| Telegram
-    Core -->|"Webhook / REST"| Stripe
     Core -->|"OAuth2 / REST"| GCal
 ```
 
@@ -128,30 +126,6 @@ sequenceDiagram
         RET->>ALT: notify(userId, post, error)
         ALT-->>DB: INSERT notifications
     end
-```
-
-### 3. Stripe Subscription & Feature Gate Flow
-
-```mermaid
-sequenceDiagram
-    participant U as User (Angular)
-    participant API as Supabase Edge Function
-    participant ST as Stripe API
-    participant DB as Supabase DB
-
-    U->>API: POST /billing/checkout {planId}
-    API->>ST: createCheckoutSession {priceId, customerId}
-    ST-->>API: {sessionId, url}
-    API-->>U: redirect to Stripe Checkout
-
-    Note over ST: User completes payment
-    ST->>API: POST /webhooks/stripe {event: checkout.session.completed}
-    API->>DB: UPDATE subscriptions SET plan, status='active', expires_at
-    API-->>ST: 200 OK
-
-    U->>API: GET /subscription/status
-    API->>DB: SELECT subscription WHERE user_id
-    API-->>U: {plan, status, limits}
 ```
 
 ---
@@ -568,7 +542,7 @@ interface TrendPoint {
 
 ### Component 10: Alert Service (`AlertService`)
 
-**Purpose**: Delivers in-app and push notifications to users about publish success, failures, and billing events.
+**Purpose**: Delivers in-app and push notifications to users about publish success and failures.
 
 **Interface**:
 ```typescript
@@ -593,59 +567,9 @@ type AlertType =
   | 'post_failed'
   | 'post_retrying'
   | 'retry_exhausted'
-  | 'subscription_renewed'
-  | 'subscription_expired'
-  | 'payment_failed'
   | 'api_key_invalid'
 
 type Unsubscribe = () => void
-```
-
----
-
-### Component 11: Billing Service (`BillingService`)
-
-**Purpose**: Manages Stripe subscription lifecycle, plan enforcement, and webhook processing.
-
-**Interface**:
-```typescript
-interface BillingService {
-  createCheckoutSession(userId: string, planId: PlanId): Promise<CheckoutSession>
-  createPortalSession(userId: string): Promise<PortalSession>
-  getSubscription(userId: string): Promise<Subscription>
-  handleWebhookEvent(payload: string, signature: string): Promise<void>
-  checkFeatureAccess(userId: string, feature: Feature): Promise<boolean>
-  getUsage(userId: string): Promise<UsageSummary>
-}
-
-type PlanId = 'starter' | 'professional' | 'agency'
-
-interface Subscription {
-  userId: string
-  planId: PlanId
-  status: 'active' | 'past_due' | 'cancelled' | 'trialing'
-  currentPeriodEnd: Date
-  cancelAtPeriodEnd: boolean
-  stripeSubscriptionId: string
-  stripeCustomerId: string
-}
-
-type Feature =
-  | 'ai_generation'
-  | 'asset_storage'
-  | 'scheduled_posts'
-  | 'recurrence_rules'
-  | 'analytics'
-  | 'multiple_channels'
-
-interface UsageSummary {
-  postsThisMonth: number
-  postsLimit: number
-  storageUsedBytes: number
-  storageLimit: number
-  aiGenerationsThisMonth: number
-  aiGenerationsLimit: number
-}
 ```
 
 ---
@@ -771,25 +695,6 @@ interface AuditLogRecord {
 
 ---
 
-### Model 6: `subscriptions`
-
-```typescript
-interface SubscriptionRecord {
-  id: string
-  userId: string
-  stripeCustomerId: string
-  stripeSubscriptionId: string
-  planId: PlanId
-  status: 'active' | 'past_due' | 'cancelled' | 'trialing'
-  currentPeriodStart: Date
-  currentPeriodEnd: Date
-  cancelAtPeriodEnd: boolean
-  updatedAt: Date
-}
-```
-
----
-
 ## Algorithmic Pseudocode
 
 ### Algorithm 1: Scheduling Engine `tick()`
@@ -815,7 +720,6 @@ BEGIN
     SELECT * FROM scheduled_posts
     WHERE status = 'scheduled'
       AND scheduled_at <= now
-      AND user_id IN (SELECT user_id FROM subscriptions WHERE status = 'active')
     ORDER BY scheduled_at ASC
     LIMIT MAX_BATCH_SIZE
     FOR UPDATE SKIP LOCKED         -- concurrent-safe row locking
@@ -956,28 +860,14 @@ INPUT: request containing userId, prompt, platform, tone, referenceAssetIds
 OUTPUT: GeneratedCopy
 
 PRECONDITIONS:
-  - request.userId has an active subscription
   - request.prompt is non-empty and <= 2000 characters
-  - user's AI generation quota for current month is not exhausted
   - OPENROUTER_API_KEY is valid and available in KeyVault
 
 POSTCONDITIONS:
   - GeneratedCopy is persisted as an Asset with source='ai_generated'
-  - User's AI generation usage counter is incremented
-  - If error: descriptive PublishError returned, no usage counted
+  - If error: descriptive PublishError returned
 
 BEGIN
-  -- Gate check
-  hasAccess ← billingService.checkFeatureAccess(request.userId, 'ai_generation')
-  IF NOT hasAccess THEN
-    THROW FeatureGatedError("AI generation requires an active subscription")
-  END IF
-
-  usage ← billingService.getUsage(request.userId)
-  IF usage.aiGenerationsThisMonth >= usage.aiGenerationsLimit THEN
-    THROW QuotaExceededError("Monthly AI generation limit reached")
-  END IF
-
   -- Build context
   systemPrompt  ← promptBuilder.buildSystemPrompt(request.platform, request.tone)
   userMessage   ← promptBuilder.buildUserMessage(request.prompt, request.referenceAssetIds)
@@ -1044,24 +934,6 @@ async publish(post: ScheduledPost, channel: ChannelConfig): Promise<PublishResul
 - Makes exactly one Telegram API call per invocation (no silent retries inside this method — retry responsibility belongs to `RetryEngine`)
 
 **Loop Invariants:** N/A (no iteration)
-
----
-
-### `BillingService.checkFeatureAccess()`
-
-```typescript
-async checkFeatureAccess(userId: string, feature: Feature): Promise<boolean>
-```
-
-**Preconditions:**
-- `userId` is a non-empty string referencing an existing user
-- `feature` is a valid `Feature` enum value
-
-**Postconditions:**
-- Returns `true` if and only if user has an `active` or `trialing` subscription with a plan that includes `feature`
-- Returns `false` for users with `cancelled`, `past_due`, or no subscription
-- Does not modify any state (pure read)
-- Response time ≤ 200ms (result should be cached per user session)
 
 ---
 
@@ -1223,9 +1095,6 @@ Once a post reaches status `'published'` or `'failed'`, no operation may change 
 ### Property 6: Platform-Agnostic Scheduler
 The `SchedulingEngine.tick()` algorithm must not contain any reference to `'telegram'` or any other specific platform identifier. All platform-specific behavior flows through `SocialMediaPublisher` implementations.
 
-### Property 7: Feature Gate Consistency
-`∀ user u, feature f: if billingService.checkFeatureAccess(u, f) === false, then any call exercising feature f returns a FeatureGatedError before any external API call is made`.
-
 ### Property 8: Scheduled Time Invariant
 `∀ post p created via schedulePost(): p.scheduledAt > p.createdAt`. Posts cannot be scheduled in the past.
 
@@ -1252,18 +1121,6 @@ For a post with consecutive retry attempts at times `t1, t2, t3...`:
 **Response**: Returns `PublishResult` with `error.code = 'INVALID_TOKEN'` and `error.retryable = false`  
 **Recovery**: Post moved to `failed` immediately (retrying with the same bad token is pointless). Alert fires with deep-link to Settings → API Keys to prompt the user to update their bot token.
 
-### Scenario 3: Stripe Payment Failed / Subscription Lapsed
-
-**Condition**: Stripe webhook `invoice.payment_failed` received  
-**Response**: Subscription status updated to `past_due`. `BillingService.checkFeatureAccess()` returns `false` for gated features.  
-**Recovery**: Scheduled posts in queue are paused (not cancelled). Posts resume automatically when subscription is renewed. User receives `payment_failed` alert with direct link to billing portal.
-
-### Scenario 4: AI Generation Quota Exceeded
-
-**Condition**: `usage.aiGenerationsThisMonth >= usage.aiGenerationsLimit`  
-**Response**: `orchestrateGeneration()` throws `QuotaExceededError` before calling OpenRouter — no external API call is made.  
-**Recovery**: AI Studio UI shows quota usage meter with upgrade CTA. Existing assets remain accessible.
-
 ### Scenario 5: Asset Upload Exceeds Size Limit
 
 **Condition**: Uploaded file exceeds platform capability or Supabase Storage limit  
@@ -1282,14 +1139,13 @@ For a post with consecutive retry attempts at times `t1, t2, t3...`:
 
 ### Unit Testing Approach
 
-Unit tests cover pure validation, mapping, formatting, status-transition, and property logic only. Any behavior that depends on Supabase, OpenRouter, Telegram, Stripe, or Google Calendar is verified through direct calls to official provider endpoints using staging or test-mode credentials. The Angular frontend uses Jest + Angular Testing Library for component logic; backend Edge Functions use Deno test runner or Vitest for pure code paths.
+Unit tests cover pure validation, mapping, formatting, status-transition, and property logic only. Any behavior that depends on Supabase, OpenRouter, Telegram, or Google Calendar is verified through direct calls to official provider endpoints using staging or test-mode credentials. The Angular frontend uses Jest + Angular Testing Library for component logic; backend Edge Functions use Deno test runner or Vitest for pure code paths.
 
 Key unit test targets:
 - `TelegramPublisher`: verify payload construction, capability limits, duplicate-publish guard, and error mapping helpers; live publish/error behavior is covered by Telegram integration tests
 - `RetryEngine`: verify backoff delay calculations, max retry enforcement, and correct status transitions
-- `BillingService.checkFeatureAccess()`: test all plan × feature combinations and all subscription statuses
 - `SchedulingEngine.tick()`: verify pure dispatch summary math, status transition rules, and recurrence scheduling helpers; DB locking is covered against Supabase staging
-- `GenAIService.generateCopy()`: verify quota gate, feature gate, prompt construction, and response normalization helpers; successful generation is covered against OpenRouter directly
+- `GenAIService.generateCopy()`: verify prompt construction and response normalization helpers; successful generation is covered against OpenRouter directly
 
 ### Property-Based Testing Approach
 
@@ -1299,7 +1155,6 @@ Properties to test:
 - **P3 (Max Retries Bound)**: for arbitrary `maxRetries` values (1–10) and any sequence of failures, `retryCount` never exceeds `maxRetries`
 - **P8 (Scheduled Time Invariant)**: for any `schedulePost()` call, `scheduledAt` is always after `createdAt`
 - **P10 (Backoff Strictly Increasing)**: for arbitrary retry sequences, delay at attempt `n+1` ≥ delay at attempt `n`
-- **P7 (Feature Gate)**: for any `userId` without active subscription, `checkFeatureAccess` always returns false regardless of `feature` value
 - **P2 (Retry Count Monotonicity)**: for any sequence of retry operations on a post, retry count is non-decreasing
 
 ```typescript
@@ -1323,15 +1178,14 @@ test('retry count never exceeds maxRetries', () => {
 
 ### Integration Testing Approach
 
-Integration tests run only against official external services or provider-supported test environments: a hosted Supabase staging project, OpenRouter with test credentials, a real Telegram bot and private test channel, Stripe test mode or Stripe CLI signed webhook delivery, and a Google Calendar test account/calendar. No local database, in-memory database, mocked API server, MSW handler, or simulated provider response is allowed for integration coverage.
+Integration tests run only against official external services or provider-supported test environments: a hosted Supabase staging project, OpenRouter with test credentials, a real Telegram bot and private test channel, and a Google Calendar test account/calendar. No local database, in-memory database, mocked API server, MSW handler, or simulated provider response is allowed for integration coverage.
 
 Key integration test scenarios:
 1. Full publish flow: create post → tick() → verify the real Telegram test channel received the message → verify Supabase staging status = 'published'
 2. Retry flow: use real provider error conditions where available, such as revoked/invalid Telegram test credentials for non-retryable paths and provider/test-network failures for retryable paths; verify retry state in Supabase staging
-3. Stripe webhook: deliver a signed `checkout.session.completed` event through Stripe test mode or Stripe CLI → verify subscription activated → feature access granted
-4. RLS enforcement: user A cannot read user B's assets, posts, or channels
-5. Audit log immutability: attempt to UPDATE or DELETE audit_log row → verify RLS rejects it
-6. Recurrence: publish recurrent post → verify next instance scheduled with correct `scheduledAt`
+3. RLS enforcement: user A cannot read user B's assets, posts, or channels
+4. Audit log immutability: attempt to UPDATE or DELETE audit_log row → verify RLS rejects it
+5. Recurrence: publish recurrent post → verify next instance scheduled with correct `scheduledAt`
 
 ---
 
@@ -1373,11 +1227,8 @@ Key integration test scenarios:
 - Every table in the schema has RLS enabled. Default policy: deny all. Explicit policies grant access only to rows where `user_id = auth.uid()`
 - `audit_log` table: INSERT allowed for service_role only; SELECT allowed for owning user; UPDATE and DELETE denied for all roles
 
-### Stripe Webhook Verification
-- All incoming Stripe webhook requests are verified using `stripe.webhooks.constructEvent(payload, signature, STRIPE_WEBHOOK_SECRET)` before any DB mutation
-
 ### Content Isolation
-- Multi-tenant: every resource (assets, posts, channels, subscriptions) is scoped to a `user_id`. Cross-user access is impossible at the DB layer even if application logic has a bug
+- Multi-tenant: every resource (assets, posts, channels) is scoped to a `user_id`. Cross-user access is impossible at the DB layer even if application logic has a bug
 
 ### Authentication
 - Supabase Auth with JWT; tokens expire in 1 hour with automatic refresh
@@ -1393,7 +1244,6 @@ Key integration test scenarios:
 |---|---|---|
 | `@supabase/supabase-js` | `^2.x` | DB, Auth, Storage, Realtime client |
 | `openai` | `^4.x` | OpenRouter API (OpenAI-compatible SDK) |
-| `stripe` | `^14.x` | Stripe billing SDK |
 | `googleapis` | `^140.x` | Google Calendar OAuth2 + API |
 | `node-telegram-bot-api` (or raw fetch) | `^0.64.x` | Telegram Bot API calls |
 
@@ -1402,7 +1252,6 @@ Key integration test scenarios:
 |---|---|---|
 | `@angular/core` | `^17.x` | SPA framework |
 | `@supabase/supabase-js` | `^2.x` | Auth + realtime on frontend |
-| `@stripe/stripe-js` | `^3.x` | Stripe.js for checkout redirect |
 | `fullcalendar` / `@fullcalendar/angular` | `^6.x` | Editorial Calendar view |
 | `chart.js` / `ng2-charts` | `^4.x` | Metrics charts |
 | `@angular/cdk` | `^17.x` | Drag-and-drop for calendar, virtual scroll |
@@ -1493,12 +1342,11 @@ Sub-routes: `/auth/login`, `/auth/register`, `/auth/recover`
 - Activity Log: paginated table of all `audit_log` entries with filters by status, date, platform
 - Failed Posts panel: quick re-publish action inline
 
-### View 8: Settings & Billing (`/settings`)
-Sub-sections: Profile, API Keys, Channels, Billing
+### View 8: Settings (`/settings`)
+Sub-sections: Profile, API Keys, Channels
 - Profile: display name, timezone, avatar
 - API Keys: masked fields for Telegram bot token, Google Calendar; "Update" triggers `KeyVaultService.rotateKey()`
 - Channels: list of connected channels, add/remove
-- Billing: current plan display, usage meters, "Manage Subscription" → Stripe portal, "Upgrade" → checkout
 
 ---
 
@@ -1527,8 +1375,6 @@ DirectorAI/
 │       │   └── index.ts
 │       ├── retry-processor/          # Cron: process retry queue
 │       │   └── index.ts
-│       ├── stripe-webhook/           # POST: handle Stripe events
-│       │   └── index.ts
 │       ├── generate-content/         # POST: AI generation
 │       │   └── index.ts
 │       └── metrics-sync/             # Cron: fetch Telegram metrics
@@ -1542,18 +1388,15 @@ DirectorAI/
 │   │   │   │   ├── gen-ai.service.ts
 │   │   │   │   ├── scheduling.service.ts
 │   │   │   │   ├── metrics.service.ts
-│   │   │   │   ├── billing.service.ts
 │   │   │   │   └── alert.service.ts
 │   │   │   ├── guards/
-│   │   │   │   ├── auth.guard.ts
-│   │   │   │   └── feature-gate.guard.ts
+│   │   │   │   └── auth.guard.ts
 │   │   │   └── interceptors/
 │   │   │       └── auth.interceptor.ts
 │   │   ├── shared/
 │   │   │   ├── components/
 │   │   │   │   ├── broadcast-ticker/
-│   │   │   │   ├── status-badge/
-│   │   │   │   └── usage-meter/
+│   │   │   │   └── status-badge/
 │   │   │   └── design-tokens/
 │   │   │       └── tokens.scss
 │   │   └── features/
