@@ -2,7 +2,7 @@
 
 ## Introduction
 
-DirectorAI is a full-stack content automation SaaS platform that enables business owners to autonomously generate, schedule, and publish marketing content to social media channels — starting with Telegram — through an AI-powered production pipeline. The system integrates an Angular frontend with a Supabase backend, OpenRouter for AI text and image generation, Stripe for subscription billing, and Google Calendar for scheduling context. The platform is organized into four functional modules: Infrastructure & Security, Content Factory, Orchestration & Publishing, and Data Intelligence.
+DirectorAI is a full-stack content automation SaaS platform that enables business owners to autonomously generate, schedule, and publish marketing content to social media channels — starting with Telegram — through an AI-powered production pipeline. The system integrates an Angular frontend with a Supabase backend, OpenRouter for AI text and image generation, and Google Calendar for scheduling context. The platform is organized into four functional modules: Infrastructure & Security, Content Factory, Orchestration & Publishing, and Data Intelligence.
 
 This document derives requirements from the approved design document, capturing all functional, behavioral, and security obligations that the system must satisfy.
 
@@ -10,7 +10,7 @@ This document derives requirements from the approved design document, capturing 
 
 ## External Integration Policy
 
-All third-party integrations SHALL call the official external service endpoints directly: Supabase, OpenRouter, Telegram Bot API, Stripe, and Google Calendar. The implementation SHALL NOT use mocked APIs, fake local API servers, local databases, in-memory database substitutes, or simulated service responses for any integration behavior. Tests that validate integration behavior SHALL use official sandbox/test-mode resources or dedicated staging resources from the provider.
+All third-party integrations SHALL call the official external service endpoints directly: Supabase, OpenRouter, Telegram Bot API, and Google Calendar. The implementation SHALL NOT use mocked APIs, fake local API servers, local databases, in-memory database substitutes, or simulated service responses for any integration behavior. Tests that validate integration behavior SHALL use official sandbox/test-mode resources or dedicated staging resources from the provider.
 
 ---
 
@@ -25,14 +25,11 @@ All third-party integrations SHALL call the official external service endpoints 
 - **SchedulingEngine**: The cron-driven service that polls for due scheduled posts and dispatches them through the SocialMediaPublisher interface.
 - **RetryEngine**: The service that manages exponential-backoff retry queues for failed publish attempts.
 - **MetricsService**: The service that ingests, stores, and aggregates platform engagement metrics.
-- **AlertService**: The service that delivers in-app and realtime notifications about publish events and billing changes.
-- **BillingService**: The service that manages Stripe subscription lifecycle and feature-gate enforcement.
+- **AlertService**: The service that delivers in-app and realtime notifications about publish events.
 - **ScheduledPost**: A database record representing a piece of content queued for publication at a specific time.
 - **Channel**: A user-configured social media destination (e.g., a Telegram channel) linked to a platform.
 - **Asset**: A media file (image, video, audio, PDF, or AI-generated text) managed by AssetStorageService.
 - **AuditLog**: The immutable, append-only record of all publish and moderation events.
-- **PlanId**: One of `starter`, `professional`, or `agency` — the three subscription tiers.
-- **Feature**: A gated platform capability: `ai_generation`, `asset_storage`, `scheduled_posts`, `recurrence_rules`, `analytics`, `multiple_channels`.
 - **PostStatus**: The lifecycle state of a ScheduledPost: `draft`, `scheduled`, `publishing`, `published`, `retrying`, `failed`, `cancelled`.
 - **PublishError**: A structured error returned by a SocialMediaPublisher, containing an error code, message, and `retryable` flag.
 - **RecurrenceRule**: A rule governing how a ScheduledPost repeats (daily, weekly, monthly).
@@ -45,7 +42,7 @@ All third-party integrations SHALL call the official external service endpoints 
 
 ### Requirement 1: User Authentication
 
-**User Story:** As a business owner, I want to create an account and sign in securely, so that I can access my private content, channels, and billing information.
+**User Story:** As a business owner, I want to create an account and sign in securely, so that I can access my private content and channels.
 
 #### Acceptance Criteria
 
@@ -99,14 +96,12 @@ All third-party integrations SHALL call the official external service endpoints 
 
 #### Acceptance Criteria
 
-1. WHEN a user with an active subscription submits a non-empty prompt and a valid `SocialPlatform` to `generateCopy()`, THE GenAIService SHALL return a `GeneratedCopy` object with non-empty `content`, a valid `platform`, and a positive `tokensUsed` value.
+1. WHEN a user submits a non-empty prompt and a valid `SocialPlatform` to `generateCopy()`, THE GenAIService SHALL return a `GeneratedCopy` object with non-empty `content`, a valid `platform`, and a positive `tokensUsed` value.
 2. WHEN a user submits a prompt to `generateImage()`, THE GenAIService SHALL return a `GeneratedImage` object with a non-empty `url` and the original `prompt` preserved.
 3. WHEN `brainstorm()` is called with `count = N`, THE GenAIService SHALL return a `BrainstormResult` containing exactly `N` content ideas for the specified platform.
-4. IF a user's `aiGenerationsThisMonth` is greater than or equal to `aiGenerationsLimit`, THEN THE GenAIService SHALL throw a `QuotaExceededError` without making any call to the OpenRouter API.
-5. IF `checkFeatureAccess(userId, 'ai_generation')` returns `false`, THEN THE GenAIService SHALL throw a `FeatureGatedError` without making any call to the OpenRouter API.
-6. WHEN `streamGenerate()` is called with a valid `CopyRequest`, THE GenAIService SHALL invoke the `onChunk` callback at least once with non-empty string chunks as the response streams.
-7. WHEN `regenerate(assetId)` is called, THE GenAIService SHALL return a new `GeneratedAsset` derived from the same original asset, with optional instruction modifications applied.
-8. WHEN AI generation succeeds, THE GenAIService SHALL persist the generated content as an Asset record with `source = 'ai_generated'` and increment the user's `ai_generations_this_month` counter by one.
+4. WHEN `streamGenerate()` is called with a valid `CopyRequest`, THE GenAIService SHALL invoke the `onChunk` callback at least once with non-empty string chunks as the response streams.
+5. WHEN `regenerate(assetId)` is called, THE GenAIService SHALL return a new `GeneratedAsset` derived from the same original asset, with optional instruction modifications applied.
+6. WHEN AI generation succeeds, THE GenAIService SHALL persist the generated content as an Asset record with `source = 'ai_generated'`.
 
 ---
 
@@ -135,16 +130,15 @@ All third-party integrations SHALL call the official external service endpoints 
 
 1. WHEN `schedulePost(request)` is called with `request.scheduledAt > now()`, a valid `channelId` belonging to `request.userId`, and non-empty content, THE SchedulingEngine SHALL persist a `ScheduledPost` record with `status === 'scheduled'` and return it.
 2. IF `schedulePost(request)` is called with `request.scheduledAt <= now()`, THEN THE SchedulingEngine SHALL reject the request with a validation error.
-3. IF `schedulePost(request)` is called for a user where `checkFeatureAccess(userId, 'scheduled_posts')` returns `false`, THEN THE SchedulingEngine SHALL reject the request with a `FeatureGatedError`.
-4. THE SchedulingEngine SHALL ensure that for every ScheduledPost created via `schedulePost()`, `post.scheduledAt > post.createdAt`.
-5. WHEN `tick()` is executed, THE SchedulingEngine SHALL query all ScheduledPost records where `status === 'scheduled'` AND `scheduled_at <= now()` AND the owning user has an active subscription, and dispatch each to the appropriate SocialMediaPublisher.
-6. WHEN `tick()` completes, THE SchedulingEngine SHALL return a `DispatchSummary` where `processed === succeeded + failed + retryQueued`.
-7. WHEN a post is dispatched, THE SchedulingEngine SHALL first call `validatePost(post)` on the publisher; IF validation fails, THEN THE SchedulingEngine SHALL update the post to `status = 'failed'` and insert an audit log entry without calling the platform API.
-8. WHEN `cancelPost(postId)` is called on a post with `status === 'scheduled'`, THE SchedulingEngine SHALL update the post to `status === 'cancelled'`.
-9. WHEN `reschedulePost(postId, newScheduledAt)` is called with `newScheduledAt > now()`, THE SchedulingEngine SHALL update the post's `scheduledAt` and return the updated ScheduledPost.
-10. WHERE the `recurrence_rules` feature is enabled, WHEN a recurring post is successfully published, THE SchedulingEngine SHALL automatically create and persist the next recurrence instance with the correctly computed `scheduledAt`.
-11. WHEN `getUpcomingPosts(userId, from, to)` is called, THE SchedulingEngine SHALL return all ScheduledPost records for `userId` with `scheduledAt` within `[from, to]` and `status === 'scheduled'`.
-12. THE SchedulingEngine SHALL use `FOR UPDATE SKIP LOCKED` when querying posts for dispatch, ensuring concurrent cron executions never process the same post.
+3. THE SchedulingEngine SHALL ensure that for every ScheduledPost created via `schedulePost()`, `post.scheduledAt > post.createdAt`.
+4. WHEN `tick()` is executed, THE SchedulingEngine SHALL query all ScheduledPost records where `status === 'scheduled'` AND `scheduled_at <= now()`, and dispatch each to the appropriate SocialMediaPublisher.
+5. WHEN `tick()` completes, THE SchedulingEngine SHALL return a `DispatchSummary` where `processed === succeeded + failed + retryQueued`.
+6. WHEN a post is dispatched, THE SchedulingEngine SHALL first call `validatePost(post)` on the publisher; IF validation fails, THEN THE SchedulingEngine SHALL update the post to `status = 'failed'` and insert an audit log entry without calling the platform API.
+7. WHEN `cancelPost(postId)` is called on a post with `status === 'scheduled'`, THE SchedulingEngine SHALL update the post to `status === 'cancelled'`.
+8. WHEN `reschedulePost(postId, newScheduledAt)` is called with `newScheduledAt > now()`, THE SchedulingEngine SHALL update the post's `scheduledAt` and return the updated ScheduledPost.
+9. WHEN a recurring post is successfully published, THE SchedulingEngine SHALL automatically create and persist the next recurrence instance with the correctly computed `scheduledAt`.
+10. WHEN `getUpcomingPosts(userId, from, to)` is called, THE SchedulingEngine SHALL return all ScheduledPost records for `userId` with `scheduledAt` within `[from, to]` and `status === 'scheduled'`.
+11. THE SchedulingEngine SHALL use `FOR UPDATE SKIP LOCKED` when querying posts for dispatch, ensuring concurrent cron executions never process the same post.
 
 ---
 
@@ -184,7 +178,7 @@ All third-party integrations SHALL call the official external service endpoints 
 
 ### Requirement 9: Alerts and Notifications
 
-**User Story:** As a business owner, I want to receive real-time notifications about publish outcomes and billing events, so that I can take immediate action when issues arise.
+**User Story:** As a business owner, I want to receive real-time notifications about publish outcomes, so that I can take immediate action when issues arise.
 
 #### Acceptance Criteria
 
@@ -195,27 +189,10 @@ All third-party integrations SHALL call the official external service endpoints 
 5. WHEN `markAsRead(notificationId)` is called, THE AlertService SHALL update the notification so that it no longer appears in results when `getNotifications(userId, unreadOnly = true)` is called.
 6. WHEN `markAllAsRead(userId)` is called, THE AlertService SHALL mark all of the user's notifications as read so that `getNotifications(userId, unreadOnly = true)` returns an empty array.
 7. WHEN `subscribeToRealtime(userId, callback)` is called, THE AlertService SHALL deliver each new Notification to `callback` in real time via Supabase Realtime WebSocket, without requiring a page refresh.
-8. WHEN a billing event occurs (subscription renewed, payment failed, or subscription expired), THE AlertService SHALL deliver the corresponding alert type (`subscription_renewed`, `payment_failed`, or `subscription_expired`) to the user.
 
 ---
 
-### Requirement 10: Subscription Billing and Feature Gating
 
-**User Story:** As a business owner, I want to subscribe to a plan and have the platform enforce its limits, so that I only access features appropriate to my subscription tier.
-
-#### Acceptance Criteria
-
-1. WHEN a user calls `createCheckoutSession(userId, planId)` with a valid plan identifier, THE BillingService SHALL create a Stripe Checkout Session and return a `CheckoutSession` containing a non-empty `url`.
-2. WHEN Stripe sends a `checkout.session.completed` webhook event, THE BillingService SHALL update the user's subscription record to `status = 'active'` with the correct `planId`, `currentPeriodStart`, and `currentPeriodEnd`.
-3. WHEN Stripe sends an `invoice.payment_failed` webhook event, THE BillingService SHALL update the subscription record to `status = 'past_due'` and pause any pending scheduled posts.
-4. WHEN a Stripe webhook request arrives with an invalid `Stripe-Signature` header, THE BillingService SHALL reject the request without performing any database mutation.
-5. WHEN `checkFeatureAccess(userId, feature)` is called for a user with an `active` or `trialing` subscription on a plan that includes `feature`, THE BillingService SHALL return `true`.
-6. WHEN `checkFeatureAccess(userId, feature)` is called for a user with a `cancelled`, `past_due`, or absent subscription, THE BillingService SHALL return `false` for all Feature values.
-7. IF `checkFeatureAccess(userId, feature)` returns `false`, THEN THE BillingService SHALL ensure any attempt to exercise that feature returns a `FeatureGatedError` before any external API call is made.
-8. WHEN `getUsage(userId)` is called, THE BillingService SHALL return a `UsageSummary` with accurate values for `postsThisMonth`, `storageUsedBytes`, `aiGenerationsThisMonth`, and their respective limits for the user's current plan.
-9. WHEN `createPortalSession(userId)` is called, THE BillingService SHALL create and return a Stripe Billing Portal session URL for the user's existing Stripe customer.
-
----
 
 ### Requirement 11: Audit Logging
 
@@ -237,14 +214,13 @@ All third-party integrations SHALL call the official external service endpoints 
 
 #### Acceptance Criteria
 
-1. THE system SHALL enable Row Level Security on all tables (`users_profile`, `channels`, `scheduled_posts`, `assets`, `audit_log`, `subscriptions`) with a default-deny policy.
+1. THE system SHALL enable Row Level Security on all tables (`users_profile`, `channels`, `scheduled_posts`, `assets`, `audit_log`) with a default-deny policy.
 2. FOR ALL tables with a `user_id` column, THE RLS policies SHALL ensure that any authenticated query returns only rows where `user_id = auth.uid()`.
 3. THE AssetStorageService SHALL ensure that `listAssets(userA)` never returns any asset where `asset.userId !== userA.id`, enforced at both the application layer and the RLS layer.
 4. THE SchedulingEngine SHALL ensure that `getUpcomingPosts(userId, from, to)` never returns posts belonging to a different user.
 5. WHEN an unauthenticated request is made to any protected API endpoint, THE system SHALL return HTTP 401 before processing the request body.
 6. THE KeyVaultService SHALL store all user-supplied API keys encrypted with AES-256 in Supabase Vault; raw key values SHALL never appear in any HTTP response to the Angular frontend.
-7. WHEN a Stripe webhook is received, THE BillingService SHALL verify the `Stripe-Signature` header using the `STRIPE_WEBHOOK_SECRET` before performing any database operation.
-8. THE system SHALL store all service-level secrets (`SUPABASE_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY`, `STRIPE_WEBHOOK_SECRET`) exclusively in Supabase project secrets, never in source-controlled files.
+7. THE system SHALL store all service-level secrets (`SUPABASE_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY`) exclusively in Supabase project secrets, never in source-controlled files.
 
 ---
 
@@ -283,9 +259,7 @@ All third-party integrations SHALL call the official external service endpoints 
 
 1. THE Angular SPA SHALL provide authenticated route modules for: `/dashboard`, `/studio`, `/assets`, `/calendar`, `/metrics`, `/automation`, and `/settings`, each lazy-loaded.
 2. WHEN an unauthenticated user attempts to navigate to a protected route, THE auth guard SHALL redirect to `/auth/login`.
-3. WHEN a user navigates to a route requiring a gated feature the user's plan does not include, THE feature-gate guard SHALL redirect to the billing settings page with an upgrade prompt.
-4. THE application SHALL display a persistent broadcast ticker at the bottom of every authenticated view, showing the last 3 published post titles with their timestamps and platform icons.
-5. THE AI Studio view SHALL display a usage meter showing `aiGenerationsThisMonth` and `aiGenerationsLimit` for the current user.
-6. WHEN the AI Studio is in streaming mode and tokens are arriving, THE Studio view SHALL render each token chunk progressively as it arrives via the `onChunk` callback.
-7. THE Asset Repository view SHALL support drag-and-drop file upload, multi-select with bulk actions (delete, move, tag), and both grid and list display modes.
-8. THE Metrics view SHALL provide a date range picker supporting presets of last 7 days, 30 days, and 90 days, as well as a custom range.
+3. THE application SHALL display a persistent broadcast ticker at the bottom of every authenticated view, showing the last 3 published post titles with their timestamps and platform icons.
+4. WHEN the AI Studio is in streaming mode and tokens are arriving, THE Studio view SHALL render each token chunk progressively as it arrives via the `onChunk` callback.
+5. THE Asset Repository view SHALL support drag-and-drop file upload, multi-select with bulk actions (delete, move, tag), and both grid and list display modes.
+6. THE Metrics view SHALL provide a date range picker supporting presets of last 7 days, 30 days, and 90 days, as well as a custom range.
