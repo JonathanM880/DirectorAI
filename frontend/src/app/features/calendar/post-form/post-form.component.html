@@ -1,0 +1,187 @@
+<form (ngSubmit)="submit()" class="post-form" id="post-form-inline">
+
+  <!-- ── Content ─────────────────────────────────────────────────────── -->
+  <div class="form-group">
+    <label for="pf-content">Content</label>
+    <textarea
+      id="pf-content"
+      name="text"
+      [(ngModel)]="text"
+      placeholder="Write your post content…"
+      rows="4"
+      required
+    ></textarea>
+  </div>
+
+  <!-- ── Drag-and-Drop Media Upload ──────────────────────────────────── -->
+  <div class="form-group">
+    <label>Media Attachments</label>
+
+    <!-- Drop zone -->
+    <div
+      class="drop-zone"
+      [class.drag-over]="isDragOver()"
+      [class.has-files]="uploadedAssets().length > 0"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave()"
+      (drop)="onDrop($event)"
+      (click)="fileInput.click()"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="fileInput.click()"
+      aria-label="Upload media files"
+    >
+      <!-- Hidden native file input -->
+      <input
+        #fileInput
+        type="file"
+        id="pf-file-input"
+        multiple
+        accept="image/*,video/*,audio/*,application/pdf"
+        style="display:none"
+        (change)="onFileInputChange($event)"
+      />
+
+      <!-- Idle state -->
+      @if (uploadedAssets().length === 0 && !uploading()) {
+        <div class="drop-zone-idle">
+          <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p class="drop-hint">
+            <strong>Drag &amp; drop</strong> files here, or click to browse
+          </p>
+          <p class="drop-sub">Images · Videos · Audio · PDF &mdash; max 50 MB each</p>
+        </div>
+      }
+
+      <!-- Uploading spinner -->
+      @if (uploading()) {
+        <div class="drop-zone-uploading">
+          <div class="spinner"></div>
+          <span>Uploading {{ pendingCount() }} file{{ pendingCount() > 1 ? 's' : '' }}…</span>
+        </div>
+      }
+    </div>
+
+    <!-- Uploaded asset pills (rendered outside the drop-zone) -->
+    @if (uploadedAssets().length > 0) {
+      <div class="asset-list">
+        @for (asset of uploadedAssets(); track asset.id) {
+          <div class="asset-pill">
+            <!-- Image preview thumbnail -->
+            @if (asset.mimeType.startsWith('image/')) {
+              <img class="asset-thumb" [src]="asset.previewUrl" [alt]="asset.filename" />
+            } @else {
+              <div class="asset-icon">{{ mimeIcon(asset.mimeType) }}</div>
+            }
+
+            <div class="asset-info">
+              <span class="asset-name" [title]="asset.filename">{{ asset.filename }}</span>
+              <span class="asset-size">{{ formatBytes(asset.sizeBytes) }}</span>
+            </div>
+
+            <button
+              type="button"
+              class="asset-remove"
+              (click)="removeAsset(asset)"
+              [attr.aria-label]="'Remove ' + asset.filename"
+            >✕</button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Per-upload error -->
+    @if (uploadError()) {
+      <div class="upload-error" role="alert">⚠️ {{ uploadError() }}</div>
+    }
+  </div>
+
+  <!-- ── Channel + Schedule row ───────────────────────────────────────── -->
+  <div class="form-row">
+    <div class="form-group">
+      <label for="pf-channel">Channel</label>
+      @if (loading()) {
+        <span class="loading-text">Loading channels…</span>
+      } @else if (channels().length === 0) {
+        <span class="empty-text">No channels configured. Add one in Settings.</span>
+      } @else {
+        <select id="pf-channel" name="channel" [(ngModel)]="channelId" required>
+          @for (ch of channels(); track ch.id) {
+            <option [value]="ch.id">{{ platformIcon(ch.platform) }} {{ ch.name }}</option>
+          }
+        </select>
+      }
+    </div>
+
+    <div class="form-group">
+      <label for="pf-date">Schedule Date &amp; Time</label>
+      <input
+        type="datetime-local"
+        id="pf-date"
+        name="scheduledAt"
+        [(ngModel)]="scheduledAt"
+        required
+      />
+    </div>
+  </div>
+
+  <!-- ── Recurrence toggle ─────────────────────────────────────────────── -->
+  <div class="form-group">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        id="pf-recurrence"
+        [(ngModel)]="enableRecurrence"
+        name="enableRecurrence"
+      />
+      <span>Recurring post</span>
+    </label>
+
+    @if (enableRecurrence) {
+      <div class="recurrence-row">
+        <div class="form-group">
+          <label for="pf-frequency">Frequency</label>
+          <select id="pf-frequency" name="frequency" [(ngModel)]="frequency">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="pf-interval">Interval</label>
+          <input type="number" id="pf-interval" name="interval"
+            [(ngModel)]="interval" min="1" max="30" />
+        </div>
+        <div class="form-group">
+          <label for="pf-end-date">End Date (optional)</label>
+          <input type="date" id="pf-end-date" name="endDate"
+            [(ngModel)]="endDate" />
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- ── Form-level error ──────────────────────────────────────────────── -->
+  @if (error()) {
+    <div class="form-error" role="alert">⚠️ {{ error() }}</div>
+  }
+
+  <!-- ── Submit ────────────────────────────────────────────────────────── -->
+  <div class="form-actions">
+    <button type="button" class="btn-secondary" (click)="cancel.emit()">Cancel</button>
+    <button type="submit" id="pf-submit" [disabled]="submitting() || uploading()">
+      @if (submitting()) {
+        <span class="spinner-sm"></span> Scheduling…
+      } @else {
+        Schedule Post
+      }
+    </button>
+  </div>
+
+</form>
