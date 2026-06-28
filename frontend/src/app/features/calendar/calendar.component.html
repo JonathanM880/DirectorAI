@@ -32,16 +32,14 @@
     </div>
   </div>
 
-  <!-- ── Loading bar ────────────────────────────────────── -->
-  @if (loading()) {
-    <div class="loading-overlay">
-      <span class="spinner"></span>
-      Loading posts…
-    </div>
-  }
-
   <!-- ── Calendar ──────────────────────────────────────── -->
   <div class="calendar-wrapper" [class.drawer-open]="isDrawerOpen">
+    @if (loading()) {
+      <div class="loading-overlay">
+        <span class="spinner"></span>
+        Loading posts…
+      </div>
+    }
     <full-calendar [options]="calendarOptions"></full-calendar>
   </div>
 
@@ -124,6 +122,7 @@
             class="btn-edit"
             (click)="openEditForm()"
             [disabled]="post.status === 'published' || post.status === 'cancelled'"
+            [title]="(post.status === 'published' || post.status === 'cancelled') ? 'Cannot edit published or cancelled posts' : 'Edit this post'"
           >✏️ Edit & Reschedule</button>
 
           <button
@@ -154,6 +153,21 @@
           (saved)="onPostFormSaved($event)"
           (cancel)="closeNewPostPanel()">
         </app-post-form>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Edit Post Modal ─────────────────────────────────────── -->
+@if (editPostOpen()) {
+  <div class="new-post-overlay" (click)="editPostOpen.set(false)" role="dialog" aria-modal="true" aria-label="Edit post">
+    <div class="new-post-panel" (click)="$event.stopPropagation()">
+      <div class="panel-header">
+        <h2>Edit Post</h2>
+        <button class="close-btn" (click)="editPostOpen.set(false)" aria-label="Close">✕</button>
+      </div>
+      <div class="panel-body" style="padding-bottom: 0;">
+        <app-edit-post [postToEdit]="selectedPost()!" (saved)="onEditSaved($event)" (cancel)="editPostOpen.set(false)"></app-edit-post>
       </div>
     </div>
   </div>

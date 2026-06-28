@@ -1,5 +1,6 @@
 import {
   Component,
+  Input,
   Output,
   EventEmitter,
   OnInit,
@@ -9,13 +10,13 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SchedulingEngineService } from '../../services/scheduling-engine.service';
+import { SchedulingEngineService } from '../../../features/services/scheduling-engine.service';
 import {
   AssetUploadService,
   UploadedAsset,
   mimeToMediaType
 } from '../../../core/services/asset-upload.service';
-import { Channel, RecurrenceRule } from '@director-ai/types';
+import { Channel, RecurrenceRule, ScheduledPost } from '@director-ai/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -45,15 +46,16 @@ export interface PostFormData {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Component({
-  selector: 'app-post-form',
+  selector: 'app-edit-post',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './post-form.component.html',
-  styleUrls: ['./post-form.component.scss']
+  templateUrl: './edit-post.component.html',
+  styleUrls: ['./edit-post.component.scss']
 })
-export class PostFormComponent implements OnInit, OnDestroy {
+export class EditPostComponent implements OnInit, OnDestroy {
   @Output() saved = new EventEmitter<PostFormData>();
   @Output() cancel = new EventEmitter<void>();
+  @Input({ required: true }) postToEdit!: ScheduledPost;
 
   private schedulingEngine = inject(SchedulingEngineService);
   private assetUpload      = inject(AssetUploadService);
@@ -91,6 +93,35 @@ export class PostFormComponent implements OnInit, OnDestroy {
       if (chs.length > 0) {
         this.channelId = chs[0].id;
       }
+        this.text = this.postToEdit.content.text || '';
+        this.channelId = this.postToEdit.channelId;
+        
+        // Convert to local datetime-local string
+        const dt = new Date(this.postToEdit.scheduledAt);
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const hours = String(dt.getHours()).padStart(2, '0');
+        const minutes = String(dt.getMinutes()).padStart(2, '0');
+        this.scheduledAt = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+        // Note: postToEdit.recurrenceRule is not on ScheduledPost by default, 
+        // but if it is passed from the calendar (which now joins it), we can prefill it.
+        const rule = (this.postToEdit as any).recurrenceRule;
+        if (rule) {
+          this.enableRecurrence = true;
+          this.frequency = rule.frequency;
+          this.interval = rule.interval;
+          if (rule.endDate) {
+            const ed = new Date(rule.endDate);
+            this.endDate = new Date(ed.getTime() - ed.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+          }
+        }
+
+        if (this.postToEdit.content.mediaAssetIds?.length) {
+          const assets = await this.assetUpload.getAssetsByIds(this.postToEdit.content.mediaAssetIds);
+          this.uploadedAssets.set(assets);
+        }
     } catch {
       // channels remain empty; the template shows an explanatory message
     } finally {
@@ -198,10 +229,15 @@ export class PostFormComponent implements OnInit, OnDestroy {
 
     let recurrenceRule: RecurrenceRule | undefined;
     if (this.enableRecurrence) {
+      let finalEndDate: Date | undefined;
+      if (this.endDate) {
+        const timePart = this.scheduledAt.split('T')[1];
+        finalEndDate = new Date(`${this.endDate}T${timePart}`);
+      }
       recurrenceRule = {
         frequency: this.frequency,
         interval:  Math.max(1, this.interval),
-        endDate:   this.endDate ? new Date(this.endDate) : undefined
+        endDate:   finalEndDate
       };
     }
 
@@ -212,12 +248,12 @@ export class PostFormComponent implements OnInit, OnDestroy {
       : undefined;
 
     this.saved.emit({
-      text: this.text,
       channelId: this.channelId,
-      scheduledAt: dt,
-      recurrenceRule,
+      text: this.text.trim(),
       mediaAssetIds,
-      mediaType
+      mediaType,
+      scheduledAt: new Date(this.scheduledAt),
+      recurrenceRule
     });
   }
 

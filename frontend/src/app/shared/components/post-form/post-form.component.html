@@ -177,9 +177,9 @@
     <button type="button" class="btn-secondary" (click)="cancel.emit()">Cancel</button>
     <button type="submit" id="pf-submit" [disabled]="submitting() || uploading()">
       @if (submitting()) {
-        <span class="spinner-sm"></span> Scheduling…
+        <span class="spinner-sm"></span> {{ postToEdit ? 'Updating…' : 'Scheduling…' }}
       } @else {
-        Schedule Post
+        {{ postToEdit ? 'Update Post' : 'Schedule Post' }}
       }
     </button>
   </div>
