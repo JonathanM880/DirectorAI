@@ -288,12 +288,10 @@ This plan implements the DirectorAI full-stack content automation SaaS platform 
   - [x] 5.3.3 Implement 8px spacing grid utility classes; establish generous margin defaults for section spacing
   - [x] 5.3.4 Define page transition animation: horizontal slide 150ms ease-out; chart mount animation 300ms stagger
   - [x] 5.3.5 Create shared `StatusBadgeComponent` mapping `PostStatus` to design-token colors: `'published'` → `--color-live`, `'scheduled'` → `--color-signal`, `'failed'` → `--color-fault`
-
-- [x] 5.4 Global shell and broadcast ticker
-  - [x] 5.4.1 Create `AppShellComponent` as authenticated layout wrapper: left sidebar navigation, main content `<router-outlet>`, bottom broadcast ticker bar
-  - [x] 5.4.2 Implement `BroadcastTickerComponent`: subscribe to `AlertService.getNotifications(userId)`; display last 3 published post titles with `timestamp` and platform icon; scroll horizontally at 60px/s; pause on hover — satisfies Req 15.4
-  - [x] 5.4.3 Implement sidebar navigation links for all 7 authenticated routes; highlight active route; show plan tier badge
-  - [x] 5.4.4 Implement `NotificationBellComponent`: subscribe to `AlertService.subscribeToRealtime`; badge shows unread count; dropdown lists recent notifications with `markAsRead` action
+- [x] 5.4 Global shell
+  - [x] 5.4.1 Create `AppShellComponent` as authenticated layout wrapper: left sidebar navigation, main content `<router-outlet>`
+  - [x] 5.4.2 Implement sidebar navigation links for all 7 authenticated routes; highlight active route; show plan tier badge
+  - [x] 5.4.3 Implement `NotificationBellComponent`: subscribe to `AlertService.subscribeToRealtime`; badge shows unread count; dropdown lists recent notifications with `markAsRead` action
 
 
 - [ ] 6.1 Dashboard view (`/dashboard`)

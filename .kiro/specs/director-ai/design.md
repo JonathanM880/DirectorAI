@@ -1283,11 +1283,9 @@ Key integration test scenarios:
 - Body: `Inter` — neutral, high-legibility at dense information sizes
 - Utility/Data: `JetBrains Mono` — monospace for message IDs, log entries, API keys, timestamps
 
-**Signature Element**: A persistent "broadcast ticker" bar at the bottom of every authenticated view — a single scrolling line showing the last 3 published post titles with their timestamps and platform icons. Like a newsroom ticker. Everything else in the UI is quiet and structured.
-
 **Layout Principle**: Deliberate whitespace between sections using an 8px grid; generous margins (not cramped), but content-dense within each card. No decorative gradients. Borders carry information (active/inactive states, platform color coding).
 
-**Motion**: Page transitions use a subtle horizontal slide with 150ms ease-out (production control-room feel, not playful). Data charts animate in on mount (300ms stagger). The broadcast ticker scrolls at 60px/s with a pause on hover.
+**Motion**: Page transitions use a subtle horizontal slide with 150ms ease-out (production control-room feel, not playful). Data charts animate in on mount (300ms stagger).
 
 ---
 
@@ -1305,7 +1303,6 @@ Sub-routes: `/auth/login`, `/auth/register`, `/auth/recover`
 - Recent Activity feed (last 10 events from `audit_log`)
 - Mini Editorial Calendar (3-day lookahead)
 - System health indicators (scheduler last ran, API statuses)
-- Broadcast ticker active
 
 ### View 3: AI Studio (`/studio`)
 - Split-pane: left = prompt input + settings (platform, tone, length); right = generated output
@@ -1395,7 +1392,6 @@ DirectorAI/
 │   │   │       └── auth.interceptor.ts
 │   │   ├── shared/
 │   │   │   ├── components/
-│   │   │   │   ├── broadcast-ticker/
 │   │   │   │   └── status-badge/
 │   │   │   └── design-tokens/
 │   │   │       └── tokens.scss
