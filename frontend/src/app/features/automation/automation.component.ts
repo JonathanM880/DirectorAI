@@ -12,10 +12,13 @@ import { Router } from '@angular/router';
 
 import {
   SchedulingEngineService,
-  AuditLogEntry
+  AuditLogEntry,
+  RecurringPost,
+  RecurrenceRuleRow
 } from '../services/scheduling-engine.service';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { ScheduledPost, Channel } from '@director-ai/types';
+
 
 /**
  * Backoff delay formula from retry-engine.ts:
@@ -66,8 +69,9 @@ export class AutomationComponent implements OnInit, OnDestroy {
   /* ── Tab state ───────────────────────────────────────────── */
   activeTab = signal<TabId>('recurrence');
 
-  /* ── Recurrence ──────────────────────────────────────────── */
-  recurringPosts = signal<ScheduledPost[]>([]);
+  /* ── Recurrence ───────────────────────────────────────────────────── */
+  // RecurringPost extends ScheduledPost and includes the joined recurrenceRule object
+  recurringPosts = signal<RecurringPost[]>([]);
   recurrenceLoading = signal(false);
 
   /* ── Retry Rules ─────────────────────────────────────────── */
@@ -146,7 +150,7 @@ export class AutomationComponent implements OnInit, OnDestroy {
     }
   }
 
-  async togglePostStatus(post: ScheduledPost) {
+  async togglePostStatus(post: RecurringPost) {
     const newStatus = post.status === 'scheduled' ? 'cancelled' : 'scheduled';
     try {
       if (newStatus === 'cancelled') {
@@ -164,13 +168,14 @@ export class AutomationComponent implements OnInit, OnDestroy {
     }
   }
 
-  frequencyLabel(post: ScheduledPost): string {
-    const rule = (post as any).recurrenceRule;
-    if (!rule) return 'Unknown';
-    return `Every ${rule.interval} ${rule.frequency}`;
+  frequencyLabel(post: RecurringPost): string {
+    const rule: RecurrenceRuleRow = post.recurrenceRule;
+    const intervalStr = rule.interval > 1 ? `${rule.interval} ` : '';
+    return `Every ${intervalStr}${rule.frequency}`;
   }
 
-  nextRunLabel(post: ScheduledPost): string {
+  nextRunLabel(post: RecurringPost): string {
+    if (!post.scheduledAt) return 'Not scheduled';
     return new Intl.DateTimeFormat('en-US', {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     }).format(post.scheduledAt);

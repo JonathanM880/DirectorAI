@@ -105,14 +105,16 @@
   }
 }
 
-/* ── Calendar Wrapper ────────────────────────────────────── */
+/* ── Calendar Wrapper ─────────────────────────────────────── */
 .calendar-wrapper {
   flex: 1;
   min-height: 0;
   background: var(--color-steel);
   border-radius: var(--radius-xl);
   padding: var(--space-4);
-  overflow: hidden;
+  /* Allow vertical scroll so auto-height calendar can grow on dense months */
+  overflow-y: auto;
+  overflow-x: hidden;
   transition: all var(--transition-slow);
 
   &.drawer-open {
@@ -214,17 +216,21 @@
 
   .fc-event {
     border: none;
+    border-left: 3px solid rgba(255, 255, 255, 0.3); /* left-accent for premium feel */
     border-radius: var(--radius-sm);
     padding: 2px 6px;
     font-size: 0.75rem;
     font-weight: 600;
-    font-family: var(--font-body);
+    font-family: 'Inter', var(--font-body), sans-serif;
     cursor: pointer;
-    transition: filter var(--transition-fast), transform var(--transition-fast);
+    transition: filter var(--transition-fast), transform var(--transition-fast),
+                box-shadow var(--transition-fast);
+    letter-spacing: 0.01em;
 
     &:hover {
       filter: brightness(1.15);
       transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
 
     &.fc-daygrid-event {
@@ -232,13 +238,49 @@
     }
   }
 
+  /* Dense-day scrollability: each day cell caps at 6 event rows */
+  .fc-daygrid-day-events {
+    max-height: 152px;   /* ~6 events × ~22px each + gaps */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  }
+
   /* Status colour classes applied to events */
-  .event-scheduled  { background-color: var(--color-signal); color: #000 !important; }
-  .event-published  { background-color: var(--color-live);   color: #000 !important; }
-  .event-failed     { background-color: var(--color-fault);  color: #fff !important; }
-  .event-retrying   { background-color: var(--color-gray-600); color: var(--color-paper) !important; }
-  .event-publishing { background-color: var(--color-gray-500); color: var(--color-paper) !important; }
-  .event-cancelled  { background-color: var(--color-gray-700); color: var(--color-gray-400) !important; opacity: 0.7; }
+  .event-scheduled  {
+    background-color: var(--color-signal);
+    border-left-color: #a07a10;
+    color: #000 !important;
+  }
+  .event-published  {
+    background-color: var(--color-live);
+    border-left-color: #1a7a47;
+    color: #000 !important;
+  }
+  .event-failed     {
+    background-color: var(--color-fault);
+    border-left-color: #8b0000;
+    color: #fff !important;
+  }
+  .event-retrying   {
+    background-color: var(--color-gray-600);
+    border-left-color: var(--color-gray-400);
+    color: var(--color-paper) !important;
+  }
+  .event-publishing {
+    background-color: var(--color-gray-500);
+    border-left-color: var(--color-gray-300);
+    color: var(--color-paper) !important;
+  }
+  .event-cancelled  {
+    background-color: var(--color-gray-700);
+    border-left-color: var(--color-gray-600);
+    color: var(--color-gray-400) !important;
+    opacity: 0.7;
+  }
 }
 
 /* ── Side Drawer ─────────────────────────────────────────── */

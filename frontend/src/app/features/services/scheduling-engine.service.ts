@@ -3,6 +3,33 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { AngularAuthService } from '../../core/services/auth.service';
 import { ScheduledPost, PostStatus, SocialPlatform, Channel, CreatePostRequest } from '@director-ai/types';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Supplemental types not covered by @director-ai/types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Raw recurrence_rules row shape as returned by the Supabase join.
+ * Matches migration 004_create_recurrence_rules.sql exactly.
+ */
+export interface RecurrenceRuleRow {
+  id: string;
+  user_id: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  interval: number;
+  days_of_week: number[] | null;
+  end_date: string | null;
+  max_occurrences: number | null;
+  created_at: string;
+}
+
+/**
+ * ScheduledPost extended with the joined recurrence rule.
+ * Used exclusively in the Automation Hub's Recurrence tab.
+ */
+export interface RecurringPost extends ScheduledPost {
+  recurrenceRule: RecurrenceRuleRow;
+}
+
 /**
  * Frontend facade for SchedulingEngine.
  *
@@ -18,7 +45,9 @@ import { ScheduledPost, PostStatus, SocialPlatform, Channel, CreatePostRequest }
  *  - cancelPost(postId)           → mirrors SchedulingEngine.cancelPost
  *  - schedulePost(request)        → mirrors SchedulingEngine.schedulePost
  *  - getFailedPosts()             → convenience: scheduled_posts WHERE status='failed'
+ *  - getRecurringPosts()          → posts with recurrence_rule_id, joined with recurrence_rules
  *  - getChannels()                → channels owned by authenticated user
+ *  - getAuditLog(options)         → paginated audit_log with filters
  */
 @Injectable({ providedIn: 'root' })
 export class SchedulingEngineService {
@@ -51,7 +80,7 @@ export class SchedulingEngineService {
       .order('scheduled_at', { ascending: true });
 
     if (error) throw new Error(`Failed to fetch posts: ${error.message}`);
-    return (data ?? []).map(this.mapRow);
+    return (data ?? []).map(row => this.mapRow(row));
   }
 
   /**
@@ -68,25 +97,49 @@ export class SchedulingEngineService {
       .order('updated_at', { ascending: false });
 
     if (error) throw new Error(`Failed to fetch failed posts: ${error.message}`);
-    return (data ?? []).map(this.mapRow);
+    return (data ?? []).map(row => this.mapRow(row));
   }
 
   /**
    * Fetch posts with a non-null recurrence_rule_id for the Recurrence section.
+   *
+   * Key fix: the query now JOINs the recurrence_rules table using PostgREST
+   * foreign key syntax so that `row.recurrence_rules` is populated.
+   * Previously only a plain select('*') was used, leaving recurrenceRule
+   * as undefined in the UI and breaking frequencyLabel().
    */
-  async getRecurringPosts(): Promise<ScheduledPost[]> {
+  async getRecurringPosts(): Promise<RecurringPost[]> {
     const userId = await this.getUserId();
 
     const { data, error } = await this.supabase
       .from('scheduled_posts')
-      .select('*')
+      .select(`
+        *,
+        recurrence_rules!recurrence_rule_id (
+          id,
+          user_id,
+          frequency,
+          interval,
+          days_of_week,
+          end_date,
+          max_occurrences,
+          created_at
+        )
+      `)
       .eq('user_id', userId)
       .not('recurrence_rule_id', 'is', null)
       .in('status', ['scheduled', 'retrying'])
       .order('scheduled_at', { ascending: true });
 
     if (error) throw new Error(`Failed to fetch recurring posts: ${error.message}`);
-    return (data ?? []).map(this.mapRow);
+
+    // Filter out any rows where the join returned null (orphaned rule_id)
+    return (data ?? [])
+      .filter((row: any) => row.recurrence_rules !== null)
+      .map((row: any): RecurringPost => ({
+        ...this.mapRow(row),
+        recurrenceRule: row.recurrence_rules as RecurrenceRuleRow,
+      }));
   }
 
   /**
@@ -201,16 +254,16 @@ export class SchedulingEngineService {
     const { data, error } = await this.supabase
       .from('scheduled_posts')
       .insert({
-        user_id:        userId,
-        channel_id:     request.channelId,
+        user_id:         userId,
+        channel_id:      request.channelId,
         // `platform` intentionally omitted — not a column on scheduled_posts
-        text_content:   request.content.text ?? null,
+        text_content:    request.content.text ?? null,
         media_asset_ids: mediaAssetIds,
-        media_type:     mediaType,
-        scheduled_at:   scheduledAtISO,
-        status:         'scheduled',
-        retry_count:    0,
-        max_retries:    3,
+        media_type:      mediaType,
+        scheduled_at:    scheduledAtISO,
+        status:          'scheduled',
+        retry_count:     0,
+        max_retries:     3,
       })
       .select()
       .single();
@@ -218,7 +271,6 @@ export class SchedulingEngineService {
     if (error || !data) throw new Error(`Failed to schedule post: ${error?.message}`);
     return this.mapRow(data);
   }
-
 
   /**
    * Update the max_retries value for all scheduled posts on a channel.
@@ -281,10 +333,10 @@ export class SchedulingEngineService {
       .order('occurred_at', { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
-    if (action) query = query.eq('action', action);
+    if (action)   query = query.eq('action', action);
     if (platform) query = query.eq('platform', platform);
-    if (from) query = query.gte('occurred_at', from.toISOString());
-    if (to) query = query.lte('occurred_at', to.toISOString());
+    if (from)     query = query.gte('occurred_at', from.toISOString());
+    if (to)       query = query.lte('occurred_at', to.toISOString());
 
     const { data, error, count } = await query;
     if (error) throw new Error(`Failed to fetch audit log: ${error.message}`);
@@ -328,6 +380,10 @@ export class SchedulingEngineService {
     };
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Exported interfaces
+// ─────────────────────────────────────────────────────────────────────────────
 
 /** Audit log entry shape for the Activity Log UI. */
 export interface AuditLogEntry {

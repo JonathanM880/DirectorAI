@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './app-shell/app-shell.component';
+import { AuthGuard } from '../../core/guards/auth.guard';
 import { FeatureGateGuard } from '../../core/guards/feature-gate.guard';
 
 export const shellRoutes: Routes = [
@@ -28,10 +29,12 @@ export const shellRoutes: Routes = [
       },
       {
         path: 'metrics',
-        canActivate: [FeatureGateGuard],
+        // AuthGuard runs first as a backstop; FeatureGateGuard checks plan access second.
+        canActivate: [AuthGuard, FeatureGateGuard],
         data: { feature: 'analytics' },
         loadComponent: () => import('../metrics/metrics.component').then(m => m.MetricsComponent)
       },
+
       {
         path: 'automation',
         canActivate: [FeatureGateGuard],

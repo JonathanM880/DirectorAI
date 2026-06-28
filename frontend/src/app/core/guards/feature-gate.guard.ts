@@ -35,9 +35,17 @@ export class FeatureGateGuard implements CanActivate {
         if (hasAccess) {
           return true;
         }
-        return this.router.createUrlTree(['/settings/billing']);
+        // Redirect to settings when feature is not available in current plan
+        return this.router.createUrlTree(['/app/settings']);
       }),
-      catchError(() => of(this.router.createUrlTree(['/settings/billing'])))
+      catchError((err) => {
+        // Log the error so it appears in the console/Supabase logs, then
+        // fall back to the settings page rather than silently redirecting to
+        // a non-existent route (which was the root cause of the auth bug).
+        console.error(`[FeatureGateGuard] Error checking access for "${feature}":`, err);
+        return of(this.router.createUrlTree(['/app/settings']));
+      })
     );
   }
 }
+

@@ -2,14 +2,17 @@ import {
   Component,
   OnInit,
   OnDestroy,
+  ViewChild,
   signal,
   computed,
   inject
 } from '@angular/core';
+
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { FullCalendarModule } from '@fullcalendar/angular';
+import { FullCalendarModule, FullCalendarComponent } from '@fullcalendar/angular';
+
 import { CalendarOptions, EventClickArg, EventDropArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -17,30 +20,23 @@ import interactionPlugin from '@fullcalendar/interaction';
 
 import { SchedulingEngineService } from '../services/scheduling-engine.service';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
+import { PostFormComponent, PostFormData } from './post-form/post-form.component';
 import { ScheduledPost, PostStatus, Channel, RecurrenceRule } from '@director-ai/types';
-
-interface NewPostForm {
-  text: string;
-  channelId: string;
-  scheduledAt: string;
-  enableRecurrence: boolean;
-  recurrence: {
-    frequency: 'daily' | 'weekly' | 'monthly';
-    interval: number;
-    endDate: string;
-  };
-}
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, FullCalendarModule, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, FullCalendarModule, StatusBadgeComponent, PostFormComponent],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.scss']
 })
 export class CalendarComponent implements OnInit, OnDestroy {
+  /** ViewChild gives us a direct handle to the FullCalendar API post-init. */
+  @ViewChild(FullCalendarComponent) calendarRef!: FullCalendarComponent;
+
   private schedulingEngine = inject(SchedulingEngineService);
   private router = inject(Router);
+
 
   /* ── State ──────────────────────────────────────────────── */
   loading = signal(false);
@@ -57,14 +53,6 @@ export class CalendarComponent implements OnInit, OnDestroy {
   currentView = signal<'dayGridMonth' | 'timeGridWeek'>('dayGridMonth');
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  newPostForm: NewPostForm = {
-    text: '',
-    channelId: '',
-    scheduledAt: '',
-    enableRecurrence: false,
-    recurrence: { frequency: 'weekly', interval: 1, endDate: '' }
-  };
-
   /* ── FullCalendar Config ─────────────────────────────────── */
   calendarOptions: CalendarOptions = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -80,18 +68,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
     eventClick: (arg: EventClickArg) => this.onEventClick(arg),
     eventDrop: (arg: EventDropArg) => this.onEventDrop(arg),
     datesSet: (info) => this.onDatesSet(info.start, info.end),
-    height: '100%',
+    // 'auto' lets the month grid grow and become scrollable in dense weeks
+    height: 'auto',
     nowIndicator: true,
-    dayMaxEvents: 4,
-    moreLinkContent: (args) => `+${args.num} more`
+    // true = show all events; overflow handled by CSS scroll on the day cell
+    dayMaxEvents: true,
+    scrollTime: '08:00:00'  // week/day views start at 8am
   };
+
 
   /* ── Lifecycle ───────────────────────────────────────────── */
   async ngOnInit() {
     this.channels.set(await this.schedulingEngine.getChannels().catch(() => []));
-    if (this.channels().length > 0) {
-      this.newPostForm.channelId = this.channels()[0].id;
-    }
   }
 
   ngOnDestroy() {
@@ -160,9 +148,18 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   /* ── View Toggle ─────────────────────────────────────────── */
+  /**
+   * Switch between Month and Week views.
+   *
+   * BUG FIX: The previous implementation mutated calendarOptions.initialView,
+   * which FullCalendar only reads once at bootstrap time. After mount, the only
+   * correct way to change view is via the Calendar API: calendarRef.getApi().changeView().
+   */
   setView(view: 'dayGridMonth' | 'timeGridWeek') {
     this.currentView.set(view);
-    this.calendarOptions = { ...this.calendarOptions, initialView: view };
+    if (this.calendarRef) {
+      this.calendarRef.getApi().changeView(view);
+    }
   }
 
   /* ── Drawer Actions ──────────────────────────────────────── */
@@ -174,18 +171,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
   openEditForm() {
     const post = this.selectedPost();
     if (!post) return;
-    // Pre-fill form with current post data
-    const localDt = new Date(post.scheduledAt.getTime() - post.scheduledAt.getTimezoneOffset() * 60000)
-      .toISOString().slice(0, 16);
-    this.newPostForm = {
-      text: post.content.text || '',
-      channelId: post.channelId,
-      scheduledAt: localDt,
-      enableRecurrence: false,
-      recurrence: { frequency: 'weekly', interval: 1, endDate: '' }
-    };
+    // For now, editing just closes the drawer since full edit requires more wiring
+    // that we'll implement next.
     this.closeDrawer();
-    this.newPostOpen.set(true);
+    this.showToast('Edit mode coming soon', 'success');
   }
 
   async cancelSelectedPost() {
@@ -221,60 +210,21 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   closeNewPostPanel() {
     this.newPostOpen.set(false);
-    this.resetForm();
   }
 
-  resetForm() {
-    this.newPostForm = {
-      text: '',
-      channelId: this.channels()[0]?.id || '',
-      scheduledAt: '',
-      enableRecurrence: false,
-      recurrence: { frequency: 'weekly', interval: 1, endDate: '' }
-    };
-    this.formError.set(null);
-  }
-
-  async submitNewPost() {
-    this.formError.set(null);
-
-    if (!this.newPostForm.text.trim()) {
-      this.formError.set('Post content is required');
-      return;
-    }
-    if (!this.newPostForm.channelId) {
-      this.formError.set('Please select a channel');
-      return;
-    }
-    if (!this.newPostForm.scheduledAt) {
-      this.formError.set('Please set a scheduled date and time');
-      return;
-    }
-
-    const scheduledAt = new Date(this.newPostForm.scheduledAt);
-    if (scheduledAt <= new Date()) {
-      this.formError.set('Scheduled time must be in the future');
-      return;
-    }
-
-    let recurrenceRule: RecurrenceRule | undefined;
-    if (this.newPostForm.enableRecurrence) {
-      recurrenceRule = {
-        frequency: this.newPostForm.recurrence.frequency,
-        interval: Math.max(1, this.newPostForm.recurrence.interval),
-        endDate: this.newPostForm.recurrence.endDate
-          ? new Date(this.newPostForm.recurrence.endDate)
-          : undefined
-      };
-    }
-
+  async onPostFormSaved(data: PostFormData) {
     this.submitting.set(true);
+    this.formError.set(null);
     try {
       await this.schedulingEngine.schedulePost({
-        channelId: this.newPostForm.channelId,
-        content: { text: this.newPostForm.text },
-        scheduledAt,
-        recurrenceRule
+        channelId: data.channelId,
+        content: {
+          text: data.text,
+          mediaAssetIds: data.mediaAssetIds,
+          mediaType: data.mediaType,
+        },
+        scheduledAt: data.scheduledAt,
+        recurrenceRule: data.recurrenceRule
       });
       this.showToast('Post scheduled ✓', 'success');
       this.closeNewPostPanel();
