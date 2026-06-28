@@ -27,13 +27,16 @@ export class AngularAuthService {
   constructor(private supabase: SupabaseClient) {
     this.initSession();
 
-    this.supabase.auth.onAuthStateChange((_event, session) => {
-      this.authStateSubject.next(session);
-    });
+    if (this.supabase?.auth) {
+      this.supabase.auth.onAuthStateChange((_event, session) => {
+        this.authStateSubject.next(session);
+      });
+    }
   }
 
   private async initSession() {
     try {
+      if (!this.supabase?.auth) return;
       const { data: { session }, error } = await this.supabase.auth.getSession();
       if (error) {
         // Silent - session init failure
