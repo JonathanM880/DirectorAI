@@ -1,21 +1,18 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MaxWidthHeightWrapperComponent],
   template: `
     <div class="page-container">
-      <h2>Dashboard</h2>
-      <p>Welcome to your DirectorAI dashboard!</p>
+      <app-max-width-height-wrapper>
+        <h2>Dashboard</h2>
+        <p>Welcome to your DirectorAI dashboard!</p>
+      </app-max-width-height-wrapper>
     </div>
-  `,
-  styles: [`
-    .page-container {
-      h2 { margin: 0 0 var(--space-4); }
-      p { color: var(--color-gray-300); }
-    }
-  `]
+  `
 })
 export class DashboardComponent {}
