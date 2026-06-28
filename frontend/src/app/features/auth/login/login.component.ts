@@ -76,7 +76,7 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
                   >
                     {{ isLoading() ? 'Signing in...' : 'Sign in' }}
                   </button>
-                  <button
+                  <!-- <button
                     hlmBtn
                     variant="outline"
                     type="button"
@@ -85,7 +85,7 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
                     class="w-full"
                   >
                     Sign in with Google
-                  </button>
+                  </button> -->
                 </div>
 
                 <div class="text-center text-sm mt-4 flex flex-col gap-2 pt-2">

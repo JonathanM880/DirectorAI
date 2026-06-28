@@ -259,7 +259,6 @@ All third-party integrations SHALL call the official external service endpoints 
 
 1. THE Angular SPA SHALL provide authenticated route modules for: `/dashboard`, `/studio`, `/assets`, `/calendar`, `/metrics`, `/automation`, and `/settings`, each lazy-loaded.
 2. WHEN an unauthenticated user attempts to navigate to a protected route, THE auth guard SHALL redirect to `/auth/login`.
-3. THE application SHALL display a persistent broadcast ticker at the bottom of every authenticated view, showing the last 3 published post titles with their timestamps and platform icons.
-4. WHEN the AI Studio is in streaming mode and tokens are arriving, THE Studio view SHALL render each token chunk progressively as it arrives via the `onChunk` callback.
-5. THE Asset Repository view SHALL support drag-and-drop file upload, multi-select with bulk actions (delete, move, tag), and both grid and list display modes.
-6. THE Metrics view SHALL provide a date range picker supporting presets of last 7 days, 30 days, and 90 days, as well as a custom range.
+3. WHEN the AI Studio is in streaming mode and tokens are arriving, THE Studio view SHALL render each token chunk progressively as it arrives via the `onChunk` callback.
+4. THE Asset Repository view SHALL support drag-and-drop file upload, multi-select with bulk actions (delete, move, tag), and both grid and list display modes.
+5. THE Metrics view SHALL provide a date range picker supporting presets of last 7 days, 30 days, and 90 days, as well as a custom range.

@@ -3,8 +3,7 @@ import { Component, HostListener, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonDirective } from '../../shared/components/ui/button/button.component';
 import { AnimatedGroupDirective } from '../../shared/components/ui/animated-group/animated-group.component';
-import { LogoComponent } from './logo.component';
-import { ArrowRightIconComponent } from './icons.component';
+import { LogoComponent } from '../../shared/components/ui/logo/logo.component';
 
 @Component({
   selector: 'app-landing-page',

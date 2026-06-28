@@ -2,7 +2,6 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
-import { BroadcastTickerComponent } from '../broadcast-ticker/broadcast-ticker.component';
 import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
 
 @Component({
@@ -12,7 +11,6 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
     CommonModule,
     RouterOutlet,
     SidebarComponent,
-    BroadcastTickerComponent,
     NotificationBellComponent
   ],
   template: `
@@ -30,7 +28,6 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
         <main class="content">
           <router-outlet></router-outlet>
         </main>
-        <app-broadcast-ticker class="ticker"></app-broadcast-ticker>
       </div>
     </div>
   `,
