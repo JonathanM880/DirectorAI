@@ -169,6 +169,36 @@ export class AssetUploadService {
   }
 
   /**
+   * Fetch assets by their IDs.
+   */
+  async getAssetsByIds(ids: string[]): Promise<UploadedAsset[]> {
+    if (!ids || ids.length === 0) return [];
+    const { data, error } = await this.supabase
+      .from('assets')
+      .select('id, filename, mime_type, size_bytes, storage_path')
+      .in('id', ids);
+    
+    if (error) {
+      console.error(`[AssetUploadService] Failed to fetch assets: ${error.message}`);
+      return [];
+    }
+
+    return Promise.all((data ?? []).map(async (row) => {
+      const { data: signedData } = await this.supabase.storage
+        .from(BUCKET)
+        .createSignedUrl(row.storage_path, 3600);
+      return {
+        id: row.id,
+        filename: row.filename,
+        mimeType: row.mime_type,
+        sizeBytes: row.size_bytes,
+        storagePath: row.storage_path,
+        previewUrl: signedData?.signedUrl ?? ''
+      };
+    }));
+  }
+
+  /**
    * Validate a file before uploading.
    * Returns an error string if invalid, or null if OK.
    */

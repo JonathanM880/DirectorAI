@@ -22,16 +22,7 @@
       }
     </button>
 
-    <button
-      id="tab-retry"
-      role="tab"
-      [class.active]="activeTab() === 'retry'"
-      (click)="selectTab('retry')"
-      [attr.aria-selected]="activeTab() === 'retry'"
-    >
-      <span class="tab-icon">⚡</span>
-      Retry Rules
-    </button>
+
 
     <button
       id="tab-log"
@@ -80,7 +71,7 @@
         <div class="empty-state">
           <span>🔄</span>
           No active recurrence rules. Schedule a post with a recurrence rule from the
-          <a (click)="navigateToCalendar()" style="color: var(--color-signal); cursor:pointer">Calendar</a>.
+          <a routerLink="/app/calendar" style="color: var(--color-signal); cursor:pointer">Calendar</a>.
         </div>
       } @else {
         @for (post of recurringPosts(); track post.id) {
@@ -94,15 +85,15 @@
               </div>
             </div>
             <div class="rule-actions">
-              <app-status-badge [status]="post.status"></app-status-badge>
-              <label class="toggle-switch" [attr.aria-label]="'Toggle ' + post.id">
-                <input
-                  type="checkbox"
-                  [checked]="post.status === 'scheduled'"
-                  (change)="togglePostStatus(post)"
-                />
-                <span class="slider"></span>
-              </label>
+              @if (isCampaignActive(post)) {
+                <span style="background: var(--color-success); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">ACTIVE</span>
+                <button (click)="togglePostStatus(post)" style="padding: 4px 8px; border-radius: 4px; background: var(--color-fault); color: white; border: none; cursor: pointer;">Pause</button>
+              } @else if (post.status === 'cancelled') {
+                <span style="background: var(--color-gray-600); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">PAUSED</span>
+                <button (click)="togglePostStatus(post)" style="padding: 4px 8px; border-radius: 4px; background: var(--color-signal); color: black; border: none; cursor: pointer;">Resume</button>
+              } @else {
+                <span style="background: var(--color-gray-600); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">COMPLETED</span>
+              }
             </div>
           </div>
         }
@@ -110,93 +101,7 @@
     </div>
   }
 
-  <!-- ═══════════════════════════════════════════════════════
-       SECTION 2 — RETRY RULES
-  ══════════════════════════════════════════════════════════ -->
-  @if (activeTab() === 'retry') {
-    <div class="section-panel" role="tabpanel" id="panel-retry" aria-labelledby="tab-retry">
-      <div class="section-heading">
-        <div>
-          <h2>Retry Rules</h2>
-          <p>Configure max retry attempts per channel. Backoff uses exponential delay: MIN(1000 × 2ⁿ, 300 000) ms.</p>
-        </div>
-      </div>
 
-      @if (retryLoading()) {
-        <div class="loading-row">
-          <span class="spinner"></span> Loading channel settings…
-        </div>
-      } @else if (channelRetryConfigs().length === 0) {
-        <div class="empty-state">
-          <span>📡</span>
-          No channels connected. Add channels in Settings → Channels.
-        </div>
-      } @else {
-        <div class="retry-grid">
-          @for (config of channelRetryConfigs(); track config.channel.id) {
-            <div class="channel-retry-card">
-              <div class="channel-info">
-                <span class="platform-icon">{{ platformIcon(config.channel.platform) }}</span>
-                <div>
-                  <div class="channel-name">{{ config.channel.name }}</div>
-                  <div class="channel-platform">{{ config.channel.platform }}</div>
-                </div>
-              </div>
-              <div class="retry-input-row">
-                <label [for]="'retries-' + config.channel.id">Max Retries</label>
-                <input
-                  type="number"
-                  [id]="'retries-' + config.channel.id"
-                  [(ngModel)]="config.maxRetries"
-                  (ngModelChange)="onMaxRetriesChange(config)"
-                  min="0"
-                  max="10"
-                />
-                <button
-                  class="btn-save-retry"
-                  (click)="saveChannelRetries(config)"
-                  [disabled]="config.saving"
-                  [id]="'save-retry-' + config.channel.id"
-                >
-                  {{ config.saving ? '…' : 'Save' }}
-                </button>
-              </div>
-            </div>
-          }
-        </div>
-      }
-
-      <!-- Backoff preview -->
-      <div class="card backoff-preview">
-        <h3>Backoff Delay Preview ({{ previewMaxRetries() }} retries)</h3>
-        <table class="backoff-table" aria-label="Backoff delay preview">
-          <thead>
-            <tr>
-              <th>Attempt</th>
-              <th>Delay</th>
-              <th colspan="2">Visualisation</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of backoffRows(); track row.attempt) {
-              <tr>
-                <td>#{{ row.attempt }}</td>
-                <td>{{ row.label }}</td>
-                <td style="width:100%">
-                  <div class="delay-bar">
-                    <div class="bar-track">
-                      <div class="bar-fill" [style.width.%]="row.pct"></div>
-                    </div>
-                  </div>
-                </td>
-                <td><span class="delay-value">{{ row.label }}</span></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  }
 
   <!-- ═══════════════════════════════════════════════════════
        SECTION 3 — ACTIVITY LOG
@@ -277,7 +182,9 @@
                   </td>
                   <td class="platform-cell">{{ platformIcon(row.platform) }} {{ row.platform }}</td>
                   <td>
-                    <span class="post-excerpt" [title]="row.postId">Post {{ row.postId.slice(0,8) }}…</span>
+                    <span class="post-excerpt" [title]="row.postId || ''">
+                      {{ row.postId ? 'Post ' + row.postId.slice(0,8) + '…' : 'Deleted Post' }}
+                    </span>
                   </td>
                   <td>
                     @if (row.errorCode) {

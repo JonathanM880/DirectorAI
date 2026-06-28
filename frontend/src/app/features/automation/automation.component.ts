@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 
 import {
   SchedulingEngineService,
@@ -20,31 +20,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
 import { ScheduledPost, Channel } from '@director-ai/types';
 
 
-/**
- * Backoff delay formula from retry-engine.ts:
- *   delay = MIN(1000 * (2 ^ retryCount), 300_000) ms
- * Re-implemented as a pure function here to power the UI preview.
- * Source: supabase/functions/_shared/retry-engine.ts — computeBaseDelay()
- */
-function computeBaseDelay(retryCount: number): number {
-  const BASE_DELAY_MS = 1000;
-  const MAX_DELAY_MS = 300_000;
-  return Math.min(BASE_DELAY_MS * Math.pow(2, retryCount), MAX_DELAY_MS);
-}
-
-function formatDelay(ms: number): string {
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-  if (ms < 3_600_000) return `${(ms / 60_000).toFixed(1)}m`;
-  return `${(ms / 3_600_000).toFixed(2)}h`;
-}
-
-type TabId = 'recurrence' | 'retry' | 'log' | 'failed';
-
-interface ChannelRetryConfig {
-  channel: Channel;
-  maxRetries: number;
-  saving: boolean;
-}
+type TabId = 'recurrence' | 'log' | 'failed';
 
 interface RepublishState {
   postId: string;
@@ -58,7 +34,7 @@ const PAGE_SIZE = 10;
 @Component({
   selector: 'app-automation',
   standalone: true,
-  imports: [CommonModule, FormsModule, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './automation.component.html',
   styleUrls: ['./automation.component.scss']
 })
@@ -74,19 +50,6 @@ export class AutomationComponent implements OnInit, OnDestroy {
   recurringPosts = signal<RecurringPost[]>([]);
   recurrenceLoading = signal(false);
 
-  /* ── Retry Rules ─────────────────────────────────────────── */
-  channelRetryConfigs = signal<ChannelRetryConfig[]>([]);
-  retryLoading = signal(false);
-  previewMaxRetries = signal(3);
-
-  backoffRows = computed(() => {
-    const max = Math.max(1, Math.min(10, this.previewMaxRetries()));
-    return Array.from({ length: max }, (_, i) => {
-      const delay = computeBaseDelay(i + 1);
-      const pct = (delay / 300_000) * 100;
-      return { attempt: i + 1, delay, pct, label: formatDelay(delay) };
-    });
-  });
 
   /* ── Activity Log ────────────────────────────────────────── */
   logRows = signal<AuditLogEntry[]>([]);
@@ -131,7 +94,6 @@ export class AutomationComponent implements OnInit, OnDestroy {
   private async loadTab(tab: TabId) {
     switch (tab) {
       case 'recurrence': await this.loadRecurring(); break;
-      case 'retry':      await this.loadRetryRules(); break;
       case 'log':        await this.loadLog(); break;
       case 'failed':     await this.loadFailed(); break;
     }
@@ -181,39 +143,16 @@ export class AutomationComponent implements OnInit, OnDestroy {
     }).format(post.scheduledAt);
   }
 
-  /* ── Retry Rules ─────────────────────────────────────────── */
-  private async loadRetryRules() {
-    this.retryLoading.set(true);
-    try {
-      const channels = await this.schedulingEngine.getChannels();
-      this.channelRetryConfigs.set(
-        channels.map(ch => ({ channel: ch, maxRetries: 3, saving: false }))
-      );
-    } catch (err: any) {
-      this.showToast(err.message || 'Failed to load channels', 'error');
-    } finally {
-      this.retryLoading.set(false);
+  isCampaignActive(post: RecurringPost): boolean {
+    if (post.status === 'cancelled') return false;
+    if (post.recurrenceRule && post.recurrenceRule.end_date) {
+      const endDate = new Date(post.recurrenceRule.end_date);
+      if (new Date() > endDate) return false;
     }
+    return true;
   }
 
-  async saveChannelRetries(config: ChannelRetryConfig) {
-    config.saving = true;
-    this.channelRetryConfigs.set([...this.channelRetryConfigs()]);
-    try {
-      await this.schedulingEngine.updateChannelMaxRetries(config.channel.id, config.maxRetries);
-      this.previewMaxRetries.set(config.maxRetries);
-      this.showToast(`Retry limit updated for ${config.channel.name}`, 'success');
-    } catch (err: any) {
-      this.showToast(err.message || 'Failed to save retry settings', 'error');
-    } finally {
-      config.saving = false;
-      this.channelRetryConfigs.set([...this.channelRetryConfigs()]);
-    }
-  }
 
-  onMaxRetriesChange(config: ChannelRetryConfig) {
-    this.previewMaxRetries.set(config.maxRetries);
-  }
 
   /* ── Activity Log ────────────────────────────────────────── */
   private async loadLog() {
@@ -315,9 +254,7 @@ export class AutomationComponent implements OnInit, OnDestroy {
     }
   }
 
-  navigateToCalendar() {
-    this.router.navigate(['/calendar']);
-  }
+
 
   /* ── Helpers ─────────────────────────────────────────────── */
   private showToast(message: string, type: 'success' | 'error' | 'info') {

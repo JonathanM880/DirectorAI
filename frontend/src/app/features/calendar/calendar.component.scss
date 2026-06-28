@@ -109,6 +109,7 @@
 .calendar-wrapper {
   flex: 1;
   min-height: 0;
+  position: relative;
   background: var(--color-steel);
   border-radius: var(--radius-xl);
   padding: var(--space-4);
@@ -717,6 +718,10 @@
 
 /* ── Loading / Empty States ──────────────────────────────── */
 .loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(17, 24, 39, 0.7); /* Slightly dim the background */
   display: flex;
   align-items: center;
   justify-content: center;

@@ -20,13 +20,14 @@ import interactionPlugin from '@fullcalendar/interaction';
 
 import { SchedulingEngineService } from '../services/scheduling-engine.service';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
-import { PostFormComponent, PostFormData } from './post-form/post-form.component';
+import { PostFormComponent, PostFormData } from '../../shared/components/post-form/post-form.component';
+import { EditPostComponent } from '../../shared/components/edit-post/edit-post.component';
 import { ScheduledPost, PostStatus, Channel, RecurrenceRule } from '@director-ai/types';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, FullCalendarModule, StatusBadgeComponent, PostFormComponent],
+  imports: [CommonModule, FormsModule, FullCalendarModule, StatusBadgeComponent, PostFormComponent, EditPostComponent],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.scss']
 })
@@ -42,6 +43,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   loading = signal(false);
   drawerOpen = signal(false);
   newPostOpen = signal(false);
+  editPostOpen = signal(false);
   submitting = signal(false);
 
   selectedPost = signal<ScheduledPost | null>(null);
@@ -90,18 +92,71 @@ export class CalendarComponent implements OnInit, OnDestroy {
   private async loadPosts(from: Date, to: Date) {
     this.loading.set(true);
     try {
-      const posts = await this.schedulingEngine.getUpcomingPosts(from, to);
+      const posts: any[] = await this.schedulingEngine.getUpcomingPosts(from, to);
+      const events: any[] = [];
+      
+      for (const post of posts) {
+        if (!post.content.text?.trim()) {
+          continue; // Filter out corrupted or empty posts
+        }
+
+        if (!post.recurrenceRule) {
+          if (post.scheduledAt >= from && post.scheduledAt <= to) {
+            events.push({
+              id: post.id,
+              title: post.content.text.slice(0, 60),
+              start: post.scheduledAt.toISOString(),
+              extendedProps: { status: post.status, post }
+            });
+          }
+          continue;
+        }
+
+        const rule: any = post.recurrenceRule;
+        let current = new Date(post.scheduledAt);
+        const endDate = rule.endDate ? new Date(rule.endDate) : to;
+        if (rule.endDate) {
+          endDate.setHours(23, 59, 59, 999);
+        }
+        const limitDate = endDate < to ? endDate : to;
+        const interval = rule.interval || 1;
+        let occurrenceIdx = 0;
+
+        while (current <= limitDate) {
+          if (current >= from) {
+            const isFuture = current > new Date();
+            const displayStatus = isFuture && post.status === 'published' ? 'scheduled' : post.status;
+            events.push({
+              id: `${post.id}_${occurrenceIdx}`,
+              title: post.content.text.slice(0, 60),
+              start: current.toISOString(),
+              extendedProps: { status: displayStatus, post }
+            });
+          }
+          
+          let nextDate = new Date(current);
+          if (rule.frequency === 'daily') {
+            nextDate.setDate(nextDate.getDate() + interval);
+          } else if (rule.frequency === 'weekly') {
+            nextDate.setDate(nextDate.getDate() + 7 * interval);
+          } else if (rule.frequency === 'monthly') {
+            nextDate.setMonth(nextDate.getMonth() + interval);
+          } else {
+            break;
+          }
+          nextDate.setHours(post.scheduledAt.getHours(), post.scheduledAt.getMinutes());
+          current = nextDate;
+          
+          if (rule.maxOccurrences && occurrenceIdx >= rule.maxOccurrences - 1) {
+            break;
+          }
+          occurrenceIdx++;
+        }
+      }
+
       this.calendarOptions = {
         ...this.calendarOptions,
-        events: posts.map(post => ({
-          id: post.id,
-          title: post.content.text?.slice(0, 60) || '(No text)',
-          start: post.scheduledAt.toISOString(),
-          extendedProps: {
-            status: post.status,
-            post
-          }
-        }))
+        events
       };
     } catch (err: any) {
       this.showToast(err.message || 'Failed to load posts', 'error');
@@ -116,8 +171,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   onEventClick(arg: EventClickArg) {
-    const post = arg.event.extendedProps['post'] as ScheduledPost;
-    this.selectedPost.set(post);
+    const clickedDate = arg.event.start;
+    const isFuture = clickedDate && clickedDate > new Date();
+    
+    this.selectedPost.set({ 
+      ...arg.event.extendedProps['post'], 
+      scheduledAt: clickedDate || arg.event.extendedProps['post'].scheduledAt, 
+      status: isFuture ? 'scheduled' : arg.event.extendedProps['post'].status 
+    });
+    
     this.drawerError.set(null);
     this.drawerOpen.set(true);
   }
@@ -169,12 +231,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   openEditForm() {
-    const post = this.selectedPost();
-    if (!post) return;
-    // For now, editing just closes the drawer since full edit requires more wiring
-    // that we'll implement next.
-    this.closeDrawer();
-    this.showToast('Edit mode coming soon', 'success');
+    this.editPostOpen.set(true);
+    this.drawerOpen.set(false);
   }
 
   async cancelSelectedPost() {
@@ -227,9 +285,51 @@ export class CalendarComponent implements OnInit, OnDestroy {
         recurrenceRule: data.recurrenceRule
       });
       this.showToast('Post scheduled ✓', 'success');
+      
+      const calApi = this.calendarRef?.getApi();
+      if (calApi) {
+        const view = calApi.view;
+        await this.loadPosts(view.activeStart, view.activeEnd);
+        calApi.refetchEvents();
+      }
+
       this.closeNewPostPanel();
     } catch (err: any) {
       this.formError.set(err.message || 'Failed to schedule post');
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  async onEditSaved(data: PostFormData) {
+    const post = this.selectedPost();
+    if (!post) return;
+
+    this.submitting.set(true);
+    this.formError.set(null);
+    try {
+      await this.schedulingEngine.updatePost(post.id, {
+        channelId: data.channelId,
+        content: {
+          text: data.text,
+          mediaAssetIds: data.mediaAssetIds,
+          mediaType: data.mediaType,
+        },
+        scheduledAt: data.scheduledAt,
+        recurrenceRule: data.recurrenceRule
+      });
+      this.showToast('Post updated ✓', 'success');
+      
+      const calApi = this.calendarRef?.getApi();
+      if (calApi) {
+        const view = calApi.view;
+        await this.loadPosts(view.activeStart, view.activeEnd);
+        calApi.refetchEvents();
+      }
+
+      this.editPostOpen.set(false);
+    } catch (err: any) {
+      this.formError.set(err.message || 'Failed to update post');
     } finally {
       this.submitting.set(false);
     }

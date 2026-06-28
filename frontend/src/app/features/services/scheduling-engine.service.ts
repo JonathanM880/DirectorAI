@@ -70,17 +70,41 @@ export class SchedulingEngineService {
   async getUpcomingPosts(from: Date, to: Date): Promise<ScheduledPost[]> {
     const userId = await this.getUserId();
 
+    // Fetch posts within the date range, OR any recurring post (so it can be expanded into the view)
     const { data, error } = await this.supabase
       .from('scheduled_posts')
-      .select('*')
+      .select(`
+        *,
+        recurrence_rules!recurrence_rule_id (
+          id,
+          user_id,
+          frequency,
+          interval,
+          days_of_week,
+          end_date,
+          max_occurrences,
+          created_at
+        )
+      `)
       .eq('user_id', userId)
-      .in('status', ['scheduled', 'retrying', 'failed', 'published'])
-      .gte('scheduled_at', from.toISOString())
-      .lte('scheduled_at', to.toISOString())
+      .in('status', ['scheduled', 'retrying', 'failed', 'published', 'paused'])
+      .or(`and(scheduled_at.gte.${from.toISOString()},scheduled_at.lte.${to.toISOString()}),recurrence_rule_id.not.is.null`)
       .order('scheduled_at', { ascending: true });
 
     if (error) throw new Error(`Failed to fetch posts: ${error.message}`);
-    return (data ?? []).map(row => this.mapRow(row));
+    return (data ?? []).map((row: any) => {
+      const mapped = this.mapRow(row);
+      if (row.recurrence_rules) {
+        mapped.recurrenceRule = {
+          frequency: row.recurrence_rules.frequency,
+          interval: row.recurrence_rules.interval,
+          daysOfWeek: row.recurrence_rules.days_of_week,
+          endDate: row.recurrence_rules.end_date ? new Date(row.recurrence_rules.end_date) : undefined,
+          maxOccurrences: row.recurrence_rules.max_occurrences
+        };
+      }
+      return mapped;
+    });
   }
 
   /**
@@ -115,6 +139,9 @@ export class SchedulingEngineService {
       .from('scheduled_posts')
       .select(`
         *,
+        channels (
+          platform
+        ),
         recurrence_rules!recurrence_rule_id (
           id,
           user_id,
@@ -128,17 +155,24 @@ export class SchedulingEngineService {
       `)
       .eq('user_id', userId)
       .not('recurrence_rule_id', 'is', null)
-      .in('status', ['scheduled', 'retrying'])
       .order('scheduled_at', { ascending: true });
 
     if (error) throw new Error(`Failed to fetch recurring posts: ${error.message}`);
 
-    // Filter out any rows where the join returned null (orphaned rule_id)
+    const now = new Date();
     return (data ?? [])
-      .filter((row: any) => row.recurrence_rules !== null)
+      .filter((row: any) => {
+        if (!row.recurrence_rules) return false;
+        if (row.recurrence_rules.end_date) {
+          const endDate = new Date(row.recurrence_rules.end_date);
+          if (now > endDate) return false;
+        }
+        return true;
+      })
       .map((row: any): RecurringPost => ({
         ...this.mapRow(row),
         recurrenceRule: row.recurrence_rules as RecurrenceRuleRow,
+        platform: row.channels?.platform || 'unknown'
       }));
   }
 
@@ -191,7 +225,7 @@ export class SchedulingEngineService {
 
     const { data: existing, error: fetchError } = await this.supabase
       .from('scheduled_posts')
-      .select('status')
+      .select('status, recurrence_rule_id')
       .eq('id', postId)
       .eq('user_id', userId)
       .single();
@@ -208,6 +242,76 @@ export class SchedulingEngineService {
       .eq('user_id', userId);
 
     if (error) throw new Error(`Failed to cancel post: ${error.message}`);
+
+    if (existing.recurrence_rule_id) {
+      await this.supabase
+        .from('recurrence_rules')
+        .update({ end_date: new Date().toISOString() })
+        .eq('id', existing.recurrence_rule_id);
+    }
+  }
+
+  /**
+   * Update an existing scheduled post.
+   */
+  async updatePost(postId: string, req: Omit<CreatePostRequest, 'userId'>): Promise<void> {
+    const userId = await this.getUserId();
+    
+    // Fetch existing
+    const { data: existing, error: existingErr } = await this.supabase
+      .from('scheduled_posts')
+      .select('recurrence_rule_id, status')
+      .eq('id', postId)
+      .eq('user_id', userId)
+      .single();
+
+    if (existingErr || !existing) throw new Error('Post not found');
+    if (existing.status === 'published' && !existing.recurrence_rule_id) {
+      throw new Error('Cannot edit published posts');
+    }
+
+    let ruleId = existing.recurrence_rule_id;
+    if (req.recurrenceRule) {
+      const formattedEndDate = req.recurrenceRule.endDate ? req.recurrenceRule.endDate.toISOString() : null;
+      if (ruleId) {
+        await this.supabase.from('recurrence_rules').update({
+          frequency: req.recurrenceRule.frequency,
+          interval: req.recurrenceRule.interval,
+          end_date: formattedEndDate
+        }).eq('id', ruleId);
+      } else {
+        const { data: ruleRow } = await this.supabase
+          .from('recurrence_rules')
+          .insert({
+            user_id: userId,
+            frequency: req.recurrenceRule.frequency,
+            interval: req.recurrenceRule.interval,
+            end_date: formattedEndDate
+          })
+          .select('id')
+          .single();
+        if (ruleRow) ruleId = ruleRow.id;
+      }
+    } else if (ruleId) {
+      // Rule removed
+      await this.supabase.from('recurrence_rules').delete().eq('id', ruleId);
+      ruleId = null;
+    }
+
+    const { error } = await this.supabase
+      .from('scheduled_posts')
+      .update({
+        channel_id: req.channelId,
+        text_content: req.content.text,
+        media_asset_ids: req.content.mediaAssetIds,
+        media_type: req.content.mediaType,
+        scheduled_at: req.scheduledAt.toISOString(),
+        recurrence_rule_id: ruleId
+      })
+      .eq('id', postId)
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Failed to update post: ${error.message}`);
   }
 
   /**
@@ -251,6 +355,24 @@ export class SchedulingEngineService {
         ? request.scheduledAt.toISOString()
         : new Date(request.scheduledAt).toISOString();
 
+    let recurrenceRuleId: string | null = null;
+    if (request.recurrenceRule) {
+      const formattedEndDate = request.recurrenceRule.endDate ? request.recurrenceRule.endDate.toISOString() : null;
+      const { data: ruleRow, error: ruleError } = await this.supabase
+        .from('recurrence_rules')
+        .insert({
+          user_id: userId,
+          frequency: request.recurrenceRule.frequency,
+          interval: request.recurrenceRule.interval,
+          end_date: formattedEndDate
+        })
+        .select('id')
+        .single();
+        
+      if (ruleError) throw new Error(`Failed to create recurrence rule: ${ruleError.message}`);
+      if (ruleRow) recurrenceRuleId = ruleRow.id;
+    }
+
     const { data, error } = await this.supabase
       .from('scheduled_posts')
       .insert({
@@ -264,6 +386,7 @@ export class SchedulingEngineService {
         status:          'scheduled',
         retry_count:     0,
         max_retries:     3,
+        recurrence_rule_id: recurrenceRuleId
       })
       .select()
       .single();
