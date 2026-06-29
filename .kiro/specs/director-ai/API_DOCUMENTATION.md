@@ -36,7 +36,6 @@ Welcome to the **DirectorAI API Reference**. This documentation details all endp
   - [Critical Security/Execution Bug in KeyVaultServiceImpl](#critical-securityexecution-bug-in-keyvaultserviceimpl)
   - [Storage Bucket Inconsistency](#storage-bucket-inconsistency)
   - [Dead / Unimplemented Frontend Call: `parseCampaign`](#dead--unimplemented-frontend-call-parsecampaign)
-  - [Unexposed Billing Webhook Endpoint](#unexposed-billing-webhook-endpoint)
 
 ---
 

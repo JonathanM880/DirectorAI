@@ -1,14 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  read: boolean;
-  timestamp: Date;
-}
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-notification-bell',
@@ -33,7 +25,7 @@ interface Notification {
             <button class="mark-all-btn" (click)="markAllAsRead()">Mark all as read</button>
           </div>
           <div class="dropdown-list">
-            @for (notification of notifications(); track notification.id) {
+            @for (notification of notificationService.notifications(); track notification.id) {
               <div class="notification-item" [class.unread]="!notification.read">
                 <div class="notification-content">
                   <div class="notification-title">{{ notification.title }}</div>
@@ -52,37 +44,16 @@ interface Notification {
   styleUrl: './notification-bell.component.scss'
 })
 export class NotificationBellComponent {
+  notificationService = inject(NotificationService);
   isDropdownOpen = signal(false);
-  notifications = signal<Notification[]>([
-    {
-      id: '1',
-      type: 'post_published',
-      title: 'Post published!',
-      message: 'Your post "Summer Sale" was successfully published to Telegram.',
-      read: false,
-      timestamp: new Date(Date.now() - 3600000)
-    },
-    {
-      id: '2',
-      type: 'post_retrying',
-      title: 'Post retrying...',
-      message: 'We are retrying to publish "New Product" after a temporary error.',
-      read: true,
-      timestamp: new Date(Date.now() - 7200000)
-    }
-  ]);
 
-  get unreadCount() {
-    return () => this.notifications().filter(n => !n.read).length;
-  }
+  unreadCount = computed(() => this.notificationService.notifications().filter(n => !n.read).length);
 
   toggleDropdown() {
     this.isDropdownOpen.set(!this.isDropdownOpen());
   }
 
   markAllAsRead() {
-    this.notifications.set(
-      this.notifications().map(n => ({ ...n, read: true }))
-    );
+    this.notificationService.markAllAsRead();
   }
 }

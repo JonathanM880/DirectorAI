@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { SupabaseClient } from '@supabase/supabase-js';
+import FilerobotImageEditor from 'filerobot-image-editor';
+import { NotificationService } from '../../core/services/notification.service';
 
 @Component({
   selector: 'app-assets',
@@ -110,17 +112,50 @@ import { SupabaseClient } from '@supabase/supabase-js';
         <div class="preview-modal" *ngIf="previewAsset()" (click)="closePreview()">
           <div class="modal-content" (click)="$event.stopPropagation()">
             <button class="close-btn" (click)="closePreview()">×</button>
-            <img *ngIf="previewAsset()?.type === 'image'" [src]="previewAsset().preview" class="preview-media">
-            <video *ngIf="previewAsset()?.type === 'video'" controls class="preview-media">
-              <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
-            </video>
-            <div *ngIf="previewAsset()?.type === 'document'" class="preview-text">
-              <p *ngIf="!previewAsset().textContent">Loading text content...</p>
-              <pre *ngIf="previewAsset().textContent">{{ previewAsset().textContent }}</pre>
+            
+            <ng-container *ngIf="!isEditing()">
+              <img *ngIf="previewAsset()?.type === 'image'" [src]="previewAsset().preview" class="preview-media">
+              <video *ngIf="previewAsset()?.type === 'video'" controls class="preview-media">
+                <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+              </video>
+              <div *ngIf="previewAsset()?.type === 'document'" class="preview-text">
+                <p *ngIf="!previewAsset().textContent">Loading text content...</p>
+                <pre *ngIf="previewAsset().textContent">{{ previewAsset().textContent }}</pre>
+              </div>
+              
+              <div class="preview-details">
+                <div class="details-header">
+                  <div>
+                    <h3>{{ previewAsset().filename }}</h3>
+                    <p>{{ previewAsset().size }} • {{ previewAsset().source }}</p>
+                  </div>
+                  <div class="actions" *ngIf="previewAsset()?.type !== 'video'">
+                    <button class="btn btn-sm" (click)="startEditing()">Edit</button>
+                    <button class="btn btn-sm btn-danger" (click)="deleteAsset(previewAsset())">Delete</button>
+                  </div>
+                  <div class="actions" *ngIf="previewAsset()?.type === 'video'">
+                    <button class="btn btn-sm btn-danger" (click)="deleteAsset(previewAsset())">Delete</button>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- Text Editor -->
+            <div class="editor-container" *ngIf="isEditing() && previewAsset()?.type === 'document'">
+              <div class="editor-header">
+                <input class="filename-input" [(ngModel)]="editFilename" placeholder="Filename">
+              </div>
+              <textarea class="text-editor-area" [(ngModel)]="editTextContent"></textarea>
+              <div class="editor-footer">
+                <button class="btn" (click)="cancelEditing()">Cancel</button>
+                <button class="btn btn-primary" (click)="saveTextEdit(false)">Overwrite Original</button>
+                <button class="btn btn-primary" (click)="saveTextEdit(true)">Save as New</button>
+              </div>
             </div>
-            <div class="preview-details">
-              <h3>{{ previewAsset().filename }}</h3>
-              <p>{{ previewAsset().size }} • {{ previewAsset().source }}</p>
+
+            <!-- Image Editor Container -->
+            <div class="editor-container" *ngIf="isEditing() && previewAsset()?.type === 'image'">
+              <div id="filerobot-editor" style="width: 100%; height: 70vh;"></div>
             </div>
           </div>
         </div>
@@ -402,6 +437,15 @@ import { SupabaseClient } from '@supabase/supabase-js';
       background: var(--color-ink);
       border-top: 1px solid var(--color-steel);
     }
+    .details-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
     .preview-details h3 {
       margin: 0 0 8px 0;
     }
@@ -410,16 +454,63 @@ import { SupabaseClient } from '@supabase/supabase-js';
       color: var(--color-gray-300);
       font-size: 0.9rem;
     }
+    
+    .editor-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 70vh;
+      background: var(--color-ink);
+    }
+    .editor-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--color-steel);
+    }
+    .filename-input {
+      width: 100%;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--color-steel);
+      border-radius: 6px;
+      color: var(--color-paper);
+      font-family: inherit;
+    }
+    .text-editor-area {
+      flex: 1;
+      padding: 20px;
+      background: transparent;
+      border: none;
+      color: var(--color-paper);
+      font-family: monospace;
+      resize: none;
+      line-height: 1.5;
+    }
+    .text-editor-area:focus {
+      outline: none;
+    }
+    .editor-footer {
+      padding: 16px;
+      border-top: 1px solid var(--color-steel);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
   `]
 })
 export class AssetsComponent implements OnInit {
   private supabase = inject(SupabaseClient);
+  private notificationService = inject(NotificationService);
 
   viewMode = signal<'grid' | 'list'>('grid');
   isDraggingOver = signal(false);
   selectedCount = signal(0);
   activeFilter = signal('All Files');
   previewAsset = signal<any>(null);
+  
+  isEditing = signal(false);
+  editFilename = '';
+  editTextContent = '';
+  private imageEditorInstance: any = null;
 
   // Mock data for UI layout
   mockAssets = signal<any[]>([
@@ -466,6 +557,167 @@ export class AssetsComponent implements OnInit {
 
   closePreview() {
     this.previewAsset.set(null);
+    this.isEditing.set(false);
+    this.editFilename = '';
+    this.editTextContent = '';
+    if (this.imageEditorInstance) {
+      this.imageEditorInstance.terminate();
+      this.imageEditorInstance = null;
+    }
+  }
+  
+  startEditing() {
+    const asset = this.previewAsset();
+    if (!asset) return;
+    
+    this.isEditing.set(true);
+    this.editFilename = asset.filename;
+    this.editTextContent = asset.textContent || '';
+    
+    if (asset.type === 'image') {
+      setTimeout(() => this.initImageEditor(), 100);
+    }
+  }
+  
+  cancelEditing() {
+    this.isEditing.set(false);
+    if (this.imageEditorInstance) {
+      this.imageEditorInstance.terminate();
+      this.imageEditorInstance = null;
+    }
+  }
+
+  async saveTextEdit(asNew: boolean) {
+    const asset = this.previewAsset();
+    if (!asset) return;
+    
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session) return;
+    
+    try {
+      const file = new Blob([this.editTextContent], { type: 'text/plain' });
+      let path = asset.storage_path;
+      let newFilename = this.editFilename;
+      
+      if (asNew || newFilename !== asset.filename) {
+        const timestamp = Date.now();
+        path = `${session.user.id}/generated-${timestamp}.txt`;
+      }
+      
+      const { data: uploadData, error: uploadErr } = await this.supabase.storage
+        .from('assets')
+        .upload(path, file, { upsert: !asNew && newFilename === asset.filename });
+        
+      if (uploadErr) throw uploadErr;
+      
+      if (asNew) {
+        await this.supabase.from('assets').insert({
+          user_id: session.user.id,
+          filename: newFilename,
+          mime_type: 'text/plain',
+          size_bytes: file.size,
+          storage_path: uploadData.path,
+          folder: '/',
+          tags: asset.tags || ['edited'],
+          source: asset.source
+        });
+      } else {
+        await this.supabase.from('assets').update({
+          filename: newFilename,
+          size_bytes: file.size,
+          storage_path: uploadData.path
+        }).eq('id', asset.id);
+      }
+      
+      this.notificationService.notify('asset_updated', 'success', 'Asset Saved', `Successfully saved text asset.`);
+      this.closePreview();
+      this.loadAssets();
+    } catch (e: any) {
+      this.notificationService.notify('asset_error', 'error', 'Error Saving', e.message);
+    }
+  }
+  
+  private initImageEditor() {
+    const asset = this.previewAsset();
+    const container = document.getElementById('filerobot-editor');
+    if (!container || !asset) return;
+    
+    const config: any = {
+      source: asset.preview,
+      onSave: async (editedImageObject: any, designState: any) => {
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session) return;
+        
+        try {
+          const res = await fetch(editedImageObject.imageBase64);
+          const blob = await res.blob();
+          
+          const asNew = confirm('Save as new image? (Cancel to overwrite)');
+          const newName = prompt('Filename:', this.editFilename) || this.editFilename;
+          
+          let path = asset.storage_path;
+          if (asNew || newName !== asset.filename) {
+            path = `${session.user.id}/edited-${Date.now()}.jpg`;
+          }
+          
+          const { data: uploadData, error: uploadErr } = await this.supabase.storage
+            .from('assets')
+            .upload(path, blob, { upsert: !asNew && newName === asset.filename });
+            
+          if (uploadErr) throw uploadErr;
+          
+          if (asNew) {
+            await this.supabase.from('assets').insert({
+              user_id: session.user.id,
+              filename: newName,
+              mime_type: editedImageObject.mimeType || 'image/jpeg',
+              size_bytes: blob.size,
+              storage_path: uploadData.path,
+              folder: '/',
+              tags: asset.tags || ['edited'],
+              source: asset.source
+            });
+          } else {
+            await this.supabase.from('assets').update({
+              filename: newName,
+              size_bytes: blob.size,
+              storage_path: uploadData.path
+            }).eq('id', asset.id);
+          }
+          
+          this.notificationService.notify('asset_updated', 'success', 'Image Saved', `Successfully saved image.`);
+          this.closePreview();
+          this.loadAssets();
+        } catch (e: any) {
+          this.notificationService.notify('asset_error', 'error', 'Error Saving', e.message);
+        }
+      },
+      annotationsCommon: {
+        fill: '#ff0000'
+      },
+      Text: { text: 'Your Text Here' }
+    };
+    
+    this.imageEditorInstance = new FilerobotImageEditor(container, config);
+    this.imageEditorInstance.render({
+      onClose: (closingReason: any) => {
+        this.cancelEditing();
+      }
+    });
+  }
+
+  async deleteAsset(asset: any) {
+    if (!confirm(`Are you sure you want to delete ${asset.filename}?`)) return;
+    
+    const { error: dbError } = await this.supabase.from('assets').delete().eq('id', asset.id);
+    if (!dbError) {
+      await this.supabase.storage.from('assets').remove([asset.storage_path]);
+      this.notificationService.notify('asset_deleted', 'success', 'Asset Deleted', `Successfully deleted ${asset.filename}`);
+      this.closePreview();
+      this.loadAssets();
+    } else {
+      this.notificationService.notify('asset_error', 'error', 'Delete Failed', dbError.message);
+    }
   }
 
   async loadAssets() {

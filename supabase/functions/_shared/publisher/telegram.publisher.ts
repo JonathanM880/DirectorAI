@@ -6,7 +6,7 @@ import {
   PublishResult,
   PublishErrorCode,
   PublishError,
-} from '@director-ai/types';
+} from '../../../../packages/types/index.ts';
 import { BasePublisher } from './social-media-publisher.interface';
 
 /**

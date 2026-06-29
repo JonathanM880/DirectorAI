@@ -4,15 +4,16 @@ import {
   GeneratedCopy,
   ImageRequest,
   GeneratedImage,
-  BrainstormRequest,
   BrainstormResult,
+  CampaignParseRequest,
+  CampaignParseResult,
   GeneratedAsset,
   BillingService,
   AssetStorageService,
   KeyVaultService,
   FeatureGatedError,
   QuotaExceededError
-} from '@director-ai/types'
+} from '../../../packages/types/index.ts'
 
 export class GenAIServiceImpl implements GenAIService {
   private readonly defaultOpenRouterKey: string
@@ -67,7 +68,7 @@ export class GenAIServiceImpl implements GenAIService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.3-70b-instruct:free',
+        model: 'google/gemma-4-31b-it:free',
         messages
       })
     })
@@ -103,7 +104,7 @@ export class GenAIServiceImpl implements GenAIService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.3-70b-instruct:free',
+        model: 'google/gemma-4-31b-it:free',
         messages: [{ role: 'user', content: this.buildPrompt(request) }],
         stream: true
       })
@@ -141,7 +142,7 @@ export class GenAIServiceImpl implements GenAIService {
       id: asset.id,
       content,
       platform: request.platform,
-      model: 'meta-llama/llama-3.3-70b-instruct:free',
+      model: 'google/gemma-4-31b-it:free',
       tokensUsed: Math.ceil(content.length / 4), 
       createdAt: asset.createdAt
     }
@@ -161,28 +162,17 @@ export class GenAIServiceImpl implements GenAIService {
 
   async generateImage(request: ImageRequest): Promise<GeneratedImage> {
     await this.checkGates(request.userId)
-    const apiKey = await this.getApiKey(request.userId)
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'openai/dall-e-3',
-        messages: [{ role: 'user', content: `Generate an image. Style: ${request.style}. Aspect Ratio: ${request.aspectRatio}. Prompt: ${request.prompt}` }]
-      })
-    })
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content || ''
     
+    // OpenRouter does not provide free image models. 
+    // For testing purposes, we return a high-quality placeholder from Unsplash.
+    const seed = Math.floor(Math.random() * 1000)
+    const mockUrl = `https://picsum.photos/seed/${seed}/1024/1024`
+
     return {
       id: crypto.randomUUID(),
-      url: content, 
+      url: mockUrl, 
       prompt: request.prompt,
-      model: 'openai/dall-e-3',
+      model: 'mock-image-generator',
       createdAt: new Date()
     }
   }
@@ -198,10 +188,14 @@ export class GenAIServiceImpl implements GenAIService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3.3-70b-instruct:free',
+        model: 'google/gemma-4-31b-it:free',
         messages: [{ role: 'user', content: `Brainstorm exactly ${request.count} ideas for ${request.platform} about ${request.topic}. Output strictly a JSON array of strings.` }]
       })
     })
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error (brainstorm): ${response.statusText}`)
+    }
 
     const data = await response.json()
     let ideas: string[] = []
@@ -222,6 +216,61 @@ export class GenAIServiceImpl implements GenAIService {
       ideas: ideas.slice(0, request.count),
       platform: request.platform,
       count: ideas.length
+    }
+  }
+
+  async parseCampaign(request: CampaignParseRequest): Promise<CampaignParseResult> {
+    await this.checkGates(request.userId)
+    const apiKey = await this.getApiKey(request.userId)
+
+    const sysPrompt = `You are a social media campaign scheduler. Parse the user's prompt into a JSON array of posts.
+Format strictly as JSON:
+[
+  {
+    "text": "The post text",
+    "imagePrompt": "Description of the image to generate, or null if no image",
+    "offsetMinutes": 30
+  }
+]
+No markdown blocks, just raw JSON.`;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'google/gemma-4-31b-it:free',
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user', content: request.prompt }
+        ]
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error (parseCampaign): ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    let posts = []
+    try {
+      const content = data.choices?.[0]?.message?.content || '[]'
+      const jsonStart = content.indexOf('[')
+      const jsonEnd = content.lastIndexOf(']')
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        posts = JSON.parse(content.substring(jsonStart, jsonEnd + 1))
+      } else {
+        posts = JSON.parse(content)
+      }
+    } catch {
+      posts = []
+    }
+
+    return {
+      posts,
+      platform: request.platform
     }
   }
 

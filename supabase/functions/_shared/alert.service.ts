@@ -1,10 +1,10 @@
-import { SupabaseClient } from '@supabase/supabase-js'
+import { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 import {
   AlertService,
   AlertEvent,
   Notification,
   Unsubscribe,
-} from '@director-ai/types'
+} from '../../../packages/types/index.ts'
 
 export class AlertServiceImpl implements AlertService {
   constructor(private supabase: SupabaseClient) {}
@@ -24,9 +24,6 @@ export class AlertServiceImpl implements AlertService {
    *      { type: 'post_retrying', severity: 'warning', title: 'Post retrying', ... }
    *    Include `metadata: { nextRetryAt: '<ISO string>' }` so the UI can
    *    display the estimated next retry time.
-   *  - Req 9.8: billing alerts — wire from BillingService for events such as
-   *    subscription_renewed, subscription_expired, payment_failed with:
-   *      { type: 'payment_failed', severity: 'error', title: 'Payment failed', ... }
    */
   async notify(userId: string, event: AlertEvent): Promise<void> {
     const { error } = await this.supabase.from('notifications').insert({

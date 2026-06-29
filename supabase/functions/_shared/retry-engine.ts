@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import {
   ScheduledPost,
   PublishError,
@@ -9,7 +9,7 @@ import {
   PostStatus,
   ChannelConfig,
   AlertService,
-} from '@director-ai/types';
+} from '../../../packages/types/index.ts';
 import { PublisherRegistry } from './publisher/social-media-publisher.interface';
 
 export const BASE_DELAY_MS = 1000;

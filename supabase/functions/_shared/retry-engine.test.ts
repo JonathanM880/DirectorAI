@@ -7,7 +7,7 @@ import {
   SocialPlatform,
   PostStatus,
   PublishErrorCode,
-} from '@director-ai/types';
+} from '../../../packages/types/index.ts';
 import {
   RetryEngineImpl,
   computeBaseDelay,
@@ -18,7 +18,7 @@ import {
   PlatformCapabilities,
   ChannelConfig,
   PublishResult,
-} from '@director-ai/types';
+} from '../../../packages/types/index.ts';
 
 function createBasePost(overrides: Partial<ScheduledPost> = {}): ScheduledPost {
   return {

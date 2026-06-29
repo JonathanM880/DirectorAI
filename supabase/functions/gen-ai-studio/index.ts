@@ -1,10 +1,9 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { GenAIServiceImpl } from '../_shared/gen-ai.service.ts'
 import { KeyVaultServiceImpl } from '../_shared/key-vault.service.ts'
 import { AssetStorageServiceImpl } from '../_shared/asset-storage.service.ts'
 // Note: We'd import BillingServiceImpl, but since Dev 3 builds it, we use a mock.
-import { BillingService, UsageSummary, PlanId, CheckoutSession, PortalSession, Subscription } from '../../packages/types/index.ts'
+import { BillingService, UsageSummary, PlanId, CheckoutSession, PortalSession, Subscription } from '../../../packages/types/index.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,12 +47,24 @@ Deno.serve(async (req) => {
 
     const { action, payload } = await req.json()
 
-    const keyVault = new KeyVaultServiceImpl(supabaseClient)
-    const assetStorage = new AssetStorageServiceImpl(supabaseClient)
+    if (payload.userId && payload.userId !== user.id) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const keyVault = new KeyVaultServiceImpl(supabaseAdmin)
+    const assetStorage = new AssetStorageServiceImpl(supabaseAdmin)
     const billing = new MockBillingService()
     
-    // Pass the supabase client correctly (as 4th argument)
-    const genAI = new GenAIServiceImpl(billing, assetStorage, keyVault, supabaseClient, Deno.env.get('OPENROUTER_API_KEY'))
+    // Pass the supabase admin correctly (as 4th argument)
+    const genAI = new GenAIServiceImpl(billing, assetStorage, keyVault, supabaseAdmin, Deno.env.get('OPENROUTER_API_KEY'))
 
     if (action === 'streamGenerate') {
       const { readable, writable } = new TransformStream()
@@ -78,6 +89,11 @@ Deno.serve(async (req) => {
       })
     } else if (action === 'brainstorm') {
       const result = await genAI.brainstorm(payload)
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    } else if (action === 'parseCampaign') {
+      const result = await genAI.parseCampaign(payload)
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

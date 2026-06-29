@@ -6,9 +6,9 @@ import {
   SocialPlatform,
   ChannelConfig,
   RecurrenceRule,
-} from '@director-ai/types';
+} from '../../../packages/types/index.ts';
 import { PublisherRegistry } from '../_shared/publisher/social-media-publisher.interface';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { RecurrenceService } from './recurrence.service';
 
 // Database row types
