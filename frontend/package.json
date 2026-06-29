@@ -38,6 +38,7 @@
     "clsx": "2.1.1",
     "filerobot-image-editor": "^5.0.0-beta.159",
     "ng2-charts": "10.0.0",
+    "ngx-scrollbar": "^19.1.5",
     "rxjs": "7.8.0",
     "tailwind-merge": "3.5.0",
     "tailwindcss": "4.3.1",

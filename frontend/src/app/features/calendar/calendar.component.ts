@@ -257,7 +257,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   goToMetrics() {
-    this.router.navigate(['/metrics']);
+    const post = this.selectedPost();
+    if (post) {
+      this.router.navigate(['/app/metrics'], { state: { postId: post.id } });
+    }
   }
 
   /* ── New Post Panel ──────────────────────────────────────── */
