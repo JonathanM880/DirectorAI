@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GenAiService } from '../../core/services/gen-ai.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { CopyRequest } from '@director-ai/types';
 import { SupabaseClient } from '@supabase/supabase-js';
 
@@ -68,12 +69,16 @@ import { SupabaseClient } from '@supabase/supabase-js';
           </div>
           
           <div *ngIf="output()" class="output-content">
-            <p>{{ output() }}</p>
+            <img *ngIf="generatedImageUrl" [src]="generatedImageUrl" alt="AI Generated Image" class="generated-preview">
+            <pre *ngIf="!generatedImageUrl && mode() === 'campaign'">{{ output() }}</pre>
+            <p *ngIf="!generatedImageUrl && mode() !== 'campaign'">{{ output() }}</p>
           </div>
 
           <div class="actions" *ngIf="output() && !isGenerating()">
-            <button class="btn" (click)="saveToAssets()">Save to Assets</button>
-            <button class="btn" (click)="scheduleNow()">Schedule Now</button>
+            <button class="btn" (click)="saveToAssets()" [disabled]="isSaving()">
+              {{ isSaving() ? 'Saving...' : 'Save to Assets' }}
+            </button>
+            <button class="btn" (click)="scheduleNow()" [disabled]="isSaving()">Schedule Now</button>
           </div>
         </div>
       </div>
@@ -171,6 +176,18 @@ import { SupabaseClient } from '@supabase/supabase-js';
       white-space: pre-wrap;
       font-size: 1.1rem;
       line-height: 1.6;
+      overflow-x: hidden;
+    }
+    .output-content pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: inherit;
+      margin: 0;
+    }
+    .generated-preview {
+      width: 100%;
+      border-radius: 8px;
+      margin-top: 10px;
     }
     .actions {
       margin-top: var(--space-4);
@@ -182,6 +199,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 export class StudioComponent implements OnInit {
   private genAiService = inject(GenAiService);
   private supabase = inject(SupabaseClient);
+  private notificationService = inject(NotificationService);
 
   mode = signal<'copy' | 'brainstorm' | 'image' | 'campaign'>('copy');
   platform = signal<any>('twitter');
@@ -189,10 +207,17 @@ export class StudioComponent implements OnInit {
   prompt = signal('');
 
   isGenerating = signal(false);
+  isSaving = signal(false);
   output = signal('');
   
   usage = signal(0);
   usageLimit = signal(100);
+
+  get generatedImageUrl(): string | null {
+    if (this.mode() !== 'image' || !this.output()) return null;
+    const match = this.output().match(/\((https?:\/\/[^\)]+)\)/);
+    return match ? match[1] : null;
+  }
 
   async ngOnInit() {
     // We would fetch actual usage from BillingService via an Edge Function
@@ -263,7 +288,15 @@ export class StudioComponent implements OnInit {
           platform: this.platform()
         });
         
-        this.output.set(JSON.stringify(result.posts, null, 2));
+        let formatted = '';
+        result.posts.forEach((p: any, i: number) => {
+          formatted += `📌 Post ${i + 1}\n`;
+          if (p.imagePrompt) formatted += `📷 Image Concept: ${p.imagePrompt}\n`;
+          formatted += `📝 Text:\n${p.text}\n`;
+          formatted += `⏱️ Offset: +${p.offsetMinutes} mins\n\n`;
+        });
+        this.output.set(formatted.trim());
+        
         this.isGenerating.set(false);
         this.usage.update(u => u + 1);
         (this as any).lastCampaignResult = result.posts;
@@ -277,9 +310,12 @@ export class StudioComponent implements OnInit {
 
   async saveToAssets() {
     try {
-      this.isGenerating.set(true);
+      this.isSaving.set(true);
       const { data: { session } } = await this.supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        this.isSaving.set(false);
+        return;
+      }
       
       let postsToSave = (this as any).lastCampaignResult || [];
       if (this.mode() === 'image') {
@@ -384,12 +420,18 @@ export class StudioComponent implements OnInit {
           recurrence_rule_id: rule.id
         });
       }
-
-      this.isGenerating.set(false);
-      alert('Assets and Schedules successfully saved to database!');
+      
+      this.isSaving.set(false);
+      
+      this.notificationService.notify(
+        'assets_saved',
+        'success',
+        'Assets Saved',
+        `Successfully saved ${postsToSave.length} item(s) to your assets library.`
+      );
     } catch (err: any) {
       console.error(err);
-      this.isGenerating.set(false);
+      this.isSaving.set(false);
       alert('Error saving to DB: ' + err.message);
     }
   }
