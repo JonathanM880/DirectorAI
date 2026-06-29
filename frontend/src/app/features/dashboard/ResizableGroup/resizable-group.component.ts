@@ -6,27 +6,34 @@ import { HlmResizableImports } from '@spartan-ng/helm/resizable';
   selector: 'app-resizable-group',
   standalone: true,
   imports: [CommonModule, HlmResizableImports],
+  host: {
+    class: 'block w-full h-full'
+  },
   template: `
-    <hlm-resizable-group class="h-[200px] w-[500px] max-w-md rounded-lg border">
+    <hlm-resizable-group direction="horizontal" class="h-full w-full max-w-4xl rounded-lg border">
+      
       <hlm-resizable-panel>
-        <div class="flex h-full items-center justify-center p-6">One</div>
+        <div class="flex h-full items-center justify-center p-6">
+          <span class="font-semibold">One</span>
+        </div>
       </hlm-resizable-panel>
+      
       <hlm-resizable-handle />
+      
       <hlm-resizable-panel>
-        <hlm-resizable-group direction="vertical">
-          <hlm-resizable-panel>
-            <div class="flex h-full items-center justify-center p-6">
-              <span class="font-semibold">Two</span>
-            </div>
-          </hlm-resizable-panel>
-          <hlm-resizable-handle />
-          <hlm-resizable-panel>
-            <div class="flex h-full items-center justify-center p-6">
-              <span class="font-semibold">Three</span>
-            </div>
-          </hlm-resizable-panel>
-        </hlm-resizable-group>
+        <div class="flex h-full items-center justify-center p-6">
+          <span class="font-semibold">Two</span>
+        </div>
       </hlm-resizable-panel>
+      
+      <hlm-resizable-handle />
+      
+      <hlm-resizable-panel>
+        <div class="flex h-full items-center justify-center p-6">
+          <span class="font-semibold">Three</span>
+        </div>
+      </hlm-resizable-panel>
+
     </hlm-resizable-group>
   `
 })

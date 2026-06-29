@@ -9,43 +9,62 @@ import { ResizableGroupComponent } from "./ResizableGroup/resizable-group.compon
 import { ScrollAreaHorizontalPreview } from "./ScrollAreaHorizontalPreview/scroll-area-horizontal-preview.component";
 import { TablePreview } from "./Table/table.component";
 
-
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MaxWidthHeightWrapperComponent, ChanelGridComponent, HlmSkeleton, ResizableGroupComponent, ScrollAreaHorizontalPreview, TablePreview],
+  imports: [
+    CommonModule, 
+    MaxWidthHeightWrapperComponent, 
+    ChanelGridComponent, 
+    HlmSkeleton, 
+    ResizableGroupComponent, 
+    ScrollAreaHorizontalPreview, 
+    TablePreview
+  ],
   template: `
     <div class="page-container">
       <app-max-width-height-wrapper>
-        @if (profile()) {
-          <h2>Bienvenido, {{ profile()?.displayName || profile()?.email }}</h2>
-        } @else {
-          <hlm-skeleton class="inline-block h-[20px] w-[300px] rounded-full"></hlm-skeleton>
-        }
-
-        <div style="display: flex;">
+        
+        <div class="flex flex-col justify-center gap-10 w-full">
+          
           <div>
-            <app-chanel-grid></app-chanel-grid>
+            @if (profile()) {
+              <h2 class="text-2xl font-bold">Bienvenido, {{ profile()?.displayName || profile()?.email }}</h2>
+            } @else {
+              <hlm-skeleton class="inline-block h-[20px] w-[300px] rounded-full"></hlm-skeleton>
+            }
           </div>
 
-          <div style="display: flex; flex-direction: column;">
-            <div>
-              
-              <app-resizable-group></app-resizable-group>
+          <div class="flex flex-wrap gap-8 w-full items-stretch">
+            <div class="w-[500px] shrink-0 flex flex-col">
+              <h3 class="text-xl font-semibold mb-4">Tus canales</h3>
+              <app-chanel-grid class="flex-1"></app-chanel-grid>
+            </div>
 
+            <div class="flex-1 min-w-[500px] flex flex-col">
+              <app-resizable-group class="flex-1"></app-resizable-group>
             </div>
           </div>
+
+          <div class="flex flex-col gap-6 w-full items-start">
+            <div class="w-full">
+              <h3 class="text-xl font-semibold mb-4">Próximos post</h3>
+              <spartan-scroll-area-horizontal-preview class="w-full"></spartan-scroll-area-horizontal-preview>
+            </div>
+            
+            <div class="w-full">
+              <h3 class="text-xl font-semibold mb-4">Post publicados</h3>
+              <spartan-scroll-area-horizontal-preview class="w-full"></spartan-scroll-area-horizontal-preview>
+            </div>
+          </div>
+
+          <div class="w-full flex flex-col justify-center">
+            <h3 class="text-xl font-semibold mb-4">Historial</h3>
+            <spartan-table-preview class="w-full"></spartan-table-preview>
+          </div>
+          
         </div>
 
-        <div>
-          <spartan-scroll-area-horizontal-preview></spartan-scroll-area-horizontal-preview>
-          <spartan-scroll-area-horizontal-preview></spartan-scroll-area-horizontal-preview>
-        </div>
-
-        <div>
-          <spartan-table-preview></spartan-table-preview>
-        </div>
-        
       </app-max-width-height-wrapper>
     </div>
   `

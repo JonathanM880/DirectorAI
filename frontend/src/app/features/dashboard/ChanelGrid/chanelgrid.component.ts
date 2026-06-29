@@ -6,9 +6,9 @@ import { TelegramIconComponent } from "@/shared/components/ui/telegram-icon/tele
   standalone: true,
   template: `
 
-        <div class="grid grid-cols-2 gap-[2px]">
+        <div class="grid grid-cols-2 border border-border rounded-3xl overflow-hidden bg-transparent">
           
-          <div class="bg-gray-500/50 py-4 px-8 flex items-center justify-center transition-colors hover:bg-gray-400/50 rounded-tl-3xl">
+          <div class="border-r border-b border-border py-4 px-8 flex items-center justify-center transition-colors hover:bg-white/[0.03]">
             <div class="flex items-center gap-4 text-white w-full max-w-lg">
               
               <div class="flex-shrink-0 w-8 h-8">
@@ -24,7 +24,7 @@ import { TelegramIconComponent } from "@/shared/components/ui/telegram-icon/tele
             </div>
           </div>
 
-          <div class="bg-gray-500/50 py-4 px-8  flex items-center justify-center transition-colors hover:bg-gray-400/50 rounded-tr-3xl">
+          <div class="border-b border-border py-4 px-8  flex items-center justify-center transition-colors hover:bg-white/[0.03]">
             <div class="flex items-center gap-4 text-white w-full max-w-lg">
               
               <div class="flex-shrink-0 w-8 h-8">
@@ -40,7 +40,7 @@ import { TelegramIconComponent } from "@/shared/components/ui/telegram-icon/tele
             </div>
           </div>
 
-          <div class="bg-gray-500/50 py-4 px-8 flex items-center justify-center transition-colors hover:bg-gray-400/50">
+          <div class="border-r border-b border-border py-4 px-8 flex items-center justify-center transition-colors hover:bg-white/[0.03]">
             <div class="flex items-center gap-4 text-white w-full max-w-lg">
               
               <div class="flex-shrink-0 w-8 h-8">
@@ -56,7 +56,7 @@ import { TelegramIconComponent } from "@/shared/components/ui/telegram-icon/tele
             </div>
           </div>
 
-          <div class="bg-gray-500/50 py-4 px-8  flex items-center justify-center transition-colors hover:bg-gray-400/50">
+          <div class="border-b border-border py-4 px-8  flex items-center justify-center transition-colors hover:bg-white/[0.03]">
              <div class="flex items-center gap-4 text-white w-full max-w-lg">
               
               <div class="flex-shrink-0 w-8 h-8">
@@ -72,7 +72,7 @@ import { TelegramIconComponent } from "@/shared/components/ui/telegram-icon/tele
             </div>
           </div>
 
-          <div class="bg-gray-500/50 py-4 px-8 flex items-center justify-center transition-colors hover:bg-gray-400/50 rounded-bl-3xl">
+          <div class="border-r border-border py-4 px-8 flex items-center justify-center transition-colors hover:bg-white/[0.03]">
             <div class="flex items-center gap-4 text-white w-full max-w-lg">
               
               <div class="flex-shrink-0 w-8 h-8">
@@ -88,7 +88,7 @@ import { TelegramIconComponent } from "@/shared/components/ui/telegram-icon/tele
             </div>
           </div>
 
-          <div class="bg-gray-500/50 py-4 px-8 flex items-center justify-center transition-colors hover:bg-gray-400/50 rounded-br-3xl">
+          <div class="py-4 px-8 flex items-center justify-center transition-colors hover:bg-white/[0.03]">
             <div class="flex items-center gap-4 text-white w-full max-w-lg">
               
               <div class="flex-shrink-0 w-8 h-8">

@@ -7,7 +7,7 @@ import { NgScrollbarModule } from 'ngx-scrollbar';
   standalone: true,
   imports: [HlmScrollAreaImports, NgScrollbarModule],
   template: `
-    <ng-scrollbar hlm class="w-96 border whitespace-nowrap">
+    <ng-scrollbar hlm class="w-full border whitespace-nowrap">
       <div class="flex w-max space-x-4 p-4">
         @for (artwork of _works; track artwork.artist) {
           <figure class="shrink-0">
