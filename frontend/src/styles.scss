@@ -47,6 +47,16 @@ body {
   color: var(--color-paper);
 }
 
+/* Hide scrollbars globally on all elements */
+*::-webkit-scrollbar {
+  display: none !important;
+}
+
+* {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 h1,
 h2,
 h3,
