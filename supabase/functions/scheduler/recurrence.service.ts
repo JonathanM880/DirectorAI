@@ -1,4 +1,4 @@
-import { ScheduledPost, RecurrenceRule } from '@director-ai/types';
+import { ScheduledPost, RecurrenceRule } from '../../../packages/types/index.ts';
 
 /**
  * RecurrenceService computes next scheduled dates for recurring posts.

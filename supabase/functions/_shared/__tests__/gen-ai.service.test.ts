@@ -8,7 +8,7 @@ import {
   FeatureGatedError,
   QuotaExceededError,
   CopyRequest
-} from '@director-ai/types'
+} from '../../../../packages/types/index.ts'
 
 describe('GenAIService backend implementation', () => {
   let billingService: import('vitest').Mocked<BillingService>

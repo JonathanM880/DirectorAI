@@ -7,7 +7,7 @@ import {
   ChannelConfig,
   SocialPlatform,
   PublishErrorCode,
-} from '@director-ai/types';
+} from '../../../../packages/types/index.ts';
 
 /**
  * Base implementation of SocialMediaPublisher with common validation logic.

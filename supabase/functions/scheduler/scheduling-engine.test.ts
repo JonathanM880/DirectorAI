@@ -12,11 +12,11 @@ import {
   RecurrenceRule,
   PlatformCapabilities,
   PublishResult,
-} from '@director-ai/types';
-import { createClient } from '@supabase/supabase-js';
+} from '../../../packages/types/index.ts';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 // Mock Supabase client
-vi.mock('@supabase/supabase-js', () => ({
+vi.mock('jsr:@supabase/supabase-js@2', () => ({
   createClient: vi.fn(() => ({
     from: vi.fn(() => ({
       select: vi.fn(() => ({

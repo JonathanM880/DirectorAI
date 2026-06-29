@@ -1,5 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { KeyVaultService, KeyName } from '@director-ai/types'
+import { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { KeyVaultService, KeyName } from '../../../packages/types/index.ts'
 
 export class KeyVaultServiceImpl implements KeyVaultService {
   constructor(private supabase: SupabaseClient) {}

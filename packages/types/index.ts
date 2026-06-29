@@ -257,6 +257,7 @@ export interface GenAIService {
   generateCopy(request: CopyRequest): Promise<GeneratedCopy>
   generateImage(request: ImageRequest): Promise<GeneratedImage>
   brainstorm(request: BrainstormRequest): Promise<BrainstormResult>
+  parseCampaign(request: CampaignParseRequest): Promise<CampaignParseResult>
   regenerate(assetId: string, instructions?: string): Promise<GeneratedAsset>
   streamGenerate(request: CopyRequest, onChunk: (chunk: string) => void): Promise<GeneratedCopy>
 }
@@ -314,6 +315,23 @@ export interface BrainstormResult {
   ideas: string[]
   platform: SocialPlatform
   count: number
+}
+
+export interface CampaignParseRequest {
+  userId: string
+  prompt: string
+  platform: SocialPlatform
+}
+
+export interface CampaignPost {
+  text: string
+  imagePrompt?: string
+  offsetMinutes: number
+}
+
+export interface CampaignParseResult {
+  posts: CampaignPost[]
+  platform: SocialPlatform
 }
 
 // ---------------------------------------------------------------------------

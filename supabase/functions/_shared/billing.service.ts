@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js'
+import { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 import {
   BillingService,
   PlanId,
@@ -7,7 +7,7 @@ import {
   Subscription,
   UsageSummary,
   Feature
-} from '@director-ai/types'
+} from '../../../packages/types/index.ts'
 
 /**
  * BillingService — Supabase Edge Function stub implementation.

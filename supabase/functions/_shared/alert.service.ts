@@ -1,10 +1,10 @@
-import { SupabaseClient } from '@supabase/supabase-js'
+import { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 import {
   AlertService,
   AlertEvent,
   Notification,
   Unsubscribe,
-} from '@director-ai/types'
+} from '../../../packages/types/index.ts'
 
 export class AlertServiceImpl implements AlertService {
   constructor(private supabase: SupabaseClient) {}

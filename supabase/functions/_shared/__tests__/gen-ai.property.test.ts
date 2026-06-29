@@ -8,7 +8,7 @@ import {
   FeatureGatedError, 
   QuotaExceededError,
   UsageSummary
-} from '@director-ai/types'
+} from '../../../../packages/types/index.ts'
 
 describe('GenAIService Property Tests', () => {
   const createMockService = (hasAccess: boolean, usage: UsageSummary) => {

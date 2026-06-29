@@ -6,7 +6,7 @@ import {
   PlatformCapabilities,
   PostStatus,
   PublishErrorCode,
-} from '@director-ai/types';
+} from '../../../../packages/types/index.ts';
 import { BasePublisher, PublisherRegistry } from './social-media-publisher.interface';
 
 /**

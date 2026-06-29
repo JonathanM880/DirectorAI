@@ -1,5 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { AuthService, AuthResult, OAuthProvider, AuthEvent, User, Session, AuthSubscription } from '@director-ai/types'
+import { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import { AuthService, AuthResult, OAuthProvider, AuthEvent, User, Session, AuthSubscription } from '../../../packages/types/index.ts'
 
 export class AuthServiceImpl implements AuthService {
   constructor(private supabase: SupabaseClient) {}

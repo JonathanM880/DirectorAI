@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RecurrenceService } from './recurrence.service';
-import { ScheduledPost, RecurrenceRule } from '@director-ai/types';
+import { ScheduledPost, RecurrenceRule } from '../../../packages/types/index.ts';
 
 describe('RecurrenceService', () => {
   let recurrenceService: RecurrenceService;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import * as crypto from 'crypto';
 import * as dotenv from 'dotenv';
 import path from 'path';

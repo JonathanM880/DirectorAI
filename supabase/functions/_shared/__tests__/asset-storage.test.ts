@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 import { AssetStorageServiceImpl } from '../asset-storage.service'
-import { UnsupportedMimeTypeError, AssetTooLargeError } from '@director-ai/types'
+import { UnsupportedMimeTypeError, AssetTooLargeError } from '../../../../packages/types/index.ts'
 
 const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321'
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'fake-key'

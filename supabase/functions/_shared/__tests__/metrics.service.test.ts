@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MetricsServiceImpl } from '../metrics.service'
-import { RawPlatformMetrics, DateRange } from '@director-ai/types'
+import { RawPlatformMetrics, DateRange } from '../../../../packages/types/index.ts'
 
 describe('MetricsService backend implementation', () => {
   let mockSupabase: any
