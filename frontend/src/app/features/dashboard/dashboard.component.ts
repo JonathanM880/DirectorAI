@@ -49,12 +49,12 @@ import { TablePreview } from "./Table/table.component";
           <div class="flex flex-col gap-6 w-full items-start">
             <div class="w-full">
               <h3 class="text-xl font-semibold mb-4">Próximos post</h3>
-              <spartan-scroll-area-horizontal-preview class="w-full"></spartan-scroll-area-horizontal-preview>
+              <spartan-scroll-area-horizontal-preview [type]="'upcoming'" class="w-full"></spartan-scroll-area-horizontal-preview>
             </div>
             
             <div class="w-full">
               <h3 class="text-xl font-semibold mb-4">Post publicados</h3>
-              <spartan-scroll-area-horizontal-preview class="w-full"></spartan-scroll-area-horizontal-preview>
+              <spartan-scroll-area-horizontal-preview [type]="'published'" class="w-full"></spartan-scroll-area-horizontal-preview>
             </div>
           </div>
 

@@ -36,6 +36,23 @@ export class ScheduledPostsService {
     return (data ?? []).map(row => this.mapRow(row));
   }
 
+  async getPublishedPosts(from: Date, to: Date): Promise<ScheduledPost[]> {
+    const { data, error } = await this.supabase
+      .from('scheduled_posts')
+      .select('*')
+      .eq('status', 'published')
+      .gte('published_at', from.toISOString())
+      .lte('published_at', to.toISOString())
+      .order('published_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching published posts:', error);
+      throw error;
+    }
+
+    return (data ?? []).map(row => this.mapRow(row));
+  }
+
   async getFailedPosts(): Promise<ScheduledPost[]> {
     const { data, error } = await this.supabase
       .from('scheduled_posts')

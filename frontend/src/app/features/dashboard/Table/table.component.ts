@@ -1,9 +1,13 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { HlmTableImports } from '@spartan-ng/helm/table';
+import { AuditLogService } from '../../../core/services/audit-log.service';
+import { AuditLogEntry } from '../../services/scheduling-engine.service';
 
 @Component({
 	selector: 'spartan-table-preview',
-	imports: [HlmTableImports],
+	standalone: true,
+	imports: [HlmTableImports, CommonModule],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	host: {
 		class: 'w-full',
@@ -11,78 +15,57 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
 	template: `
 		<div hlmTableContainer>
 			<table hlmTable>
-				<caption hlmTableCaption>A list of your recent invoices.</caption>
+				<caption hlmTableCaption>Historial reciente de auditoría</caption>
 				<thead hlmTableHeader>
 					<tr hlmTableRow>
-						<th hlmTableHead class="w-[100px]">Invoice</th>
-						<th hlmTableHead>Status</th>
-						<th hlmTableHead>Method</th>
-						<th hlmTableHead class="text-right">Amount</th>
+						<th hlmTableHead class="w-[150px]">Acción</th>
+						<th hlmTableHead>Plataforma</th>
+						<th hlmTableHead>Fecha</th>
+						<th hlmTableHead class="text-right">Código de Error</th>
 					</tr>
 				</thead>
 				<tbody hlmTableBody>
-					@for (invoice of _invoices; track invoice.invoice) {
+					@for (log of logs(); track log.id) {
 						<tr hlmTableRow>
-							<td hlmTableCell class="font-medium">{{ invoice.invoice }}</td>
-							<td hlmTableCell>{{ invoice.paymentStatus }}</td>
-							<td hlmTableCell>{{ invoice.paymentMethod }}</td>
-							<td hlmTableCell class="text-right">{{ invoice.totalAmount }}</td>
+							<td hlmTableCell class="font-medium">{{ log.action }}</td>
+							<td hlmTableCell>{{ log.platform || '-' }}</td>
+							<td hlmTableCell>{{ log.occurredAt | date:'medium' }}</td>
+							<td hlmTableCell class="text-right font-mono text-xs">{{ log.errorCode || '-' }}</td>
+						</tr>
+					} @empty {
+						<tr hlmTableRow>
+							<td hlmTableCell [attr.colSpan]="4" class="text-center text-gray-400 py-4">
+								No hay registros en el historial.
+							</td>
 						</tr>
 					}
 				</tbody>
 				<tfoot hlmTableFooter>
 					<tr hlmTableRow>
-						<td hlmTableCell [attr.colSpan]="3">Total</td>
-						<td hlmTableCell class="text-right">$2,500.00</td>
+						<td hlmTableCell [attr.colSpan]="3">Total registros</td>
+						<td hlmTableCell class="text-right">{{ totalLogs() }}</td>
 					</tr>
 				</tfoot>
 			</table>
 		</div>
 	`,
 })
-export class TablePreview {
-	protected _invoices = [
-		{
-			invoice: 'INV001',
-			paymentStatus: 'Paid',
-			totalAmount: '$250.00',
-			paymentMethod: 'Credit Card',
-		},
-		{
-			invoice: 'INV002',
-			paymentStatus: 'Pending',
-			totalAmount: '$150.00',
-			paymentMethod: 'PayPal',
-		},
-		{
-			invoice: 'INV003',
-			paymentStatus: 'Unpaid',
-			totalAmount: '$350.00',
-			paymentMethod: 'Bank Transfer',
-		},
-		{
-			invoice: 'INV004',
-			paymentStatus: 'Paid',
-			totalAmount: '$450.00',
-			paymentMethod: 'Credit Card',
-		},
-		{
-			invoice: 'INV005',
-			paymentStatus: 'Paid',
-			totalAmount: '$550.00',
-			paymentMethod: 'PayPal',
-		},
-		{
-			invoice: 'INV006',
-			paymentStatus: 'Pending',
-			totalAmount: '$200.00',
-			paymentMethod: 'Bank Transfer',
-		},
-		{
-			invoice: 'INV007',
-			paymentStatus: 'Unpaid',
-			totalAmount: '$300.00',
-			paymentMethod: 'Credit Card',
-		},
-	];
+export class TablePreview implements OnInit {
+	private auditLogService = inject(AuditLogService);
+
+	logs = signal<AuditLogEntry[]>([]);
+	totalLogs = signal<number>(0);
+
+	async ngOnInit() {
+		try {
+			const result = await this.auditLogService.getAuditLog({
+				page: 0,
+				pageSize: 10
+			});
+			this.logs.set(result.rows);
+			this.totalLogs.set(result.total);
+		} catch (error) {
+			console.error('Error loading audit log preview:', error);
+		}
+	}
 }
