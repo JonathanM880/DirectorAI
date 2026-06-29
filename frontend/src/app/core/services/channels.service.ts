@@ -8,11 +8,10 @@ import { Channel, SocialPlatform } from '@director-ai/types';
 export class ChannelsService {
   private supabase = inject(SupabaseClient);
 
-  async getChannels(userId: string): Promise<Channel[]> {
+  async getChannels(): Promise<Channel[]> {
     const { data, error } = await this.supabase
       .from('channels')
       .select('*')
-      .eq('user_id', userId)
       .order('name', { ascending: true });
 
     if (error) {
@@ -40,7 +39,7 @@ export class ChannelsService {
     return this.mapRow(data);
   }
 
-  async createChannel(channel: { user_id: string; platform: SocialPlatform; name: string; channel_identifier: string; is_active?: boolean }): Promise<Channel> {
+  async createChannel(channel: { platform: SocialPlatform; name: string; channel_identifier: string; is_active?: boolean }): Promise<Channel> {
     const { data, error } = await this.supabase
       .from('channels')
       .insert(channel)

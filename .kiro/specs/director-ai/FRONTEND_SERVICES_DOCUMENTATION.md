@@ -28,6 +28,8 @@ To maintain clean separation of concerns, improve testability, and isolate compo
 1. **No direct Supabase Client in Components**: Never inject `SupabaseClient` directly into components.
 2. **Defensive Testing**: All services are structured to allow mock injection via standard Angular `TestBed` provider overrides.
 3. **Data Mapping**: Services are responsible for converting database snake_case columns into frontend camelCase types defined in `@director-ai/types`.
+4. **Leverage Row Level Security (RLS)**: Service methods do not accept `userId` or require `user_id` properties. Supabase automatically resolves the user's context from the authorization headers and enforces data isolation policies (e.g. checking `auth.uid()`).
+
 
 ---
 
@@ -82,11 +84,9 @@ Manages user profiles, timezones, and onboarding states stored in the `/rest/v1/
 
 ### Public Methods
 
-| Method Signature | Return Type | Description |
-| :--- | :--- | :--- |
-| `getProfile(userId)` | `Promise<UserProfile \| null>` | Fetches the user profile by UUID. |
+| `getProfile()` | `Promise<UserProfile \| null>` | Fetches the user profile by UUID. |
 | `createProfile(profile)` | `Promise<UserProfile>` | Creates a new user profile entry. |
-| `updateProfile(userId, profile)` | `Promise<UserProfile>` | Updates timezone, display name, or onboarding state. |
+| `updateProfile(profile)` | `Promise<UserProfile>` | Updates timezone, display name, or onboarding state. |
 
 ---
 
@@ -101,7 +101,7 @@ Retrieves and configures publishing endpoints (Telegram, X/Twitter, etc.) stored
 
 | Method Signature | Return Type | Description |
 | :--- | :--- | :--- |
-| `getChannels(userId)` | `Promise<Channel[]>` | Lists all active social channels of the user. |
+| `getChannels()` | `Promise<Channel[]>` | Lists all active social channels of the user. |
 | `getChannelById(id)` | `Promise<Channel \| null>` | Retrieves single channel profile by its UUID. |
 | `createChannel(channel)` | `Promise<Channel>` | Adds a new publishing endpoint channel. |
 
@@ -118,7 +118,7 @@ Orchestrates storage binary uploads to bucket endpoints and records database row
 
 | Method Signature | Return Type | Description |
 | :--- | :--- | :--- |
-| `getAssets(userId)` | `Promise<AssetRecord[]>` | Returns all user assets sorted chronologically. |
+| `getAssets()` | `Promise<AssetRecord[]>` | Returns all user assets sorted chronologically. |
 | `getAssetsByIds(ids)` | `Promise<AssetRecord[]>` | Resolves specific assets using an array of UUIDs. |
 | `createSignedUrl(storagePath, ttl, bucket?)` | `Promise<string>` | Generates secure preview URL (default: `'assets'` bucket). |
 | `getTextContent(storagePath, bucket?)` | `Promise<string>` | Generates temporary link, fetches content, and parses text. |
@@ -178,14 +178,14 @@ Manages CRUD operations and lifecycle states of posts scheduled in `/rest/v1/sch
 
 | Method Signature | Return Type | Description |
 | :--- | :--- | :--- |
-| `getUpcomingPosts(userId, from, to)` | `Promise<ScheduledPost[]>` | Gets planned posts within a date window. |
-| `getFailedPosts(userId)` | `Promise<ScheduledPost[]>` | Gets posts whose publication failed. |
-| `getRecurringPosts(userId)` | `Promise<any[]>` | Gets all repeating posts with joined rule tables. |
+| `getUpcomingPosts(from, to)` | `Promise<ScheduledPost[]>` | Gets planned posts within a date window. |
+| `getFailedPosts()` | `Promise<ScheduledPost[]>` | Gets posts whose publication failed. |
+| `getRecurringPosts()` | `Promise<any[]>` | Gets all repeating posts with joined rule tables. |
 | `createPost(post)` | `Promise<ScheduledPost>` | Schedules a new post for publication. |
-| `updatePost(id, userId, post)` | `Promise<ScheduledPost>` | Modifies a scheduled post configuration. |
-| `reschedulePost(id, userId, date)` | `Promise<ScheduledPost>` | Resets schedule date and reverts status to `'scheduled'`. |
-| `cancelPost(id, userId)` | `Promise<void>` | Cancels schedule and turns status to `'cancelled'`. |
-| `updateChannelMaxRetries(userId, chId, max)` | `Promise<void>` | Configures fallback retries limits on channel scope. |
+| `updatePost(id, post)` | `Promise<ScheduledPost>` | Modifies a scheduled post configuration. |
+| `reschedulePost(id, date)` | `Promise<ScheduledPost>` | Resets schedule date and reverts status to `'scheduled'`. |
+| `cancelPost(id)` | `Promise<void>` | Cancels schedule and turns status to `'cancelled'`. |
+| `updateChannelMaxRetries(chId, max)` | `Promise<void>` | Configures fallback retries limits on channel scope. |
 
 ---
 
@@ -200,7 +200,7 @@ Retrieves read-only activity logs stored in `/rest/v1/audit_log`.
 
 | Method Signature | Return Type | Description |
 | :--- | :--- | :--- |
-| `getAuditLog(userId, options)` | `Promise<{ rows: AuditLogEntry[], total: number }>` | Returns paginated audit logs with action filters. |
+| `getAuditLog(options)` | `Promise<{ rows: AuditLogEntry[], total: number }>` | Returns paginated audit logs with action filters. |
 
 ---
 
@@ -215,7 +215,7 @@ Fetches user limits and stripe statuses stored in `/rest/v1/subscriptions`.
 
 | Method Signature | Return Type | Description |
 | :--- | :--- | :--- |
-| `getSubscription(userId)` | `Promise<any \| null>` | Returns plan name, current end dates, and quotas usage. |
+| `getSubscription()` | `Promise<any \| null>` | Returns plan name, current end dates, and quotas usage. |
 
 ---
 
@@ -230,9 +230,9 @@ Provides operations on toasts and feed notifications stored in `/rest/v1/notific
 
 | Method Signature | Return Type | Description |
 | :--- | :--- | :--- |
-| `getNotifications(userId, unreadOnly?)` | `Promise<Notification[]>` | Returns notifications (sorted newest first). |
+| `getNotifications(unreadOnly?)` | `Promise<Notification[]>` | Returns notifications (sorted newest first). |
 | `markAsRead(id)` | `Promise<void>` | Marks a single notification as read. |
-| `markAllAsRead(userId)` | `Promise<void>` | Marks all active notifications as read. |
+| `markAllAsRead()` | `Promise<void>` | Marks all active notifications as read. |
 
 ---
 
@@ -257,28 +257,21 @@ Exposes interaction statistics and views from `/rest/v1/post_metrics`.
 
 ```typescript
 import { Component, inject } from '@angular/core';
-import { AngularAuthService } from '../../core/services/auth.service';
 import { AssetsService } from '../../core/services/assets.service';
 import { ScheduledPostsService } from '../../core/services/scheduled-posts.service';
 
 @Component({ ... })
 export class PublisherComponent {
-  private auth = inject(AngularAuthService);
   private assets = inject(AssetsService);
   private scheduler = inject(ScheduledPostsService);
 
   async publish(channelId: string, text: string, imgFile: File) {
-    const session = await this.auth.getSession();
-    if (!session) return;
-    const userId = session.user.id;
-
     // 1. Upload the image file
-    const imgPath = `${userId}/${Date.now()}-${imgFile.name}`;
+    const imgPath = `${crypto.randomUUID()}-${imgFile.name}`;
     await this.assets.uploadFile(imgPath, imgFile, imgFile.type);
     
-    // 2. Save image asset metadata
+    // 2. Save image asset metadata (Supabase RLS automatically assigns user_id)
     const asset = await this.assets.saveAssetMetadata({
-      user_id: userId,
       filename: imgFile.name,
       mime_type: imgFile.type,
       size_bytes: imgFile.size,
@@ -286,10 +279,9 @@ export class PublisherComponent {
       source: 'user_upload'
     });
 
-    // 3. Create the scheduled post linked to the asset
+    // 3. Create the scheduled post linked to the asset (Supabase RLS automatically assigns user_id)
     const scheduledTime = new Date(Date.now() + 24 * 3600 * 1000); // 24 hours in the future
     await this.scheduler.createPost({
-      user_id: userId,
       channel_id: channelId,
       text_content: text,
       media_asset_ids: [asset.id],

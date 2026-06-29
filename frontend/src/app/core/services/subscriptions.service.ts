@@ -8,11 +8,10 @@ import { Subscription } from '@director-ai/types';
 export class SubscriptionsService {
   private supabase = inject(SupabaseClient);
 
-  async getSubscription(userId: string): Promise<any | null> {
+  async getSubscription(): Promise<any | null> {
     const { data, error } = await this.supabase
       .from('subscriptions')
       .select('*')
-      .eq('user_id', userId)
       .maybeSingle();
 
     if (error) {

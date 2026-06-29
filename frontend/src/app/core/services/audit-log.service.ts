@@ -17,13 +17,12 @@ export interface AuditLogQueryOptions {
 export class AuditLogService {
   private supabase = inject(SupabaseClient);
 
-  async getAuditLog(userId: string, options: AuditLogQueryOptions): Promise<{ rows: AuditLogEntry[]; total: number }> {
+  async getAuditLog(options: AuditLogQueryOptions): Promise<{ rows: AuditLogEntry[]; total: number }> {
     const { page, pageSize, action, platform, from, to } = options;
 
     let query = this.supabase
       .from('audit_log')
       .select('*', { count: 'exact' })
-      .eq('user_id', userId)
       .order('occurred_at', { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1);
 

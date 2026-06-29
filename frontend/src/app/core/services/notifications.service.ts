@@ -8,11 +8,10 @@ import { Notification } from '@director-ai/types';
 export class NotificationsService {
   private supabase = inject(SupabaseClient);
 
-  async getNotifications(userId: string, unreadOnly = false): Promise<Notification[]> {
+  async getNotifications(unreadOnly = false): Promise<Notification[]> {
     let query = this.supabase
       .from('notifications')
       .select('*')
-      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (unreadOnly) {
@@ -40,11 +39,10 @@ export class NotificationsService {
     }
   }
 
-  async markAllAsRead(userId: string): Promise<void> {
+  async markAllAsRead(): Promise<void> {
     const { error } = await this.supabase
       .from('notifications')
       .update({ read: true })
-      .eq('user_id', userId)
       .eq('read', false);
 
     if (error) {

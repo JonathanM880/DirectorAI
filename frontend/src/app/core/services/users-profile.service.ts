@@ -8,11 +8,11 @@ import { UserProfile } from '@director-ai/types';
 export class UsersProfileService {
   private supabase = inject(SupabaseClient);
 
-  async getProfile(userId: string): Promise<UserProfile | null> {
+  async getProfile(): Promise<UserProfile | null> {
+  
     const { data, error } = await this.supabase
       .from('users_profile')
       .select('*')
-      .eq('id', userId)
       .maybeSingle();
 
     if (error) {
@@ -40,7 +40,7 @@ export class UsersProfileService {
     return this.mapRow(data);
   }
 
-  async updateProfile(userId: string, profile: Partial<Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>>): Promise<UserProfile> {
+  async updateProfile(profile: Partial<Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>>): Promise<UserProfile> {
     // Map camelCase fields to snake_case for Supabase if needed
     const payload: any = {};
     if (profile.displayName !== undefined) payload.display_name = profile.displayName;
@@ -52,7 +52,6 @@ export class UsersProfileService {
     const { data, error } = await this.supabase
       .from('users_profile')
       .update(payload)
-      .eq('id', userId)
       .select()
       .single();
 

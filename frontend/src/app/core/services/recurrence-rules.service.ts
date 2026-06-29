@@ -9,7 +9,6 @@ export class RecurrenceRulesService {
   private supabase = inject(SupabaseClient);
 
   async createRule(rule: {
-    user_id: string;
     frequency: 'daily' | 'weekly' | 'monthly';
     interval?: number;
     days_of_week?: number[] | null;

@@ -8,7 +8,7 @@ import { ScheduledPost, PostStatus, SocialPlatform } from '@director-ai/types';
 export class ScheduledPostsService {
   private supabase = inject(SupabaseClient);
 
-  async getUpcomingPosts(userId: string, from: Date, to: Date): Promise<ScheduledPost[]> {
+  async getUpcomingPosts(from: Date, to: Date): Promise<ScheduledPost[]> {
     const { data, error } = await this.supabase
       .from('scheduled_posts')
       .select(`
@@ -24,7 +24,6 @@ export class ScheduledPostsService {
           created_at
         )
       `)
-      .eq('user_id', userId)
       .in('status', ['scheduled', 'retrying', 'failed', 'published', 'paused'])
       .or(`and(scheduled_at.gte.${from.toISOString()},scheduled_at.lte.${to.toISOString()}),recurrence_rule_id.not.is.null`)
       .order('scheduled_at', { ascending: true });
@@ -37,11 +36,10 @@ export class ScheduledPostsService {
     return (data ?? []).map(row => this.mapRow(row));
   }
 
-  async getFailedPosts(userId: string): Promise<ScheduledPost[]> {
+  async getFailedPosts(): Promise<ScheduledPost[]> {
     const { data, error } = await this.supabase
       .from('scheduled_posts')
       .select('*')
-      .eq('user_id', userId)
       .eq('status', 'failed')
       .order('updated_at', { ascending: false });
 
@@ -53,7 +51,7 @@ export class ScheduledPostsService {
     return (data ?? []).map(row => this.mapRow(row));
   }
 
-  async getRecurringPosts(userId: string): Promise<any[]> {
+  async getRecurringPosts(): Promise<any[]> {
     const { data, error } = await this.supabase
       .from('scheduled_posts')
       .select(`
@@ -72,7 +70,6 @@ export class ScheduledPostsService {
           created_at
         )
       `)
-      .eq('user_id', userId)
       .not('recurrence_rule_id', 'is', null)
       .order('scheduled_at', { ascending: true });
 
@@ -84,12 +81,11 @@ export class ScheduledPostsService {
     return data ?? [];
   }
 
-  async getPostById(id: string, userId: string): Promise<ScheduledPost | null> {
+  async getPostById(id: string): Promise<ScheduledPost | null> {
     const { data, error } = await this.supabase
       .from('scheduled_posts')
       .select('*')
       .eq('id', id)
-      .eq('user_id', userId)
       .maybeSingle();
 
     if (error) {
@@ -103,7 +99,6 @@ export class ScheduledPostsService {
   }
 
   async createPost(post: {
-    user_id: string;
     channel_id: string;
     text_content?: string | null;
     media_asset_ids?: string[];
@@ -133,7 +128,7 @@ export class ScheduledPostsService {
     return this.mapRow(data);
   }
 
-  async updatePost(id: string, userId: string, post: Partial<{
+  async updatePost(id: string, post: Partial<{
     channel_id: string;
     text_content: string | null;
     media_asset_ids: string[];
@@ -148,7 +143,6 @@ export class ScheduledPostsService {
       .from('scheduled_posts')
       .update(post)
       .eq('id', id)
-      .eq('user_id', userId)
       .select()
       .single();
 
@@ -160,7 +154,7 @@ export class ScheduledPostsService {
     return this.mapRow(data);
   }
 
-  async reschedulePost(id: string, userId: string, scheduledAt: Date): Promise<ScheduledPost> {
+  async reschedulePost(id: string, scheduledAt: Date): Promise<ScheduledPost> {
     const { data, error } = await this.supabase
       .from('scheduled_posts')
       .update({
@@ -168,7 +162,6 @@ export class ScheduledPostsService {
         status: 'scheduled'
       })
       .eq('id', id)
-      .eq('user_id', userId)
       .select()
       .single();
 
@@ -180,12 +173,11 @@ export class ScheduledPostsService {
     return this.mapRow(data);
   }
 
-  async cancelPost(id: string, userId: string): Promise<void> {
+  async cancelPost(id: string): Promise<void> {
     const { error } = await this.supabase
       .from('scheduled_posts')
       .update({ status: 'cancelled' })
-      .eq('id', id)
-      .eq('user_id', userId);
+      .eq('id', id);
 
     if (error) {
       console.error('Error cancelling post:', error);
@@ -193,12 +185,11 @@ export class ScheduledPostsService {
     }
   }
 
-  async updateChannelMaxRetries(userId: string, channelId: string, maxRetries: number): Promise<void> {
+  async updateChannelMaxRetries(channelId: string, maxRetries: number): Promise<void> {
     const { error } = await this.supabase
       .from('scheduled_posts')
       .update({ max_retries: maxRetries })
       .eq('channel_id', channelId)
-      .eq('user_id', userId)
       .in('status', ['scheduled', 'retrying']);
 
     if (error) {

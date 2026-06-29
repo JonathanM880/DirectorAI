@@ -12,11 +12,10 @@ export class AssetsService {
   // Aligning with 'assets' as used in current components and backend, but customizable.
   private defaultBucket = 'assets';
 
-  async getAssets(userId: string): Promise<AssetRecord[]> {
+  async getAssets(): Promise<AssetRecord[]> {
     const { data, error } = await this.supabase
       .from('assets')
       .select('*')
-      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -99,7 +98,6 @@ export class AssetsService {
   }
 
   async saveAssetMetadata(metadata: {
-    user_id: string;
     filename: string;
     mime_type: string;
     size_bytes: number;
