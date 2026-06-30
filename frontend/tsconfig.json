@@ -30,7 +30,8 @@
       "@spartan-ng/helm/skeleton": ["./libs/ui/skeleton/src/index.ts"],
       "@spartan-ng/helm/resizable": ["./libs/ui/resizable/src/index.ts"],
       "@spartan-ng/helm/scroll-area": ["./libs/ui/scroll-area/src/index.ts"],
-      "@spartan-ng/helm/table": ["./libs/ui/table/src/index.ts"]
+      "@spartan-ng/helm/table": ["./libs/ui/table/src/index.ts"],
+      "@spartan-ng/helm/popover": ["./libs/ui/popover/src/index.ts"]
     }
   },
   "angularCompilerOptions": {
