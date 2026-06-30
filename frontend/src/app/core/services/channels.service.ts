@@ -40,9 +40,22 @@ export class ChannelsService {
   }
 
   async createChannel(channel: { platform: SocialPlatform; name: string; channel_identifier: string; is_active?: boolean }): Promise<Channel> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session?.user) {
+      throw new Error('No hay una sesión activa de usuario.');
+    }
+
+    const payload = {
+      platform: channel.platform,
+      name: channel.name,
+      channel_identifier: channel.channel_identifier,
+      is_active: channel.is_active,
+      user_id: session.user.id
+    };
+
     const { data, error } = await this.supabase
       .from('channels')
-      .insert(channel)
+      .insert(payload)
       .select()
       .single();
 
