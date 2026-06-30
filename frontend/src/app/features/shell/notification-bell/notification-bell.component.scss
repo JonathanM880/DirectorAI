@@ -41,7 +41,7 @@
     border-radius: var(--radius-lg);
     background-color: var(--color-steel);
     box-shadow: var(--shadow-xl);
-    z-index: 1000;
+    z-index: 999999;
     overflow: hidden;
     display: flex;
     flex-direction: column;
