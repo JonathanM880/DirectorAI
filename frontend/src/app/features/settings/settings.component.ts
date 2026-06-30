@@ -89,7 +89,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
                 <div class="text-gray-300 text-sm max-w-md space-y-2">
                   <h4 class="font-bold text-white text-base">Instrucciones de configuración:</h4>
                   <p class="leading-relaxed">
-                    Para añadir tu canal de Telegram, primero debes invitar al bot <span class="font-mono text-cyan-400 font-semibold">&#64;direcdirectai</span> a tu grupo/canal de Telegram, y luego otorgarle permisos de <span class="text-white font-semibold">Administrador</span> para que pueda publicar.
+                    Para añadir tu canal de Telegram, primero debes invitar al bot <span class="font-mono text-cyan-400 font-semibold">@direcdirec_bot</span> a tu grupo/canal de Telegram, y luego otorgarle permisos de <span class="text-white font-semibold">Administrador</span> para que pueda publicar.
                   </p>
                 </div>
               </div>
@@ -125,7 +125,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
                         }
                         <div class="flex flex-col gap-1 min-w-0">
                           <h2 class="text-lg font-bold tracking-wide truncate">{{ channel.name }}</h2>
-                          <span class="text-gray-300 text-xs truncate">&#64;{{ channel.channelIdentifier }}</span>
+                          <span class="text-gray-300 text-xs truncate">{{ channel.channelIdentifier }}</span>
                           <span class="text-[9px] px-2 py-0.5 rounded w-fit inline-block font-semibold mt-1"
                                 [class.bg-green-500/20]="channel.isActive" [class.text-green-400]="channel.isActive"
                                 [class.bg-red-500/20]="!channel.isActive" [class.text-red-400]="!channel.isActive">

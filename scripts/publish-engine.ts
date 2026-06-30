@@ -322,6 +322,9 @@ async function tick(): Promise<void> {
       continue;
     }
 
+    // Log successful activation (publishing)
+    await writeAuditLog(row, 'publishing', { detail: 'Post activated for publishing' });
+
     console.log(`[engine] [${shortId}] → ${platform} ${row.channels.channel_identifier} | "${(row.text_content ?? '').slice(0, 60)}"`);
 
     const outcome      = await publishToTelegram(row);

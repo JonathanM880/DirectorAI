@@ -189,7 +189,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (!newDate) { arg.revert(); return; }
 
     if (newDate <= new Date()) {
-      this.showToast('Cannot reschedule to a past date', 'error');
+      this.showToast('No se puede reprogramar para una fecha pasada', 'error');
       arg.revert();
       return;
     }
@@ -197,14 +197,14 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const postId = arg.event.id;
     try {
       await this.schedulingEngine.reschedulePost(postId, newDate);
-      this.showToast('Post rescheduled ✓', 'success');
+      this.showToast('Post reprogramado exitosamente ✓', 'success');
       // Update selected post if drawer is open
       if (this.selectedPost()?.id === postId) {
         const updated = this.selectedPost()!;
         this.selectedPost.set({ ...updated, scheduledAt: newDate });
       }
     } catch (err: any) {
-      this.showToast(err.message || 'Reschedule failed', 'error');
+      this.showToast(err.message || 'Reprogramación fallida', 'error');
       arg.revert();
     }
   }
@@ -246,13 +246,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
     try {
       await this.schedulingEngine.cancelPost(post.id);
-      this.showToast('Post cancelled', 'success');
+      this.showToast('Post cancelado exitosamente ✓', 'success');
       this.closeDrawer();
       // Reload current view range
       const calApi = (document.querySelector('full-calendar') as any)?.__zone_symbol__calendarApi;
       if (calApi) calApi.refetchEvents();
     } catch (err: any) {
-      this.drawerError.set(err.message || 'Failed to cancel post');
+      this.drawerError.set(err.message || 'No se pudo cancelar el post');
     }
   }
 
@@ -278,7 +278,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.formError.set(null);
     try {
       const isPublishNow = (data as any).publishImmediately;
-      await this.schedulingEngine.schedulePost({
+      const createdPost = await this.schedulingEngine.schedulePost({
         channelId: data.channelId,
         content: {
           text: data.text,
@@ -289,18 +289,58 @@ export class CalendarComponent implements OnInit, OnDestroy {
         recurrenceRule: data.recurrenceRule,
         publishImmediately: isPublishNow
       } as any);
-      this.showToast(isPublishNow ? 'Post published ✓' : 'Post scheduled ✓', 'success');
       
       const calApi = this.calendarRef?.getApi();
-      if (calApi) {
-        const view = calApi.view;
-        await this.loadPosts(view.activeStart, view.activeEnd);
-        calApi.refetchEvents();
+      const refreshEvents = async () => {
+        if (calApi) {
+          const view = calApi.view;
+          await this.loadPosts(view.activeStart, view.activeEnd);
+          calApi.refetchEvents();
+        }
+      };
+
+      if (isPublishNow) {
+        this.showToast('Encolando publicación inmediata...', 'success');
+        
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        const checkStatus = async () => {
+          if (attempts >= maxAttempts) {
+            this.showToast('El post tarda en responder. Revisa el historial de actividad.', 'success');
+            await refreshEvents();
+            return;
+          }
+          attempts++;
+          
+          try {
+            const post = await this.schedulingEngine.getPostById(createdPost.id);
+            if (post) {
+              if (post.status === 'published') {
+                this.showToast('¡Post publicado en Telegram exitosamente! ✓', 'success');
+                await refreshEvents();
+              } else if (post.status === 'failed') {
+                this.showToast('Error al publicar en Telegram. Revisa el historial.', 'error');
+                await refreshEvents();
+              } else {
+                setTimeout(checkStatus, 1500);
+              }
+            } else {
+              setTimeout(checkStatus, 1500);
+            }
+          } catch (e) {
+            setTimeout(checkStatus, 1500);
+          }
+        };
+        setTimeout(checkStatus, 1500);
+      } else {
+        this.showToast('Post programado exitosamente ✓', 'success');
+        await refreshEvents();
       }
 
       this.closeNewPostPanel();
     } catch (err: any) {
-      this.formError.set(err.message || 'Failed to schedule post');
+      this.formError.set(err.message || 'No se pudo programar el post');
     } finally {
       this.submitting.set(false);
     }
@@ -323,7 +363,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         scheduledAt: data.scheduledAt,
         recurrenceRule: data.recurrenceRule
       });
-      this.showToast('Post updated ✓', 'success');
+      this.showToast('Post actualizado exitosamente ✓', 'success');
       
       const calApi = this.calendarRef?.getApi();
       if (calApi) {
@@ -334,7 +374,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
       this.editPostOpen.set(false);
     } catch (err: any) {
-      this.formError.set(err.message || 'Failed to update post');
+      this.formError.set(err.message || 'No se pudo actualizar el post');
     } finally {
       this.submitting.set(false);
     }

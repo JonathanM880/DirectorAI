@@ -41,7 +41,7 @@ import { XIconComponent } from '@/shared/components/ui/x-icon/x-icon.component';
               }
               <div class="flex flex-col gap-1">
                 <h2 class="text-xl font-bold tracking-wide">{{ channel.name }}</h2>
-                <span class="text-gray-300 text-sm">&#64;{{ channel.channelIdentifier }}</span>
+                <span class="text-gray-300 text-sm">{{ channel.channelIdentifier }}</span>
                 <span
                   class="text-[10px] px-2 py-0.5 rounded w-fit inline-block font-semibold mt-1"
                   [class.bg-green-500/20]="channel.isActive"

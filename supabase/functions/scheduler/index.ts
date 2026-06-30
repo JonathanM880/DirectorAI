@@ -372,24 +372,6 @@ async function fetchDuePosts(
   supabase: SupabaseClient,
   now: Date,
 ): Promise<DbPost[] | null> {
-  // Retrieve active subscriber IDs first so we only publish for paying users.
-  const { data: activeSubs, error: subsError } = await supabase
-    .from('subscriptions')
-    .select('user_id')
-    .eq('status', 'active');
-
-  if (subsError) {
-    console.error(`[scheduler] Failed to fetch active subscriptions: ${subsError.message}`);
-    return null;
-  }
-
-  const activeUserIds: string[] = (activeSubs ?? []).map((s: { user_id: string }) => s.user_id);
-
-  if (activeUserIds.length === 0) {
-    console.log('[scheduler] No active subscriptions found — nothing to publish.');
-    return [];
-  }
-
   const { data: posts, error: queryError } = await supabase
     .from('scheduled_posts')
     .select(`
@@ -398,7 +380,6 @@ async function fetchDuePosts(
     `)
     .eq('status', 'scheduled')
     .lte('scheduled_at', now.toISOString())
-    .in('user_id', activeUserIds)
     .order('scheduled_at', { ascending: true })
     .limit(BATCH_LIMIT);
 
@@ -538,6 +519,11 @@ async function processPost(
     console.warn(`[scheduler] [${shortId}] Lock not acquired — already claimed by another worker. Skipping.`);
     return 'skipped';
   }
+
+  // Log successful activation (publishing)
+  await writeAuditLog(supabase, post, 'publishing', {
+    detail: 'Post activated for publishing'
+  });
 
   console.log(
     `[scheduler] [${shortId}] Publishing → ${platform} ${post.channels.channel_identifier} | ` +

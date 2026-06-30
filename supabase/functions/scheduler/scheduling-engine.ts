@@ -121,15 +121,33 @@ export class SchedulingEngine {
       .single();
 
     if (postError || !post) {
+      // Log failed creation
+      await this.supabase.from('audit_log').insert({
+        user_id: request.userId,
+        post_id: null,
+        action: 'failed',
+        platform: (channel as DbChannel).platform as SocialPlatform,
+        metadata: {
+          detail: 'creation_failed',
+          error: postError?.message || 'Database insert failed'
+        },
+        occurred_at: new Date().toISOString()
+      });
       throw new Error(`Failed to create scheduled post: ${postError?.message}`);
     }
+
+    // Log successful creation
+    const scheduledPost = this.mapDbPostToScheduledPost(post);
+    await this.insertAuditLog(scheduledPost, 'created', {
+      detail: 'Post scheduled successfully'
+    });
 
     // Assert post.scheduledAt > post.createdAt
     if (new Date((post as DbScheduledPost).scheduled_at) <= new Date((post as DbScheduledPost).created_at)) {
       throw new Error('Invariant violation: scheduledAt must be greater than createdAt');
     }
 
-    return this.mapDbPostToScheduledPost(post);
+    return scheduledPost;
   }
 
   /**
@@ -149,14 +167,6 @@ export class SchedulingEngine {
     await this.resetStalePublishingPosts(now);
 
     // Step 2: Query due posts with FOR UPDATE SKIP LOCKED for concurrency safety
-    // First get active subscription user IDs
-    const { data: activeSubs } = await this.supabase
-      .from('subscriptions')
-      .select('user_id')
-      .eq('status', 'active');
-
-    const activeUserIds = (activeSubs as any[])?.map((s: any) => s.user_id) || [];
-
     const { data: posts, error: queryError } = await this.supabase
       .from('scheduled_posts')
       .select(`
@@ -165,7 +175,6 @@ export class SchedulingEngine {
       `)
       .eq('status', 'scheduled')
       .lte('scheduled_at', now.toISOString())
-      .in('user_id', activeUserIds)
       .order('scheduled_at', { ascending: true })
       .limit(100);
 
@@ -191,11 +200,28 @@ export class SchedulingEngine {
 
         if (updateError) {
           console.error(`Failed to update post ${dbPost.id} to publishing:`, updateError);
+          // Log failure
+          await this.supabase.from('audit_log').insert({
+            user_id: dbPost.user_id,
+            post_id: dbPost.id,
+            action: 'failed',
+            platform: dbPost.channels.platform,
+            metadata: {
+              detail: 'activation_failed',
+              error: updateError.message
+            },
+            occurred_at: new Date().toISOString()
+          });
           summary.failed++;
           continue;
         }
 
         const post = this.mapDbPostToScheduledPost(dbPost);
+
+        // Log successful activation (publishing)
+        await this.insertAuditLog(post, 'publishing', {
+          detail: 'Post activated for publishing'
+        });
 
         // Get publisher for the platform
         const publisher = this.publisherRegistry.get(post.platform);
@@ -362,8 +388,23 @@ export class SchedulingEngine {
       .eq('id', postId);
 
     if (updateError) {
+      await this.supabase.from('audit_log').insert({
+        user_id: userId,
+        post_id: postId,
+        action: 'failed',
+        platform: (post as DbScheduledPost).platform,
+        metadata: {
+          detail: 'cancel_failed',
+          error: updateError.message
+        },
+        occurred_at: new Date().toISOString()
+      });
       throw new Error(`Failed to cancel post: ${updateError.message}`);
     }
+
+    await this.insertAuditLog(this.mapDbPostToScheduledPost(post), 'cancelled', {
+      detail: 'Post cancelled successfully'
+    });
   }
 
   /**
@@ -397,16 +438,36 @@ export class SchedulingEngine {
     // Update scheduledAt
     const { data: updatedPost, error: updateError } = await this.supabase
       .from('scheduled_posts')
-      .update({ scheduled_at: newScheduledAt.toISOString() } as any)
+      .update({
+        scheduled_at: newScheduledAt.toISOString(),
+        status: 'scheduled'
+      } as any)
       .eq('id', postId)
       .select()
       .single();
 
     if (updateError || !updatedPost) {
+      await this.supabase.from('audit_log').insert({
+        user_id: userId,
+        post_id: postId,
+        action: 'failed',
+        platform: (post as DbScheduledPost).platform,
+        metadata: {
+          detail: 'reschedule_failed',
+          error: updateError?.message || 'Updated row not found'
+        },
+        occurred_at: new Date().toISOString()
+      });
       throw new Error(`Failed to reschedule post: ${updateError?.message}`);
     }
 
-    return this.mapDbPostToScheduledPost(updatedPost);
+    const scheduledPost = this.mapDbPostToScheduledPost(updatedPost);
+    await this.insertAuditLog(scheduledPost, 'edited', {
+      detail: 'Post rescheduled successfully',
+      newScheduledAt: newScheduledAt.toISOString()
+    });
+
+    return scheduledPost;
   }
 
   /**

@@ -108,6 +108,26 @@ export class SchedulingEngineService {
   }
 
   /**
+   * Fetch a single post by ID.
+   */
+  async getPostById(postId: string): Promise<ScheduledPost | null> {
+    const userId = await this.getUserId();
+    const { data, error } = await this.supabase
+      .from('scheduled_posts')
+      .select('*')
+      .eq('id', postId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching post by id:', error);
+      throw error;
+    }
+    if (!data) return null;
+    return this.mapRow(data);
+  }
+
+  /**
    * Fetch all posts with status = 'failed' for the Automation Hub.
    */
   async getFailedPosts(): Promise<ScheduledPost[]> {
@@ -191,7 +211,7 @@ export class SchedulingEngineService {
     // Lifecycle guard: cannot reschedule published posts
     const { data: existing, error: fetchError } = await this.supabase
       .from('scheduled_posts')
-      .select('status')
+      .select('status, channels(platform)')
       .eq('id', postId)
       .eq('user_id', userId)
       .single();
@@ -200,6 +220,8 @@ export class SchedulingEngineService {
     if (existing.status === 'published') {
       throw new Error('Cannot reschedule a published post');
     }
+
+    const platform = (existing as any).channels?.platform || 'unknown';
 
     const { data: updated, error } = await this.supabase
       .from('scheduled_posts')
@@ -212,7 +234,19 @@ export class SchedulingEngineService {
       .select()
       .single();
 
-    if (error || !updated) throw new Error(`Failed to reschedule post: ${error?.message}`);
+    if (error || !updated) {
+      await this.writeAuditLog(userId, postId, 'failed', platform, {
+        detail: 'reschedule_failed',
+        error: error?.message || 'Updated row not found'
+      });
+      throw new Error(`Failed to reschedule post: ${error?.message}`);
+    }
+
+    await this.writeAuditLog(userId, postId, 'edited', platform, {
+      detail: 'Post rescheduled successfully',
+      newScheduledAt: newScheduledAt.toISOString()
+    });
+
     return this.mapRow(updated);
   }
 
@@ -225,7 +259,7 @@ export class SchedulingEngineService {
 
     const { data: existing, error: fetchError } = await this.supabase
       .from('scheduled_posts')
-      .select('status, recurrence_rule_id')
+      .select('status, recurrence_rule_id, channels(platform)')
       .eq('id', postId)
       .eq('user_id', userId)
       .single();
@@ -235,13 +269,25 @@ export class SchedulingEngineService {
       throw new Error(`Can only cancel posts with status "scheduled". Current: "${existing.status}"`);
     }
 
+    const platform = (existing as any).channels?.platform || 'unknown';
+
     const { error } = await this.supabase
       .from('scheduled_posts')
       .update({ status: 'cancelled' })
       .eq('id', postId)
       .eq('user_id', userId);
 
-    if (error) throw new Error(`Failed to cancel post: ${error.message}`);
+    if (error) {
+      await this.writeAuditLog(userId, postId, 'failed', platform, {
+        detail: 'cancel_failed',
+        error: error.message
+      });
+      throw new Error(`Failed to cancel post: ${error.message}`);
+    }
+
+    await this.writeAuditLog(userId, postId, 'cancelled', platform, {
+      detail: 'Post cancelled successfully'
+    });
 
     if (existing.recurrence_rule_id) {
       await this.supabase
@@ -260,7 +306,7 @@ export class SchedulingEngineService {
     // Fetch existing
     const { data: existing, error: existingErr } = await this.supabase
       .from('scheduled_posts')
-      .select('recurrence_rule_id, status')
+      .select('recurrence_rule_id, status, channels(platform)')
       .eq('id', postId)
       .eq('user_id', userId)
       .single();
@@ -269,6 +315,8 @@ export class SchedulingEngineService {
     if (existing.status === 'published' && !existing.recurrence_rule_id) {
       throw new Error('Cannot edit published posts');
     }
+
+    const platform = (existing as any).channels?.platform || 'unknown';
 
     let ruleId = existing.recurrence_rule_id;
     if (req.recurrenceRule) {
@@ -311,7 +359,17 @@ export class SchedulingEngineService {
       .eq('id', postId)
       .eq('user_id', userId);
 
-    if (error) throw new Error(`Failed to update post: ${error.message}`);
+    if (error) {
+      await this.writeAuditLog(userId, postId, 'failed', platform, {
+        detail: 'update_failed',
+        error: error.message
+      });
+      throw new Error(`Failed to update post: ${error.message}`);
+    }
+
+    await this.writeAuditLog(userId, postId, 'edited', platform, {
+      detail: 'Post updated successfully'
+    });
   }
 
   /**
@@ -334,18 +392,17 @@ export class SchedulingEngineService {
       .eq('user_id', userId)
       .single();
 
+    const platform = channel?.platform || 'unknown';
+
     if (channelError || !channel) {
+      await this.writeAuditLog(userId, null, 'failed', platform, {
+        detail: 'creation_failed',
+        error: channelError?.message || 'Channel not found or does not belong to user'
+      });
       throw new Error('Channel not found or does not belong to user');
     }
 
     // ─── Build insert payload ────────────────────────────────────────────────
-    // IMPORTANT: Do NOT include `platform` here. The `scheduled_posts` table
-    // has no `platform` column — the platform is derived from `channel_id` by
-    // the publishing engine at runtime. Sending it causes a Supabase schema
-    // cache error: "Could not find the 'platform' column".
-    //
-    // Media: map mediaAssetIds → media_asset_ids and resolve media_type from
-    // the content shape. Falls back to [] / null when not provided.
     const mediaAssetIds: string[] = request.content.mediaAssetIds ?? [];
     const mediaType = request.content.mediaType ?? null;
 
@@ -369,7 +426,13 @@ export class SchedulingEngineService {
         .select('id')
         .single();
         
-      if (ruleError) throw new Error(`Failed to create recurrence rule: ${ruleError.message}`);
+      if (ruleError) {
+        await this.writeAuditLog(userId, null, 'failed', platform, {
+          detail: 'creation_failed',
+          error: `Recurrence rule creation failed: ${ruleError.message}`
+        });
+        throw new Error(`Failed to create recurrence rule: ${ruleError.message}`);
+      }
       if (ruleRow) recurrenceRuleId = ruleRow.id;
     }
 
@@ -378,7 +441,6 @@ export class SchedulingEngineService {
       .insert({
         user_id:         userId,
         channel_id:      request.channelId,
-        // `platform` intentionally omitted — not a column on scheduled_posts
         text_content:    request.content.text ?? null,
         media_asset_ids: mediaAssetIds,
         media_type:      mediaType,
@@ -391,7 +453,20 @@ export class SchedulingEngineService {
       .select()
       .single();
 
-    if (error || !data) throw new Error(`Failed to schedule post: ${error?.message}`);
+    if (error || !data) {
+      await this.writeAuditLog(userId, null, 'failed', platform, {
+        detail: 'creation_failed',
+        error: error?.message || 'Database insert failed'
+      });
+      throw new Error(`Failed to schedule post: ${error?.message}`);
+    }
+
+    await this.writeAuditLog(userId, data.id, 'created', platform, {
+      detail: 'Post scheduled successfully',
+      scheduledAt: scheduledAtISO,
+      recurrenceRuleId: recurrenceRuleId
+    });
+
     return this.mapRow(data);
   }
 
@@ -501,6 +576,26 @@ export class SchedulingEngineService {
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at)
     };
+  }
+
+  private async writeAuditLog(
+    userId: string,
+    postId: string | null,
+    action: 'published' | 'failed' | 'retried' | 'cancelled' | 'edited' | 'deleted' | 'created' | 'publishing',
+    platform: string,
+    metadata: Record<string, unknown>
+  ): Promise<void> {
+    const { error } = await this.supabase.from('audit_log').insert({
+      user_id: userId,
+      post_id: postId,
+      action,
+      platform,
+      metadata,
+      occurred_at: new Date().toISOString()
+    });
+    if (error) {
+      console.error('Failed to write audit log:', error);
+    }
   }
 }
 

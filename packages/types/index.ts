@@ -418,7 +418,7 @@ export interface ActivityEvent {
   id: string
   userId: string
   postId: string
-  action: 'published' | 'failed' | 'retried' | 'cancelled' | 'edited' | 'deleted'
+  action: 'published' | 'failed' | 'retried' | 'cancelled' | 'edited' | 'deleted' | 'created' | 'publishing'
   platform: SocialPlatform
   occurredAt: Date
 }
@@ -595,7 +595,7 @@ export interface AuditLogRecord {
   id: string
   userId: string
   postId: string
-  action: 'published' | 'failed' | 'retried' | 'cancelled' | 'edited' | 'deleted'
+  action: 'published' | 'failed' | 'retried' | 'cancelled' | 'edited' | 'deleted' | 'created' | 'publishing'
   platform: SocialPlatform
   platformMessageId?: string
   errorCode?: PublishErrorCode
