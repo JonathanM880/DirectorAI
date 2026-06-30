@@ -5,11 +5,13 @@ import { GenAiService } from '../../core/services/gen-ai.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { CopyRequest } from '@director-ai/types';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { AssetUploadService, UploadedAsset } from '../../core/services/asset-upload.service';
+import { PostFormComponent } from '../../shared/components/post-form/post-form.component';
 
 @Component({
   selector: 'app-studio',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PostFormComponent],
   template: `
     <div class="studio-container">
       <div class="sidebar">
@@ -82,6 +84,25 @@ import { SupabaseClient } from '@supabase/supabase-js';
           </div>
         </div>
       </div>
+
+      <!-- ── Schedule Now Modal ─────────────────────────────────────── -->
+      <div class="new-post-overlay" *ngIf="scheduleFormOpen()" (click)="scheduleFormOpen.set(false)" role="dialog" aria-modal="true" aria-label="Schedule post">
+        <div class="new-post-panel" (click)="$event.stopPropagation()">
+          <div class="panel-header">
+            <h2>Schedule Post</h2>
+            <button class="close-btn" (click)="scheduleFormOpen.set(false)" aria-label="Close">✕</button>
+          </div>
+          <div class="panel-body" style="padding: 1.5rem; padding-bottom: 0;">
+            <app-post-form
+              [initialText]="initialTextForForm"
+              [initialAssets]="initialAssetsForForm"
+              (saved)="onScheduleSaved($event)"
+              (cancel)="scheduleFormOpen.set(false)">
+            </app-post-form>
+          </div>
+        </div>
+      </div>
+
     </div>
   `,
   styles: [`
@@ -194,12 +215,86 @@ import { SupabaseClient } from '@supabase/supabase-js';
       display: flex;
       gap: 12px;
     }
+    .new-post-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.15s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .new-post-panel {
+      background: var(--color-steel);
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6);
+      width: 900px;
+      max-width: calc(100vw - 2rem);
+      max-height: calc(100vh - 4rem);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(24px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-5) var(--space-6);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+    }
+    .panel-header h2 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-family: var(--font-display);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-paper);
+    }
+    .panel-header .close-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--color-gray-400);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .panel-header .close-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--color-paper);
+    }
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+    }
   `]
 })
 export class StudioComponent implements OnInit {
   private genAiService = inject(GenAiService);
   private supabase = inject(SupabaseClient);
   private notificationService = inject(NotificationService);
+  private assetUpload = inject(AssetUploadService);
+
+  initialTextForForm = '';
+  initialAssetsForForm: UploadedAsset[] = [];
+  scheduleFormOpen = signal(false);
 
   mode = signal<'copy' | 'brainstorm' | 'image' | 'campaign'>('copy');
   platform = signal<any>('twitter');
@@ -323,61 +418,15 @@ export class StudioComponent implements OnInit {
         const url = match ? match[1] : 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800';
         postsToSave = [{ imagePrompt: this.prompt(), imageUrl: url, offsetMinutes: 0 }];
       } else if (this.mode() !== 'campaign' || postsToSave.length === 0) {
-        // If it's just a regular copy/brainstorm, mock a simple array
         postsToSave = [{ text: this.output(), offsetMinutes: 0 }];
       }
-      
-      // Ensure user profile exists
-      const { data: profile } = await this.supabase.from('users_profile').select('id').eq('id', session.user.id).maybeSingle();
-      if (!profile) {
-        await this.supabase.from('users_profile').insert({ id: session.user.id, email: session.user.email });
-      }
-
-      // Ensure channel exists
-      let { data: channel, error: selErr } = await this.supabase.from('channels').select('id').limit(1).maybeSingle();
-      if (!channel) {
-        const { data: newChannel, error: insErr } = await this.supabase.from('channels').insert({
-          user_id: session.user.id,
-          platform: this.platform() || 'telegram',
-          name: 'My Channel',
-          channel_identifier: '@test_stream',
-          is_active: true
-        }).select().single();
-        if (insErr) throw insErr;
-        channel = newChannel;
-      }
-
-      // Insert recurrence rule
-      const { data: rule, error: rErr } = await this.supabase.from('recurrence_rules').insert({
-        user_id: session.user.id,
-        frequency: 'daily',
-        interval: 1
-      }).select().single();
-      if (rErr) throw rErr;
 
       for (const post of postsToSave) {
-        let assetIds: string[] = [];
-
         // 1. Text Asset
         if (post.text) {
-          const file = new Blob([post.text], { type: 'text/plain' });
           const fileName = `generated-${Date.now()}-${Math.floor(Math.random()*1000)}.txt`;
-          const { data: uploadData, error: uploadErr } = await this.supabase.storage.from('assets').upload(`${session.user.id}/${fileName}`, file);
-          if (uploadErr) throw uploadErr;
-          
-          if (uploadData) {
-            const { data: assetData } = await this.supabase.from('assets').insert({
-              user_id: session.user.id,
-              filename: fileName,
-              mime_type: 'text/plain',
-              size_bytes: file.size,
-              storage_path: uploadData.path,
-              folder: '/',
-              tags: ['ai_generated'],
-              source: 'ai_generated'
-            }).select().single();
-            if (assetData) assetIds.push(assetData.id);
-          }
+          const file = new File([post.text], fileName, { type: 'text/plain' });
+          await this.assetUpload.upload(file);
         }
 
         // 2. Image Asset
@@ -386,39 +435,13 @@ export class StudioComponent implements OnInit {
             const imgRes = await fetch(post.imageUrl || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800');
             const imgBlob = await imgRes.blob();
             const imgName = `generated-img-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
-            const { data: imgUpload, error: imgUploadErr } = await this.supabase.storage.from('assets').upload(`${session.user.id}/${imgName}`, imgBlob);
-            if (imgUploadErr) throw imgUploadErr;
-            
-            if (imgUpload) {
-              const { data: imgAsset } = await this.supabase.from('assets').insert({
-                user_id: session.user.id,
-                filename: imgName,
-                mime_type: 'image/jpeg',
-                size_bytes: imgBlob.size,
-                storage_path: imgUpload.path,
-                folder: '/',
-                tags: ['ai_generated', 'image'],
-                source: 'ai_generated'
-              }).select().single();
-              if (imgAsset) assetIds.push(imgAsset.id);
-            }
+            const file = new File([imgBlob], imgName, { type: 'image/jpeg' });
+            await this.assetUpload.upload(file);
           } catch (e) {
             console.error('Failed to save image asset', e);
             throw e;
           }
         }
-
-        // 3. Schedule Post
-        const scheduledAt = new Date(Date.now() + (post.offsetMinutes || 0) * 60000);
-        await this.supabase.from('scheduled_posts').insert({
-          user_id: session.user.id,
-          channel_id: channel!.id,
-          text_content: post.text,
-          media_asset_ids: assetIds,
-          scheduled_at: scheduledAt.toISOString(),
-          status: 'scheduled',
-          recurrence_rule_id: rule.id
-        });
       }
       
       this.isSaving.set(false);
@@ -432,11 +455,106 @@ export class StudioComponent implements OnInit {
     } catch (err: any) {
       console.error(err);
       this.isSaving.set(false);
-      alert('Error saving to DB: ' + err.message);
+      alert('Error saving to assets: ' + err.message);
     }
   }
 
-  scheduleNow() {
-    // Open schedule modal
+  async scheduleNow() {
+    try {
+      this.isSaving.set(true);
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) {
+        this.isSaving.set(false);
+        return;
+      }
+
+      this.initialTextForForm = '';
+      this.initialAssetsForForm = [];
+
+      if (this.mode() === 'image') {
+        const match = this.output().match(/\((https?:\/\/[^\)]+)\)/);
+        const url = match ? match[1] : 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800';
+        
+        const imgRes = await fetch(url);
+        const imgBlob = await imgRes.blob();
+        const imgName = `generated-img-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
+        const file = new File([imgBlob], imgName, { type: 'image/jpeg' });
+        
+        const asset = await this.assetUpload.upload(file);
+        this.initialAssetsForForm = [asset];
+        this.initialTextForForm = this.prompt();
+      } else if (this.mode() === 'campaign') {
+        const postsToSave = (this as any).lastCampaignResult || [];
+        if (postsToSave.length > 0) {
+          const firstPost = postsToSave[0];
+          this.initialTextForForm = firstPost.text || '';
+          if (firstPost.imagePrompt) {
+            const imgRes = await fetch(firstPost.imageUrl || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800');
+            const imgBlob = await imgRes.blob();
+            const imgName = `generated-img-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
+            const file = new File([imgBlob], imgName, { type: 'image/jpeg' });
+            const asset = await this.assetUpload.upload(file);
+            this.initialAssetsForForm = [asset];
+          }
+        }
+      } else {
+        this.initialTextForForm = this.output();
+      }
+
+      this.isSaving.set(false);
+      this.scheduleFormOpen.set(true);
+    } catch (err: any) {
+      console.error(err);
+      this.isSaving.set(false);
+      alert('Error preparing schedule form: ' + err.message);
+    }
+  }
+
+  async onScheduleSaved(formData: any) {
+    try {
+      this.isSaving.set(true);
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) {
+        this.isSaving.set(false);
+        return;
+      }
+
+      let recurrenceRuleId: string | undefined = undefined;
+      if (formData.recurrenceRule) {
+        const { data: rule, error: rErr } = await this.supabase.from('recurrence_rules').insert({
+          user_id: session.user.id,
+          frequency: formData.recurrenceRule.frequency,
+          interval: formData.recurrenceRule.interval,
+          end_date: formData.recurrenceRule.endDate ? formData.recurrenceRule.endDate.toISOString() : null
+        }).select().single();
+        if (rErr) throw rErr;
+        recurrenceRuleId = rule.id;
+      }
+
+      const { error } = await this.supabase.from('scheduled_posts').insert({
+        user_id: session.user.id,
+        channel_id: formData.channelId,
+        text_content: formData.text,
+        media_asset_ids: formData.mediaAssetIds,
+        scheduled_at: formData.scheduledAt.toISOString(),
+        status: formData.publishImmediately ? 'published' : 'scheduled',
+        recurrence_rule_id: recurrenceRuleId
+      });
+
+      if (error) throw error;
+
+      this.scheduleFormOpen.set(false);
+      this.isSaving.set(false);
+      this.notificationService.notify(
+        'post_scheduled',
+        'success',
+        'Post Scheduled',
+        'Your post has been successfully scheduled.'
+      );
+    } catch (err: any) {
+      console.error(err);
+      this.isSaving.set(false);
+      alert('Error scheduling post: ' + err.message);
+    }
   }
 }

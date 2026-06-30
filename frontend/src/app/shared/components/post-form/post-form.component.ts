@@ -66,6 +66,8 @@ export class PostFormComponent implements OnInit, OnDestroy {
   @Output() saved = new EventEmitter<PostFormData & { isUpdate?: boolean }>();
   @Output() cancel = new EventEmitter<void>();
   @Input() postToEdit: ScheduledPost | null = null;
+  @Input() initialText: string = '';
+  @Input() initialAssets: UploadedAsset[] = [];
 
   private schedulingEngine = inject(SchedulingEngineService);
   private assetUpload      = inject(AssetUploadService);
@@ -130,6 +132,13 @@ export class PostFormComponent implements OnInit, OnDestroy {
         if (this.postToEdit.content.mediaAssetIds?.length) {
           const assets = await this.assetUpload.getAssetsByIds(this.postToEdit.content.mediaAssetIds);
           this.uploadedAssets.set(assets);
+        }
+      } else {
+        if (this.initialText) {
+          this.text = this.initialText;
+        }
+        if (this.initialAssets && this.initialAssets.length > 0) {
+          this.uploadedAssets.set(this.initialAssets);
         }
       }
     } catch {
