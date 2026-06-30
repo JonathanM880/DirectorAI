@@ -27,16 +27,6 @@ import { PostFormComponent } from '../../shared/components/post-form/post-form.c
           </select>
         </div>
 
-        <div class="form-group" *ngIf="mode() === 'copy' || mode() === 'brainstorm'">
-          <label>Platform</label>
-          <select [ngModel]="platform()" (ngModelChange)="platform.set($event)">
-            <option value="twitter">X (Twitter)</option>
-            <option value="linkedin">LinkedIn</option>
-            <option value="instagram">Instagram</option>
-            <option value="telegram">Telegram</option>
-          </select>
-        </div>
-
         <div class="form-group" *ngIf="mode() === 'copy'">
           <label>Tone</label>
           <select [ngModel]="tone()" (ngModelChange)="tone.set($event)">
@@ -85,7 +75,6 @@ import { PostFormComponent } from '../../shared/components/post-form/post-form.c
         </div>
       </div>
 
-      <!-- ── Schedule Now Modal ─────────────────────────────────────── -->
       <div class="new-post-overlay" *ngIf="scheduleFormOpen()" (click)="scheduleFormOpen.set(false)" role="dialog" aria-modal="true" aria-label="Schedule post">
         <div class="new-post-panel" (click)="$event.stopPropagation()">
           <div class="panel-header">
@@ -106,6 +95,7 @@ import { PostFormComponent } from '../../shared/components/post-form/post-form.c
     </div>
   `,
   styles: [`
+    /* Se mantienen los mismos estilos originales */
     .studio-container {
       display: grid;
       grid-template-columns: 350px 1fr;
@@ -297,7 +287,6 @@ export class StudioComponent implements OnInit {
   scheduleFormOpen = signal(false);
 
   mode = signal<'copy' | 'brainstorm' | 'image' | 'campaign'>('copy');
-  platform = signal<any>('twitter');
   tone = signal<any>('professional');
   prompt = signal('');
 
@@ -315,9 +304,7 @@ export class StudioComponent implements OnInit {
   }
 
   async ngOnInit() {
-    // We would fetch actual usage from BillingService via an Edge Function
-    // For now, mock it:
-    this.usage.set(12);
+    this.usage.set(100);
   }
 
   async generate() {
@@ -333,7 +320,7 @@ export class StudioComponent implements OnInit {
         const request: CopyRequest = {
           userId: session?.user.id || '',
           prompt: this.prompt(),
-          platform: this.platform(),
+          platform: 'telegram', // Valor hardcodeado para mantener la firma
           tone: this.tone()
         };
 
@@ -343,7 +330,7 @@ export class StudioComponent implements OnInit {
           },
           complete: () => {
             this.isGenerating.set(false);
-            this.usage.update(u => u + 1); // Optimistic update
+            this.usage.update(u => u + 1); 
           },
           error: (err) => {
             console.error('Generation error', err);
@@ -355,14 +342,13 @@ export class StudioComponent implements OnInit {
         const result = await this.genAiService.brainstorm({
           topic: this.prompt(),
           count: 5,
-          platform: this.platform()
+          platform: 'telegram' // Valor hardcodeado para mantener la firma
         });
-        // Access the ideas array inside BrainstormResult
+        
         this.output.set(result.ideas.join('\n\n'));
         this.isGenerating.set(false);
         this.usage.update(u => u + 1);
       } else if (this.mode() === 'image') {
-        // Image generation doesn't stream, it just returns a URL or error
         const result = await this.genAiService.generateImage({
           prompt: this.prompt(),
           size: '1024x1024'
@@ -380,7 +366,7 @@ export class StudioComponent implements OnInit {
         const result = await this.genAiService.parseCampaign({
           userId: session?.user.id || '',
           prompt: this.prompt(),
-          platform: this.platform()
+          platform: 'telegram' // Valor hardcodeado para mantener la firma
         });
         
         let formatted = '';
@@ -422,14 +408,12 @@ export class StudioComponent implements OnInit {
       }
 
       for (const post of postsToSave) {
-        // 1. Text Asset
         if (post.text) {
           const fileName = `generated-${Date.now()}-${Math.floor(Math.random()*1000)}.txt`;
           const file = new File([post.text], fileName, { type: 'text/plain' });
           await this.assetUpload.upload(file);
         }
 
-        // 2. Image Asset
         if (post.imagePrompt) {
           try {
             const imgRes = await fetch(post.imageUrl || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800');
