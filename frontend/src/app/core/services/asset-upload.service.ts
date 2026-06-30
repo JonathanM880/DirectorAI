@@ -37,7 +37,7 @@ export interface UploadProgress {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Name of the Supabase Storage bucket that holds user uploads. */
-const BUCKET = 'user-assets';
+const BUCKET = 'assets';
 
 /** Map MIME type to the media_type enum expected by scheduled_posts. */
 export function mimeToMediaType(mime: string): 'photo' | 'video' | 'audio' | 'document' | null {
@@ -53,7 +53,7 @@ export function mimeToMediaType(mime: string): 'photo' | 'video' | 'audio' | 'do
 function buildStoragePath(userId: string, file: File): string {
   const ext  = file.name.includes('.') ? file.name.split('.').pop()! : '';
   const uuid = crypto.randomUUID();
-  return `users/${userId}/assets/${uuid}${ext ? '.' + ext : ''}`;
+  return `${userId}/${uuid}${ext ? '.' + ext : ''}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

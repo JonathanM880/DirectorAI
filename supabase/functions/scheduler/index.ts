@@ -457,7 +457,7 @@ async function publishToTelegram(
       .single();
 
     if (!assetError && assetData?.storage_path) {
-      const { data } = supabase.storage.from('user-assets').getPublicUrl(assetData.storage_path);
+      const { data } = supabase.storage.from('assets').getPublicUrl(assetData.storage_path);
       if (data && typeof data.publicUrl === 'string') {
         mediaUrl = String(data.publicUrl).trim();
       }
