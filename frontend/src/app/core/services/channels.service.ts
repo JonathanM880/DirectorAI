@@ -54,7 +54,43 @@ export class ChannelsService {
     return this.mapRow(data);
   }
 
-  private mapRow(row: any): Channel {
+  async updateChannel(id: string, channel: { name?: string; channel_identifier?: string; is_active?: boolean }): Promise<Channel> {
+    const { data, error } = await this.supabase
+      .from('channels')
+      .update(channel)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating channel:', error);
+      throw error;
+    }
+
+    return this.mapRow(data);
+  }
+
+  async deleteChannel(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('channels')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting channel:', error);
+      throw error;
+    }
+  }
+
+  private mapRow(row: {
+    id: string;
+    user_id: string;
+    platform: string;
+    name: string;
+    channel_identifier: string;
+    is_active: boolean;
+    created_at: string;
+  }): Channel {
     return {
       id: row.id,
       userId: row.user_id,

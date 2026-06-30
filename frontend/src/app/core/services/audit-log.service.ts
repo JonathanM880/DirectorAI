@@ -9,6 +9,7 @@ export interface AuditLogQueryOptions {
   platform?: string;
   from?: Date;
   to?: Date;
+  channelId?: string;
 }
 
 @Injectable({
@@ -18,11 +19,21 @@ export class AuditLogService {
   private supabase = inject(SupabaseClient);
 
   async getAuditLog(options: AuditLogQueryOptions): Promise<{ rows: AuditLogEntry[]; total: number }> {
-    const { page, pageSize, action, platform, from, to } = options;
+    const { page, pageSize, action, platform, from, to, channelId } = options;
 
-    let query = this.supabase
-      .from('audit_log')
-      .select('*', { count: 'exact' })
+    let query;
+    if (channelId) {
+      query = this.supabase
+        .from('audit_log')
+        .select('*, scheduled_posts!inner(channel_id)', { count: 'exact' })
+        .eq('scheduled_posts.channel_id', channelId);
+    } else {
+      query = this.supabase
+        .from('audit_log')
+        .select('*', { count: 'exact' });
+    }
+
+    query = query
       .order('occurred_at', { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -39,13 +50,22 @@ export class AuditLogService {
 
     return {
       total: count ?? 0,
-      rows: (data ?? []).map((row: any): AuditLogEntry => ({
+      rows: (data ?? []).map((row: {
+        id: string;
+        post_id: string;
+        action: string;
+        platform: string;
+        platform_message_id: string | null;
+        error_code: string | null;
+        metadata: Record<string, unknown> | null;
+        occurred_at: string;
+      }): AuditLogEntry => ({
         id: row.id,
         postId: row.post_id,
         action: row.action,
         platform: row.platform,
-        platformMessageId: row.platform_message_id,
-        errorCode: row.error_code,
+        platformMessageId: row.platform_message_id || undefined,
+        errorCode: row.error_code || undefined,
         metadata: row.metadata ?? {},
         occurredAt: new Date(row.occurred_at)
       }))
