@@ -318,9 +318,9 @@ export class SchedulingEngineService {
    * Create and schedule a new post.
    * Mirrors SchedulingEngine.schedulePost validation.
    */
-  async schedulePost(request: Omit<CreatePostRequest, 'userId'>): Promise<ScheduledPost> {
+  async schedulePost(request: Omit<CreatePostRequest, 'userId'> & { publishImmediately?: boolean }): Promise<ScheduledPost> {
     const now = new Date();
-    if (request.scheduledAt <= now) {
+    if (!request.publishImmediately && request.scheduledAt <= now) {
       throw new Error('scheduledAt must be in the future');
     }
 

@@ -1,34 +1,38 @@
-<form (ngSubmit)="submit()" class="post-form" id="post-form-inline">
+<form (ngSubmit)="submit()" class="space-y-6 w-full max-w-xl mx-auto p-1 text-card-foreground" id="post-form-inline">
 
-  <!-- ── Content ─────────────────────────────────────────────────────── -->
-  <div class="form-group">
-    <label for="pf-content">Content</label>
+  <!-- ── Content Group ── -->
+  <hlm-field class="flex flex-col gap-2">
+    <label hlmFieldLabel for="pf-content" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Content</label>
     <textarea
+      hlmInput
       id="pf-content"
       name="text"
       [(ngModel)]="text"
-      placeholder="Write your post content…"
+      placeholder="Write your post content here..."
       rows="4"
       required
+      class="min-h-[120px] resize-y w-full bg-black/20 border-border rounded-lg p-3 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary placeholder:text-muted-foreground/50 transition-all duration-200"
     ></textarea>
-  </div>
+  </hlm-field>
 
-  <!-- ── Drag-and-Drop Media Upload ──────────────────────────────────── -->
-  <div class="form-group">
-    <label>Media Attachments</label>
-
-    <!-- Drop zone -->
+  <!-- ── Media Attachments Group ── -->
+  <div class="flex flex-col gap-2">
+    <label hlmLabel class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Media Attachments</label>
+    
     <div
-      class="drop-zone"
-      [class.drag-over]="isDragOver()"
-      [class.has-files]="uploadedAssets().length > 0"
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave()"
       (drop)="onDrop($event)"
       (click)="fileInput.click()"
+      (keydown.enter)="fileInput.click()"
       role="button"
       tabindex="0"
-      (keydown.enter)="fileInput.click()"
+      class="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200 hover:bg-primary/5 focus:outline-none"
+      [class.border-primary]="isDragOver() || uploadedAssets().length > 0"
+      [class.bg-primary/10]="isDragOver()"
+      [class.border-border]="!isDragOver() && uploadedAssets().length === 0"
+      [class.p-3]="uploadedAssets().length > 0"
+      [class.min-h-0]="uploadedAssets().length > 0"
       aria-label="Upload media files"
     >
       <!-- Hidden native file input -->
@@ -44,51 +48,44 @@
 
       <!-- Idle state -->
       @if (uploadedAssets().length === 0 && !uploading()) {
-        <div class="drop-zone-idle">
-          <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
+        <div class="flex flex-col items-center gap-2 text-center text-muted-foreground">
+          <svg class="w-8 h-8 opacity-60 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
-          <p class="drop-hint">
-            <strong>Drag &amp; drop</strong> files here, or click to browse
+          <p class="text-sm">
+            <strong class="text-foreground font-semibold">Drag &amp; drop</strong> files here, or click to browse
           </p>
-          <p class="drop-sub">Images · Videos · Audio · PDF &mdash; max 50 MB each</p>
+          <p class="text-xs text-muted-foreground/60">Images, Videos, Audio, PDF — max 50 MB each</p>
         </div>
       }
 
       <!-- Uploading spinner -->
       @if (uploading()) {
-        <div class="drop-zone-uploading">
-          <div class="spinner"></div>
+        <div class="flex items-center gap-3 text-sm text-muted-foreground">
+          <div class="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
           <span>Uploading {{ pendingCount() }} file{{ pendingCount() > 1 ? 's' : '' }}…</span>
         </div>
       }
     </div>
 
-    <!-- Uploaded asset pills (rendered outside the drop-zone) -->
+    <!-- Uploaded asset pills -->
     @if (uploadedAssets().length > 0) {
-      <div class="asset-list">
+      <div class="flex flex-col gap-2 mt-2 max-h-[220px] overflow-y-auto">
         @for (asset of uploadedAssets(); track asset.id) {
-          <div class="asset-pill">
-            <!-- Image preview thumbnail -->
+          <div class="flex items-center gap-3 p-2 bg-black/15 border border-border/40 rounded-lg transition-colors hover:bg-black/25">
             @if (asset.mimeType.startsWith('image/')) {
-              <img class="asset-thumb" [src]="asset.previewUrl" [alt]="asset.filename" />
+              <img class="w-10 h-10 object-cover rounded bg-muted/20" [src]="asset.previewUrl" [alt]="asset.filename" />
             } @else {
-              <div class="asset-icon">{{ mimeIcon(asset.mimeType) }}</div>
+              <div class="w-10 h-10 flex items-center justify-center text-lg bg-muted/20 rounded">{{ mimeIcon(asset.mimeType) }}</div>
             }
-
-            <div class="asset-info">
-              <span class="asset-name" [title]="asset.filename">{{ asset.filename }}</span>
-              <span class="asset-size">{{ formatBytes(asset.sizeBytes) }}</span>
+            <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+              <span class="text-xs font-semibold text-foreground truncate" [title]="asset.filename">{{ asset.filename }}</span>
+              <span class="text-[10px] text-muted-foreground">{{ formatBytes(asset.sizeBytes) }}</span>
             </div>
-
             <button
               type="button"
-              class="asset-remove"
               (click)="removeAsset(asset)"
+              class="w-6 h-6 flex items-center justify-center rounded-full bg-muted/20 text-muted-foreground text-[10px] transition-all hover:bg-destructive hover:text-destructive-foreground focus:outline-none"
               [attr.aria-label]="'Remove ' + asset.filename"
             >✕</button>
           </div>
@@ -98,88 +95,157 @@
 
     <!-- Per-upload error -->
     @if (uploadError()) {
-      <div class="upload-error" role="alert">⚠️ {{ uploadError() }}</div>
+      <div class="text-xs text-destructive flex items-center gap-1.5 mt-1 font-medium">⚠️ {{ uploadError() }}</div>
     }
   </div>
 
-  <!-- ── Channel + Schedule row ───────────────────────────────────────── -->
-  <div class="form-row">
-    <div class="form-group">
-      <label for="pf-channel">Channel</label>
+  <!-- ── Channel + Schedule Grid ── -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Channel Select -->
+    <hlm-field class="flex flex-col gap-2">
+      <label hlmFieldLabel for="pf-channel" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Channel</label>
       @if (loading()) {
-        <span class="loading-text">Loading channels…</span>
+        <span class="text-xs text-muted-foreground italic p-2">Loading channels…</span>
       } @else if (channels().length === 0) {
-        <span class="empty-text">No channels configured. Add one in Settings.</span>
+        <span class="text-xs text-destructive italic p-2">No channels configured. Add one in Settings.</span>
       } @else {
-        <select id="pf-channel" name="channel" [(ngModel)]="channelId" required>
+        <select
+          hlmInput
+          id="pf-channel"
+          name="channel"
+          [(ngModel)]="channelId"
+          required
+          class="w-full bg-black/20 border-border rounded-lg p-2.5 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all duration-200"
+        >
           @for (ch of channels(); track ch.id) {
-            <option [value]="ch.id">{{ platformIcon(ch.platform) }} {{ ch.name }}</option>
+            <option [value]="ch.id" class="bg-zinc-950 text-foreground">{{ platformIcon(ch.platform) }} {{ ch.name }}</option>
           }
         </select>
       }
-    </div>
+    </hlm-field>
 
-    <div class="form-group">
-      <label for="pf-date">Schedule Date &amp; Time</label>
-      <input
-        type="datetime-local"
-        id="pf-date"
-        name="scheduledAt"
-        [(ngModel)]="scheduledAt"
-        required
-      />
+    <!-- Schedule Date/Time or Publish immediately -->
+    <div class="flex flex-col gap-2 justify-center">
+      <label class="flex items-center gap-2 cursor-pointer select-none py-1.5">
+        <input
+          type="checkbox"
+          id="pf-publish-now"
+          [(ngModel)]="publishImmediately"
+          name="publishImmediately"
+          class="w-4 h-4 rounded border-border text-primary accent-primary focus:ring-primary focus:ring-offset-background"
+        />
+        <span class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Publish immediately</span>
+      </label>
+
+      @if (!publishImmediately) {
+        <hlm-field class="flex flex-col gap-1.5">
+          <label hlmFieldLabel for="pf-date" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Schedule Date &amp; Time</label>
+          <input
+            hlmInput
+            type="datetime-local"
+            id="pf-date"
+            name="scheduledAt"
+            [(ngModel)]="scheduledAt"
+            required
+            class="w-full bg-black/20 border-border rounded-lg p-2.5 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all duration-200"
+          />
+        </hlm-field>
+      }
     </div>
   </div>
 
-  <!-- ── Recurrence toggle ─────────────────────────────────────────────── -->
-  <div class="form-group">
-    <label class="checkbox-label">
-      <input
-        type="checkbox"
-        id="pf-recurrence"
-        [(ngModel)]="enableRecurrence"
-        name="enableRecurrence"
-      />
-      <span>Recurring post</span>
-    </label>
+  <!-- ── Recurrence Group ── -->
+  @if (!publishImmediately) {
+    <div class="flex flex-col gap-3 border-t border-border/40 pt-4">
+      <label class="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          id="pf-recurrence"
+          [(ngModel)]="enableRecurrence"
+          name="enableRecurrence"
+          class="w-4 h-4 rounded border-border text-primary accent-primary focus:ring-primary"
+        />
+        <span class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Recurring post</span>
+      </label>
 
-    @if (enableRecurrence) {
-      <div class="recurrence-row">
-        <div class="form-group">
-          <label for="pf-frequency">Frequency</label>
-          <select id="pf-frequency" name="frequency" [(ngModel)]="frequency">
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="pf-interval">Interval</label>
-          <input type="number" id="pf-interval" name="interval"
-            [(ngModel)]="interval" min="1" max="30" />
-        </div>
-        <div class="form-group">
-          <label for="pf-end-date">End Date (optional)</label>
-          <input type="date" id="pf-end-date" name="endDate"
-            [(ngModel)]="endDate" />
-        </div>
-      </div>
-    }
-  </div>
+      @if (enableRecurrence) {
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-black/15 border border-border/40 rounded-lg">
+          <hlm-field class="flex flex-col gap-1">
+            <label hlmFieldLabel for="pf-frequency" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Frequency</label>
+            <select
+              hlmInput
+              id="pf-frequency"
+              name="frequency"
+              [(ngModel)]="frequency"
+              class="w-full bg-black/20 border-border rounded p-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <option value="daily" class="bg-zinc-950 text-foreground">Daily</option>
+              <option value="weekly" class="bg-zinc-950 text-foreground">Weekly</option>
+              <option value="monthly" class="bg-zinc-950 text-foreground">Monthly</option>
+            </select>
+          </hlm-field>
+          
+          <hlm-field class="flex flex-col gap-1">
+            <label hlmFieldLabel for="pf-interval" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Interval</label>
+            <input
+              hlmInput
+              type="number"
+              id="pf-interval"
+              name="interval"
+              [(ngModel)]="interval"
+              min="1"
+              max="30"
+              class="w-full bg-black/20 border-border rounded p-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+            />
+          </hlm-field>
 
-  <!-- ── Form-level error ──────────────────────────────────────────────── -->
-  @if (error()) {
-    <div class="form-error" role="alert">⚠️ {{ error() }}</div>
+          <hlm-field class="flex flex-col gap-1">
+            <label hlmFieldLabel for="pf-end-date" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">End Date (optional)</label>
+            <input
+              hlmInput
+              type="date"
+              id="pf-end-date"
+              name="endDate"
+              [(ngModel)]="endDate"
+              class="w-full bg-black/20 border-border rounded p-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+            />
+          </hlm-field>
+        </div>
+      }
+    </div>
   }
 
-  <!-- ── Submit ────────────────────────────────────────────────────────── -->
-  <div class="form-actions">
-    <button type="button" class="btn-secondary" (click)="cancel.emit()">Cancel</button>
-    <button type="submit" id="pf-submit" [disabled]="submitting() || uploading()">
+  <!-- ── Form-level error ── -->
+  @if (error()) {
+    <div class="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs rounded-lg flex items-center gap-2 font-medium" role="alert">
+      <span>⚠️</span> {{ error() }}
+    </div>
+  }
+
+  <!-- ── Actions ── -->
+  <div class="flex items-center justify-end gap-3 border-t border-border/40 pt-5">
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      (click)="cancel.emit()"
+      class="hover:bg-muted/50 border-border text-foreground px-4 py-2 text-sm h-9 rounded-lg"
+    >
+      Cancel
+    </button>
+
+    <button
+      hlmBtn
+      type="submit"
+      id="pf-submit"
+      [disabled]="submitting() || uploading()"
+      class="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5 py-2 text-sm h-9 rounded-lg shadow-md hover:shadow-primary/20 transition-all duration-200"
+    >
       @if (submitting()) {
-        <span class="spinner-sm"></span> {{ postToEdit ? 'Updating…' : 'Scheduling…' }}
+        <div class="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2 inline-block"></div>
+        {{ postToEdit ? 'Updating…' : (publishImmediately ? 'Publishing…' : 'Scheduling…') }}
       } @else {
-        {{ postToEdit ? 'Update Post' : 'Schedule Post' }}
+        {{ postToEdit ? 'Update Post' : (publishImmediately ? 'Publish Now' : 'Schedule Post') }}
       }
     </button>
   </div>

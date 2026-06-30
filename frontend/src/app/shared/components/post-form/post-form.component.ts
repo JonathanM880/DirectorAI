@@ -17,6 +17,10 @@ import {
   mimeToMediaType
 } from '../../../core/services/asset-upload.service';
 import { Channel, RecurrenceRule, ScheduledPost } from '@director-ai/types';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmInputImports } from '@spartan-ng/helm/input';
+import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { HlmLabelImports } from '@spartan-ng/helm/label';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -48,9 +52,15 @@ export interface PostFormData {
 @Component({
   selector: 'app-post-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './post-form.component.html',
-  styleUrls: ['./post-form.component.scss']
+  imports: [
+    CommonModule,
+    FormsModule,
+    HlmButtonImports,
+    HlmInputImports,
+    HlmFieldImports,
+    HlmLabelImports
+  ],
+  templateUrl: './post-form.component.html'
 })
 export class PostFormComponent implements OnInit, OnDestroy {
   @Output() saved = new EventEmitter<PostFormData & { isUpdate?: boolean }>();
@@ -78,6 +88,7 @@ export class PostFormComponent implements OnInit, OnDestroy {
   channelId        = '';
   scheduledAt      = '';
   enableRecurrence = false;
+  publishImmediately = false;
   frequency: 'daily' | 'weekly' | 'monthly' = 'weekly';
   interval         = 1;
   endDate          = '';
@@ -221,13 +232,18 @@ export class PostFormComponent implements OnInit, OnDestroy {
 
     if (!this.text.trim())  { this.error.set('Content is required');            return; }
     if (!this.channelId)    { this.error.set('Channel is required');            return; }
-    if (!this.scheduledAt)  { this.error.set('Schedule date is required');      return; }
 
-    const dt = new Date(this.scheduledAt);
-    if (dt <= new Date())   { this.error.set('Scheduled time must be in the future'); return; }
+    let scheduledAtDate: Date;
+    if (this.publishImmediately) {
+      scheduledAtDate = new Date();
+    } else {
+      if (!this.scheduledAt)  { this.error.set('Schedule date is required');      return; }
+      scheduledAtDate = new Date(this.scheduledAt);
+      if (scheduledAtDate <= new Date())   { this.error.set('Scheduled time must be in the future'); return; }
+    }
 
     let recurrenceRule: RecurrenceRule | undefined;
-    if (this.enableRecurrence) {
+    if (!this.publishImmediately && this.enableRecurrence) {
       let finalEndDate: Date | undefined;
       if (this.endDate) {
         // Construct local string YYYY-MM-DDTHH:mm to ensure browser parses it in local time correctly
@@ -252,10 +268,11 @@ export class PostFormComponent implements OnInit, OnDestroy {
       text: this.text.trim(),
       mediaAssetIds,
       mediaType,
-      scheduledAt: new Date(this.scheduledAt),
+      scheduledAt: scheduledAtDate,
       recurrenceRule,
-      isUpdate: !!this.postToEdit
-    });
+      isUpdate: !!this.postToEdit,
+      publishImmediately: this.publishImmediately
+    } as any);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

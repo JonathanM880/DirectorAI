@@ -277,6 +277,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.submitting.set(true);
     this.formError.set(null);
     try {
+      const isPublishNow = (data as any).publishImmediately;
       await this.schedulingEngine.schedulePost({
         channelId: data.channelId,
         content: {
@@ -285,9 +286,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
           mediaType: data.mediaType,
         },
         scheduledAt: data.scheduledAt,
-        recurrenceRule: data.recurrenceRule
-      });
-      this.showToast('Post scheduled ✓', 'success');
+        recurrenceRule: data.recurrenceRule,
+        publishImmediately: isPublishNow
+      } as any);
+      this.showToast(isPublishNow ? 'Post published ✓' : 'Post scheduled ✓', 'success');
       
       const calApi = this.calendarRef?.getApi();
       if (calApi) {
