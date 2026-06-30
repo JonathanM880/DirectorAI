@@ -5,6 +5,7 @@ import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { SupabaseClient } from '@supabase/supabase-js';
 import FilerobotImageEditor from 'filerobot-image-editor';
 import { NotificationService } from '../../core/services/notification.service';
+import { AssetUploadService } from '../../core/services/asset-upload.service';
 
 @Component({
   selector: 'app-assets',
@@ -500,6 +501,7 @@ import { NotificationService } from '../../core/services/notification.service';
 export class AssetsComponent implements OnInit {
   private supabase = inject(SupabaseClient);
   private notificationService = inject(NotificationService);
+  private assetUpload = inject(AssetUploadService);
 
   viewMode = signal<'grid' | 'list'>('grid');
   isDraggingOver = signal(false);
@@ -709,6 +711,9 @@ export class AssetsComponent implements OnInit {
   async deleteAsset(asset: any) {
     if (!confirm(`Are you sure you want to delete ${asset.filename}?`)) return;
     
+    // Optimistic UI update: remove from local signal first
+    this.mockAssets.update(assets => assets.filter(a => a.id !== asset.id));
+
     const { error: dbError } = await this.supabase.from('assets').delete().eq('id', asset.id);
     if (!dbError) {
       await this.supabase.storage.from('assets').remove([asset.storage_path]);
@@ -717,6 +722,8 @@ export class AssetsComponent implements OnInit {
       this.loadAssets();
     } else {
       this.notificationService.notify('asset_error', 'error', 'Delete Failed', dbError.message);
+      // Rollback on error by reloading
+      this.loadAssets();
     }
   }
 
@@ -788,18 +795,60 @@ export class AssetsComponent implements OnInit {
     }
   }
 
-  private handleFiles(files: File[]) {
-    console.log('Uploading files:', files);
-    // Mock upload by adding to the signal array
-    const newAssets = files.map(f => ({
-      id: Math.random().toString(),
-      filename: f.name,
-      type: f.type.startsWith('image') ? 'image' : f.type.startsWith('video') ? 'video' : 'document',
-      source: 'user_upload',
-      size: (f.size / 1024 / 1024).toFixed(1) + ' MB',
-      date: new Date(),
-      preview: f.type.startsWith('image') ? URL.createObjectURL(f) : null
-    }));
-    this.mockAssets.update(assets => [...newAssets, ...assets]);
+  private async handleFiles(files: File[]) {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session) return;
+
+    this.notificationService.notify('upload_start', 'info', 'Uploading', `Uploading ${files.length} file(s)...`);
+    try {
+      for (const file of files) {
+        const path = `${session.user.id}/${Date.now()}-${file.name}`;
+        const { data: uploadData, error: uploadErr } = await this.supabase.storage
+          .from('assets')
+          .upload(path, file);
+          
+        if (uploadErr) throw uploadErr;
+        
+        const { data: assetData, error: insertErr } = await this.supabase
+          .from('assets')
+          .insert({
+            user_id: session.user.id,
+            filename: file.name,
+            mime_type: file.type,
+            size_bytes: file.size,
+            storage_path: path,
+            folder: '/',
+            tags: [],
+            source: 'user_upload'
+          })
+          .select()
+          .single();
+          
+        if (insertErr) throw insertErr;
+        
+        let preview = null;
+        if (file.type.startsWith('image/')) {
+          const { data: urlData } = await this.supabase.storage.from('assets').createSignedUrl(path, 3600);
+          preview = urlData?.signedUrl;
+        }
+
+        const newAsset = {
+          id: assetData.id,
+          filename: assetData.filename,
+          type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'document',
+          source: 'user_upload',
+          size: (file.size / 1024).toFixed(1) + ' KB',
+          date: new Date(),
+          preview,
+          storage_path: path
+        };
+        this.mockAssets.update(assets => [newAsset, ...assets]);
+      }
+      this.notificationService.notify('upload_success', 'success', 'Upload Complete', 'Successfully uploaded files.');
+      this.loadAssets();
+    } catch (e: any) {
+      console.error(e);
+      this.notificationService.notify('upload_error', 'error', 'Upload Failed', e.message);
+    }
   }
 }
