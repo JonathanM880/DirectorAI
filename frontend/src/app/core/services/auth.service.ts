@@ -26,17 +26,15 @@ export class AngularAuthService {
   public authState$: Observable<Session | null> = this.authStateSubject.asObservable();
 
   constructor(private supabase: SupabaseClient, private profileService: UsersProfileService) {
-    this.initSession();
-
     if (this.supabase?.auth) {
-      this.supabase.auth.onAuthStateChange(async (event, session) => {
+      this.supabase.auth.onAuthStateChange((event, session) => {
         this.authStateSubject.next(session);
-        if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
-          try {
-            await this.profileService.getProfile();
-          } catch (e) {
-            console.error('Error ensuring profile exists on auth state change:', e);
-          }
+        if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION')) {
+          setTimeout(() => {
+            this.profileService.getProfile().catch((e) => {
+              console.error('Error ensuring profile exists on auth state change:', e);
+            });
+          }, 0);
         }
       });
     }
