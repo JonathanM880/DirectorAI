@@ -9,7 +9,6 @@ export class UsersProfileService {
   private supabase = inject(SupabaseClient);
 
   async getProfile(): Promise<UserProfile | null> {
-  
     const { data, error } = await this.supabase
       .from('users_profile')
       .select('*')
@@ -20,7 +19,27 @@ export class UsersProfileService {
       throw error;
     }
 
-    if (!data) return null;
+    if (!data) {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (session?.user) {
+        try {
+          const profile = {
+            id: session.user.id,
+            email: session.user.email || '',
+            display_name: session.user.user_metadata?.['full_name'] || session.user.user_metadata?.['name'] || '',
+            avatar_url: session.user.user_metadata?.['avatar_url'] || '',
+            timezone: 'UTC',
+            plan_id: 'free',
+            onboarding_completed: false
+          };
+          return await this.createProfile(profile);
+        } catch (createError) {
+          console.error('Error auto-creating profile in getProfile:', createError);
+          return null;
+        }
+      }
+      return null;
+    }
 
     return this.mapRow(data);
   }

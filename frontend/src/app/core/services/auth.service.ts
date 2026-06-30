@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClient, User, Session, AuthError } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { UsersProfileService } from './users-profile.service';
 
 type OAuthProvider = 'google' | 'github';
 
@@ -24,12 +25,19 @@ export class AngularAuthService {
 
   public authState$: Observable<Session | null> = this.authStateSubject.asObservable();
 
-  constructor(private supabase: SupabaseClient) {
+  constructor(private supabase: SupabaseClient, private profileService: UsersProfileService) {
     this.initSession();
 
     if (this.supabase?.auth) {
-      this.supabase.auth.onAuthStateChange((_event, session) => {
+      this.supabase.auth.onAuthStateChange(async (event, session) => {
         this.authStateSubject.next(session);
+        if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+          try {
+            await this.profileService.getProfile();
+          } catch (e) {
+            console.error('Error ensuring profile exists on auth state change:', e);
+          }
+        }
       });
     }
   }
@@ -42,6 +50,13 @@ export class AngularAuthService {
         // Silent - session init failure
       }
       this.authStateSubject.next(session);
+      if (session?.user) {
+        try {
+          await this.profileService.getProfile();
+        } catch (e) {
+          console.error('Error ensuring profile exists in initSession:', e);
+        }
+      }
     } catch {
       // Silent - session init failure
     }
