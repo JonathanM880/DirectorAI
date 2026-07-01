@@ -14,10 +14,10 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
     NotificationBellComponent
   ],
   template: `
-    <div class="app-shell">
-      <app-sidebar class="sidebar"></app-sidebar>
-      <div class="main-content">
-        <header class="header">
+    <div class="flex h-screen bg-[radial-gradient(circle_at_0%_0%,#232733_0%,var(--color-ink)_40%,#0d0c10_100%)]">
+      <app-sidebar class="w-[260px] shrink-0"></app-sidebar>
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="relative z-50 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#2a2d35]/40 backdrop-blur-md">
           <div class="header-left">
             <!-- Breadcrumbs or page title could go here -->
           </div>
@@ -25,13 +25,12 @@ import { NotificationBellComponent } from '../notification-bell/notification-bel
             <app-notification-bell></app-notification-bell>
           </div>
         </header>
-        <main class="content">
+        <main class="flex-1 overflow-y-auto">
           <router-outlet></router-outlet>
         </main>
       </div>
     </div>
-  `,
-  styleUrl: './app-shell.component.scss'
+  `
 })
 export class AppShellComponent {
 

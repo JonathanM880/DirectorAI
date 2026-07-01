@@ -14,30 +14,30 @@ interface NavItem {
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive],
   template: `
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <h2>DirectorAI</h2>
+    <div class="flex flex-col h-full bg-[#2a2d35]/40 backdrop-blur-md border-r border-white/5">
+      <div class="p-6 border-b border-white/5">
+        <h2 class="m-0 text-xl font-bold tracking-wider text-primary">DirectorAI</h2>
       </div>
-      <nav class="sidebar-nav">
+      <nav class="flex-1 p-4 flex flex-col gap-2">
         <a
           *ngFor="let item of navItems"
           [routerLink]="item.path"
-          routerLinkActive="active"
-          class="nav-item"
+          routerLinkActive="bg-[#e8c24a]/10 text-primary border-[#e8c24a]/20 shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_0_8px_rgba(232,194,74,0.05)]"
+          [routerLinkActiveOptions]="{exact: false}"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 font-medium transition-all border border-transparent hover:bg-white/5 hover:text-white hover:translate-x-1 group"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-lg transition-transform group-hover:scale-110">
             <path [attr.d]="item.iconPath" />
             <circle *ngIf="item.label === 'Settings'" cx="12" cy="12" r="3"></circle>
           </svg>
-          <span class="label">{{ item.label }}</span>
+          <span>{{ item.label }}</span>
         </a>
       </nav>
-      <div class="sidebar-footer">
-        <button class="logout-btn" (click)="onLogout()">Logout</button>
+      <div class="p-4 border-t border-white/5">
+        <button class="inline-flex items-center justify-center w-full mt-3 px-4 py-2 rounded-lg bg-transparent border border-white/10 text-gray-300 text-sm font-medium cursor-pointer transition-all hover:bg-[#d94f3d]/10 hover:border-[#d94f3d]/30 hover:text-destructive" (click)="onLogout()">Logout</button>
       </div>
     </div>
-  `,
-  styleUrl: './sidebar.component.scss',
+  `
 })
 export class SidebarComponent {
   navItems: NavItem[] = [

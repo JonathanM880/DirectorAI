@@ -10,7 +10,6 @@ import { LogoComponent } from '../../shared/components/ui/logo/logo.component';
   standalone: true,
   imports: [RouterLink, ButtonDirective, AnimatedGroupDirective, LogoComponent],
   templateUrl: './landing-page.component.html',
-  styleUrl: './landing-page.component.scss',
 })
 export class LandingPageComponent {
   protected menuState = signal(false);

@@ -12,491 +12,158 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
   standalone: true,
   imports: [CommonModule, FormsModule, DragDropModule],
   template: `
-    <div class="assets-container">
-      <div class="sidebar">
-        <h2>Assets</h2>
-        <div class="folder-list">
-          <div class="folder-item" [class.active]="activeFilter() === 'All Files'" (click)="setFilter('All Files')">
-            <span class="icon">📁</span> All Files
+    <div class="grid grid-cols-[280px_1fr] h-full bg-background text-foreground">
+      <div class="p-4 border-r border-border bg-muted/30">
+        <h2 class="text-xl font-bold mb-4 font-display">Assets</h2>
+        <div>
+          <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'All Files'" [class.text-foreground]="activeFilter() === 'All Files'" [class.font-medium]="activeFilter() === 'All Files'" (click)="setFilter('All Files')">
+            <span>📁</span> All Files
           </div>
-          <div class="folder-item" [class.active]="activeFilter() === 'Images'" (click)="setFilter('Images')">
-            <span class="icon">📁</span> Images
+          <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Images'" [class.text-foreground]="activeFilter() === 'Images'" [class.font-medium]="activeFilter() === 'Images'" (click)="setFilter('Images')">
+            <span>📁</span> Images
           </div>
-          <div class="folder-item" [class.active]="activeFilter() === 'Videos'" (click)="setFilter('Videos')">
-            <span class="icon">📁</span> Videos
+          <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Videos'" [class.text-foreground]="activeFilter() === 'Videos'" [class.font-medium]="activeFilter() === 'Videos'" (click)="setFilter('Videos')">
+            <span>📁</span> Videos
           </div>
-          <div class="folder-item" [class.active]="activeFilter() === 'Documents'" (click)="setFilter('Documents')">
-            <span class="icon">📁</span> Documents
+          <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Documents'" [class.text-foreground]="activeFilter() === 'Documents'" [class.font-medium]="activeFilter() === 'Documents'" (click)="setFilter('Documents')">
+            <span>📁</span> Documents
           </div>
         </div>
 
-        <h3 class="tag-title">Tags</h3>
-        <div class="tags-list">
-          <span class="tag">#campaign2026</span>
-          <span class="tag">#summer</span>
-          <span class="tag">#ai_generated</span>
+        <h3 class="mt-6 mb-3 text-sm uppercase tracking-wider text-muted-foreground">Tags</h3>
+        <div class="flex flex-wrap gap-2">
+          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#campaign2026</span>
+          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#summer</span>
+          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#ai_generated</span>
         </div>
       </div>
 
-      <div class="main-panel"
+      <div class="p-4 flex flex-col relative transition-colors"
+           [class.bg-primary]="isDraggingOver()"
+           [style.background-opacity]="isDraggingOver() ? '0.05' : '1'"
            cdkDropList
            (cdkDropListDropped)="onFileDropped($event)"
            (dragover)="onDragOver($event)"
            (dragleave)="onDragLeave($event)"
-           (drop)="onNativeDrop($event)"
-           [class.drag-over]="isDraggingOver()">
+           (drop)="onNativeDrop($event)">
         
-        <div class="toolbar">
-          <div class="view-toggles">
-            <button class="icon-btn" [class.active]="viewMode() === 'grid'" (click)="viewMode.set('grid')">▦</button>
-            <button class="icon-btn" [class.active]="viewMode() === 'list'" (click)="viewMode.set('list')">☰</button>
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex gap-1 bg-secondary p-1 rounded-lg">
+            <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white]="viewMode() === 'grid'" [style.background-opacity]="viewMode() === 'grid' ? '0.1' : '0'" [class.text-foreground]="viewMode() === 'grid'" (click)="viewMode.set('grid')">▦</button>
+            <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white]="viewMode() === 'list'" [style.background-opacity]="viewMode() === 'list' ? '0.1' : '0'" [class.text-foreground]="viewMode() === 'list'" (click)="viewMode.set('list')">☰</button>
           </div>
           
-          <div class="bulk-actions" *ngIf="selectedCount() > 0">
+          <div class="flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full text-sm" *ngIf="selectedCount() > 0">
             <span>{{ selectedCount() }} selected</span>
-            <button class="btn btn-sm">Move</button>
-            <button class="btn btn-sm btn-danger">Delete</button>
+            <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm">Move</button>
+            <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm">Delete</button>
           </div>
           
-          <button class="btn btn-primary" (click)="fileInput.click()">Upload Files</button>
+          <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="fileInput.click()">Upload Files</button>
           <input type="file" #fileInput multiple hidden (change)="onFileSelected($event)">
         </div>
 
-        <div class="upload-overlay" *ngIf="isDraggingOver()">
-          <div class="overlay-content">
-            <h3>Drop files here to upload</h3>
-            <p>Images, videos, and documents up to 50MB</p>
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm z-10 flex items-center justify-center border-2 border-dashed border-primary rounded-xl pointer-events-none" *ngIf="isDraggingOver()">
+          <div class="text-center">
+            <h3 class="text-primary mb-2 text-xl font-bold">Drop files here to upload</h3>
+            <p class="text-muted-foreground">Images, videos, and documents up to 50MB</p>
           </div>
         </div>
 
-        <div class="asset-grid" *ngIf="viewMode() === 'grid'">
-          <div class="asset-card" *ngFor="let asset of filteredAssets" (click)="openPreview(asset)">
-            <div class="thumbnail">
-              <span class="badge" [class.ai]="asset.source === 'ai_generated'">
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4" *ngIf="viewMode() === 'grid'">
+          <div class="bg-white/5 border border-border rounded-lg overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 hover:border-white/20" *ngFor="let asset of filteredAssets" (click)="openPreview(asset)">
+            <div class="h-[140px] bg-black/20 relative flex items-center justify-center">
+              <span class="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-xs font-semibold" [class.bg-primary]="asset.source === 'ai_generated'" [class.text-primary-foreground]="asset.source === 'ai_generated'">
                 {{ asset.source === 'ai_generated' ? 'AI' : 'Upload' }}
               </span>
-              <img *ngIf="asset.type === 'image'" [src]="asset.preview" alt="Preview">
-              <div *ngIf="asset.type !== 'image'" class="file-icon">📄</div>
+              <img *ngIf="asset.type === 'image'" [src]="asset.preview" alt="Preview" class="w-full h-full object-cover">
+              <div *ngIf="asset.type !== 'image'" class="text-5xl">📄</div>
             </div>
-            <div class="asset-info">
-              <div class="filename">{{ asset.filename }}</div>
-              <div class="meta">{{ asset.date | date:'shortDate' }} • {{ asset.size }}</div>
+            <div class="p-3">
+              <div class="font-medium whitespace-nowrap overflow-hidden text-ellipsis mb-1">{{ asset.filename }}</div>
+              <div class="text-xs text-muted-foreground">{{ asset.date | date:'shortDate' }} • {{ asset.size }}</div>
             </div>
           </div>
         </div>
 
-        <div class="asset-list" *ngIf="viewMode() === 'list'">
-          <table class="data-table">
+        <div *ngIf="viewMode() === 'list'">
+          <table class="w-full border-collapse">
             <thead>
               <tr>
-                <th><input type="checkbox"></th>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Source</th>
-                <th>Size</th>
-                <th>Date Added</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm"><input type="checkbox"></th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Name</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Type</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Source</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Size</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Date Added</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let asset of filteredAssets" (click)="openPreview(asset)" style="cursor: pointer;">
-                <td><input type="checkbox" (click)="$event.stopPropagation()"></td>
-                <td>{{ asset.filename }}</td>
-                <td>{{ asset.type }}</td>
-                <td>{{ asset.source }}</td>
-                <td>{{ asset.size }}</td>
-                <td>{{ asset.date | date:'short' }}</td>
+              <tr *ngFor="let asset of filteredAssets" (click)="openPreview(asset)" class="cursor-pointer hover:bg-white/5">
+                <td class="px-4 py-3 text-left border-b border-border"><input type="checkbox" (click)="$event.stopPropagation()"></td>
+                <td class="px-4 py-3 text-left border-b border-border">{{ asset.filename }}</td>
+                <td class="px-4 py-3 text-left border-b border-border">{{ asset.type }}</td>
+                <td class="px-4 py-3 text-left border-b border-border">{{ asset.source }}</td>
+                <td class="px-4 py-3 text-left border-b border-border">{{ asset.size }}</td>
+                <td class="px-4 py-3 text-left border-b border-border">{{ asset.date | date:'short' }}</td>
               </tr>
             </tbody>
           </table>
         </div>
         
-        <div class="preview-modal" *ngIf="previewAsset()" (click)="closePreview()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <button class="close-btn" (click)="closePreview()">×</button>
+        <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-10" *ngIf="previewAsset()" (click)="closePreview()">
+          <div class="bg-background border border-border rounded-xl max-w-4xl w-full relative overflow-hidden flex flex-col" (click)="$event.stopPropagation()">
+            <button class="absolute top-4 right-4 bg-black/50 hover:bg-black/70 transition-colors text-white text-2xl w-8 h-8 rounded-full flex items-center justify-center z-10 border-none cursor-pointer" (click)="closePreview()">×</button>
             
             <ng-container *ngIf="!isEditing()">
-              <img *ngIf="previewAsset()?.type === 'image'" [src]="previewAsset().preview" class="preview-media">
-              <video *ngIf="previewAsset()?.type === 'video'" controls class="preview-media">
+              <img *ngIf="previewAsset()?.type === 'image'" [src]="previewAsset().preview" class="w-full max-h-[60vh] object-contain bg-black">
+              <video *ngIf="previewAsset()?.type === 'video'" controls class="w-full max-h-[60vh] object-contain bg-black">
                 <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
               </video>
-              <div *ngIf="previewAsset()?.type === 'document'" class="preview-text">
+              <div *ngIf="previewAsset()?.type === 'document'" class="p-8 max-h-[60vh] overflow-y-auto bg-background text-foreground">
                 <p *ngIf="!previewAsset().textContent">Loading text content...</p>
-                <pre *ngIf="previewAsset().textContent">{{ previewAsset().textContent }}</pre>
+                <pre *ngIf="previewAsset().textContent" class="whitespace-pre-wrap font-inherit m-0 leading-relaxed">{{ previewAsset().textContent }}</pre>
               </div>
               
-              <div class="preview-details">
-                <div class="details-header">
+              <div class="p-5 bg-background border-t border-border">
+                <div class="flex justify-between items-center">
                   <div>
-                    <h3>{{ previewAsset().filename }}</h3>
-                    <p>{{ previewAsset().size }} • {{ previewAsset().source }}</p>
+                    <h3 class="m-0 mb-2 font-display font-bold text-xl">{{ previewAsset().filename }}</h3>
+                    <p class="m-0 text-muted-foreground text-sm">{{ previewAsset().size }} • {{ previewAsset().source }}</p>
                   </div>
-                  <div class="actions" *ngIf="previewAsset()?.type !== 'video'">
-                    <button class="btn btn-sm" (click)="startEditing()">Edit</button>
-                    <button class="btn btn-sm btn-danger" (click)="deleteAsset(previewAsset())">Delete</button>
+                  <div class="flex gap-2" *ngIf="previewAsset()?.type !== 'video'">
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="startEditing()">Edit</button>
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Delete</button>
                   </div>
-                  <div class="actions" *ngIf="previewAsset()?.type === 'video'">
-                    <button class="btn btn-sm btn-danger" (click)="deleteAsset(previewAsset())">Delete</button>
+                  <div class="flex gap-2" *ngIf="previewAsset()?.type === 'video'">
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Delete</button>
                   </div>
                 </div>
               </div>
             </ng-container>
 
             <!-- Text Editor -->
-            <div class="editor-container" *ngIf="isEditing() && previewAsset()?.type === 'document'">
-              <div class="editor-header">
-                <input class="filename-input" [(ngModel)]="editFilename" placeholder="Filename">
+            <div class="flex flex-col w-full h-[70vh] bg-background" *ngIf="isEditing() && previewAsset()?.type === 'document'">
+              <div class="p-4 border-b border-border">
+                <input class="w-full px-3 py-2 bg-black/20 border border-border rounded-md text-foreground font-inherit outline-none focus:border-primary" [(ngModel)]="editFilename" placeholder="Filename">
               </div>
-              <textarea class="text-editor-area" [(ngModel)]="editTextContent"></textarea>
-              <div class="editor-footer">
-                <button class="btn" (click)="cancelEditing()">Cancel</button>
-                <button class="btn btn-primary" (click)="saveTextEdit(false)">Overwrite Original</button>
-                <button class="btn btn-primary" (click)="saveTextEdit(true)">Save as New</button>
+              <textarea class="flex-1 p-5 bg-transparent border-none text-foreground font-mono resize-none leading-relaxed outline-none" [(ngModel)]="editTextContent"></textarea>
+              <div class="p-4 border-t border-border flex justify-end gap-3">
+                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground" (click)="cancelEditing()">Cancel</button>
+                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="saveTextEdit(false)">Overwrite Original</button>
+                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="saveTextEdit(true)">Save as New</button>
               </div>
             </div>
 
             <!-- Image Editor Container -->
-            <div class="editor-container" *ngIf="isEditing() && previewAsset()?.type === 'image'">
-              <div id="filerobot-editor" style="width: 100%; height: 70vh;"></div>
+            <div class="flex flex-col w-full h-[70vh] bg-background" *ngIf="isEditing() && previewAsset()?.type === 'image'">
+              <div id="filerobot-editor" style="width: 100%; height: 100%;"></div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  `,
-  styles: [`
-    .assets-container {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      height: 100%;
-      background: var(--color-ink);
-      color: var(--color-paper);
-    }
-    .sidebar {
-      padding: var(--space-4);
-      border-right: 1px solid var(--color-steel);
-      background: rgba(42, 45, 53, 0.3);
-    }
-    .main-panel {
-      padding: var(--space-4);
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      transition: background 0.2s;
-    }
-    .main-panel.drag-over {
-      background: rgba(62, 200, 138, 0.05);
-    }
-    .folder-item {
-      padding: 10px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 4px;
-      color: var(--color-gray-200);
-      transition: background 0.2s;
-    }
-    .folder-item:hover {
-      background: rgba(255, 255, 255, 0.05);
-    }
-    .folder-item.active {
-      background: var(--color-steel);
-      color: var(--color-paper);
-      font-weight: 500;
-    }
-    .tag-title {
-      margin-top: var(--space-5);
-      margin-bottom: var(--space-3);
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--color-gray-400);
-    }
-    .tags-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .tag {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-    .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--space-4);
-    }
-    .view-toggles {
-      display: flex;
-      gap: 4px;
-      background: var(--color-steel);
-      padding: 4px;
-      border-radius: 8px;
-    }
-    .icon-btn {
-      background: transparent;
-      border: none;
-      color: var(--color-gray-300);
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .icon-btn.active {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--color-paper);
-    }
-    .bulk-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 0.9rem;
-    }
-    .btn {
-      padding: 10px 16px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-      font-family: 'Inter', sans-serif;
-    }
-    .btn-sm {
-      padding: 6px 12px;
-      font-size: 0.85rem;
-    }
-    .btn-primary {
-      background: var(--color-signal);
-      color: var(--color-ink);
-    }
-    .btn-danger {
-      background: var(--color-fault);
-      color: white;
-    }
-    
-    .upload-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(13, 15, 18, 0.9);
-      backdrop-filter: blur(4px);
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px dashed var(--color-live);
-      border-radius: 12px;
-      pointer-events: none;
-    }
-    .overlay-content {
-      text-align: center;
-    }
-    .overlay-content h3 {
-      color: var(--color-live);
-      margin-bottom: 8px;
-    }
-
-    .asset-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: var(--space-4);
-    }
-    .asset-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--color-steel);
-      border-radius: 8px;
-      overflow: hidden;
-      cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-    .asset-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-    .thumbnail {
-      height: 140px;
-      background: rgba(0, 0, 0, 0.2);
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .thumbnail img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .file-icon {
-      font-size: 3rem;
-    }
-    .badge {
-      position: absolute;
-      top: 8px; right: 8px;
-      background: rgba(0,0,0,0.6);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .badge.ai {
-      background: var(--color-signal);
-      color: var(--color-ink);
-    }
-    .asset-info {
-      padding: 12px;
-    }
-    .filename {
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 4px;
-    }
-    .meta {
-      font-size: 0.8rem;
-      color: var(--color-gray-400);
-    }
-    
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .data-table th, .data-table td {
-      padding: 12px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-steel);
-    }
-    .data-table th {
-      color: var(--color-gray-300);
-      font-weight: 500;
-      font-size: 0.9rem;
-    }
-    
-    .preview-modal {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(8px);
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px;
-    }
-    .modal-content {
-      background: var(--color-ink);
-      border: 1px solid var(--color-steel);
-      border-radius: 12px;
-      max-width: 900px;
-      width: 100%;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    .close-btn {
-      position: absolute;
-      top: 16px; right: 16px;
-      background: rgba(0,0,0,0.5);
-      border: none;
-      color: white;
-      font-size: 1.5rem;
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-    }
-    .preview-media {
-      width: 100%;
-      max-height: 60vh;
-      object-fit: contain;
-      background: black;
-    }
-    .preview-text {
-      padding: 30px;
-      max-height: 60vh;
-      overflow-y: auto;
-      background: var(--color-ink);
-      color: var(--color-paper);
-    }
-    .preview-text pre {
-      white-space: pre-wrap;
-      font-family: inherit;
-      margin: 0;
-      line-height: 1.5;
-    }
-    .preview-details {
-      padding: 20px;
-      background: var(--color-ink);
-      border-top: 1px solid var(--color-steel);
-    }
-    .details-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .actions {
-      display: flex;
-      gap: 8px;
-    }
-    .preview-details h3 {
-      margin: 0 0 8px 0;
-    }
-    .preview-details p {
-      margin: 0;
-      color: var(--color-gray-300);
-      font-size: 0.9rem;
-    }
-    
-    .editor-container {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      height: 70vh;
-      background: var(--color-ink);
-    }
-    .editor-header {
-      padding: 16px;
-      border-bottom: 1px solid var(--color-steel);
-    }
-    .filename-input {
-      width: 100%;
-      padding: 8px 12px;
-      background: rgba(0,0,0,0.2);
-      border: 1px solid var(--color-steel);
-      border-radius: 6px;
-      color: var(--color-paper);
-      font-family: inherit;
-    }
-    .text-editor-area {
-      flex: 1;
-      padding: 20px;
-      background: transparent;
-      border: none;
-      color: var(--color-paper);
-      font-family: monospace;
-      resize: none;
-      line-height: 1.5;
-    }
-    .text-editor-area:focus {
-      outline: none;
-    }
-    .editor-footer {
-      padding: 16px;
-      border-top: 1px solid var(--color-steel);
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-  `]
+  `
 })
 export class AssetsComponent implements OnInit {
   private supabase = inject(SupabaseClient);

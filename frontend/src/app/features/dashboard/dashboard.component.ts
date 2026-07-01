@@ -22,7 +22,7 @@ import { TablePreview } from "./Table/table.component";
     TablePreview
   ],
   template: `
-    <div class="page-container">
+    <div class="p-4 md:p-8 bg-background text-foreground min-h-screen">
       <app-max-width-height-wrapper>
         
         <div class="flex flex-col justify-center gap-10 w-full">

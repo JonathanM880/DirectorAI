@@ -33,12 +33,12 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
     HlmTableImports
   ],
   template: `
-    <div class="page-container">
+    <div class="p-4 md:p-8 bg-background text-foreground min-h-screen">
       <app-max-width-height-wrapper>
         <div class="flex flex-col gap-8 w-full">
           <!-- Page Title -->
           <div>
-            <h2 class="text-2xl font-bold text-white">Configuración</h2>
+            <h2 class="text-2xl font-bold text-white mb-6">Configuración</h2>
           </div>
 
           <!-- Section: Añadir Canales -->
@@ -48,13 +48,13 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
             <div class="grid grid-cols-1 md:grid-cols-2 border border-border rounded-3xl overflow-hidden bg-transparent">
               <!-- Left Cell: Interactive Card to Add Channel (Telegram only for now) -->
               <hlm-popover align="center" #createPopover="brnPopover">
-                <button hlmPopoverTrigger class="w-full h-full py-8 px-8 flex flex-col items-center justify-center gap-4 transition-colors hover:bg-white/[0.03] text-left outline-none">
+                <button hlmPopoverTrigger class="w-full h-full py-8 px-8 flex flex-col items-center justify-center gap-4 transition-colors hover:bg-white/[0.03] text-left outline-none border-none">
                   <div class="flex items-center gap-4 text-white w-full max-w-lg">
                     <div class="flex-shrink-0 w-12 h-12">
                       <app-telegram-icon></app-telegram-icon>
                     </div>
                     <div class="flex flex-col gap-1">
-                      <h2 class="text-xl font-bold tracking-wide">Telegram</h2>
+                      <h2 class="text-xl font-bold tracking-wide m-0">Telegram</h2>
                       <span class="text-gray-300 text-sm">Añadir canal de Telegram</span>
                     </div>
                   </div>
@@ -108,7 +108,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
                     <div class="flex items-center justify-between border-b border-border last:border-b-0 hover:bg-white/[0.02] transition-colors p-4">
                       <!-- Left Half: Select Channel to Filter Logs -->
                       <button (click)="selectChannel(channel)"
-                              class="flex items-center gap-4 text-white text-left flex-1 min-w-0 outline-none p-2 rounded-xl transition-colors"
+                              class="flex items-center gap-4 text-white text-left flex-1 min-w-0 outline-none p-2 rounded-xl transition-colors border-none bg-transparent"
                               [class.bg-white/5]="selectedChannelId() === channel.id">
                         @if (channel.platform === 'telegram') {
                           <div class="flex-shrink-0 w-8 h-8">
@@ -124,7 +124,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
                           </div>
                         }
                         <div class="flex flex-col gap-1 min-w-0">
-                          <h2 class="text-lg font-bold tracking-wide truncate">{{ channel.name }}</h2>
+                          <h2 class="text-lg font-bold tracking-wide truncate m-0">{{ channel.name }}</h2>
                           <span class="text-gray-300 text-xs truncate">{{ channel.channelIdentifier }}</span>
                           <span class="text-[9px] px-2 py-0.5 rounded w-fit inline-block font-semibold mt-1"
                                 [class.bg-green-500/20]="channel.isActive" [class.text-green-400]="channel.isActive"
@@ -243,34 +243,12 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
 
     <!-- Toast Alert Banner -->
     @if (toast(); as t) {
-      <div class="toast" [class]="t.type" role="status" aria-live="polite">
+      <div class="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-sm font-semibold z-[999999] animate-in slide-in-from-bottom-4" [class.bg-[#00E676]]="t.type === 'success'" [class.text-black]="t.type === 'success'" [class.bg-red-500]="t.type === 'error'" [class.text-white]="t.type === 'error'" role="status" aria-live="polite">
         {{ t.message }}
       </div>
     }
   `,
-  styles: [`
-    .page-container {
-      h2 { margin: 0 0 var(--space-4); }
-    }
-    .toast {
-      position: fixed;
-      bottom: var(--space-6);
-      left: 50%;
-      transform: translateX(-50%);
-      padding: var(--space-3) var(--space-6);
-      border-radius: var(--radius-full);
-      font-size: 0.875rem;
-      font-weight: 600;
-      z-index: 999999;
-      animation: toastIn 0.2s ease-out;
-    }
-    @keyframes toastIn {
-      from { transform: translateX(-50%) translateY(16px); opacity: 0; }
-      to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
-    }
-    .toast.success { background: var(--color-live);  color: #000; }
-    .toast.error   { background: var(--color-fault); color: #fff; }
-  `]
+  styles: []
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);

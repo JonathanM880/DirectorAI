@@ -10,24 +10,24 @@ import { PostMetricsService } from '../../core/services/post-metrics.service';
   standalone: true,
   imports: [CommonModule, FormsModule, BaseChartDirective],
   template: `
-    <div class="metrics-container">
-      <div class="header">
-        <h2>Platform Metrics</h2>
+    <div class="p-4 md:p-5 bg-background text-foreground h-full overflow-y-auto">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="m-0 text-2xl font-bold font-display">Platform Metrics</h2>
         
-        <div class="controls">
-          <div class="view-toggle">
-            <button class="btn" [class.btn-active]="viewMode() === 'global'" (click)="setViewMode('global')">Global Channel Stats</button>
-            <button class="btn" [class.btn-active]="viewMode() === 'individual'" (click)="setViewMode('individual')">Individual Post Analytics</button>
+        <div class="flex items-end gap-4">
+          <div class="flex bg-white/5 rounded-md p-1 gap-1">
+            <button class="px-3 py-1.5 rounded text-sm bg-transparent border-none text-muted-foreground cursor-pointer" [class.bg-white]="viewMode() === 'global'" [style.background-opacity]="viewMode() === 'global' ? '0.1' : '0'" [class.text-foreground]="viewMode() === 'global'" [class.shadow-sm]="viewMode() === 'global'" (click)="setViewMode('global')">Global Channel Stats</button>
+            <button class="px-3 py-1.5 rounded text-sm bg-transparent border-none text-muted-foreground cursor-pointer" [class.bg-white]="viewMode() === 'individual'" [style.background-opacity]="viewMode() === 'individual' ? '0.1' : '0'" [class.text-foreground]="viewMode() === 'individual'" [class.shadow-sm]="viewMode() === 'individual'" (click)="setViewMode('individual')">Individual Post Analytics</button>
           </div>
 
-          <div class="control-group">
-            <label>Channel</label>
-            <select disabled>
+          <div class="flex flex-col gap-1">
+            <label class="text-sm text-muted-foreground">Channel</label>
+            <select disabled class="px-3 py-2 rounded-md border border-border bg-white/5 text-foreground disabled:opacity-50 disabled:cursor-not-allowed">
               <option value="telegram_main">Telegram (Main Channel)</option>
             </select>
           </div>
           
-          <button class="btn btn-outline" (click)="exportToCSV()">
+          <button class="px-4 py-2 rounded-md font-medium flex items-center gap-2 cursor-pointer bg-transparent border border-border text-foreground hover:bg-white/5 transition-colors" (click)="exportToCSV()">
             <span class="icon">⬇️</span> Export CSV
           </button>
         </div>
@@ -35,34 +35,34 @@ import { PostMetricsService } from '../../core/services/post-metrics.service';
 
       <!-- GLOBAL VIEW -->
       <ng-container *ngIf="viewMode() === 'global'">
-        <div *ngIf="isLoading()" class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading aggregate metrics...</p>
+        <div *ngIf="isLoading()" class="flex flex-col items-center justify-center p-10 bg-white/5 border border-dashed border-border rounded-lg mt-4 text-muted-foreground">
+          <div class="w-10 h-10 border-4 border-white/10 border-t-primary rounded-full animate-spin mb-4"></div>
+          <p class="m-0">Loading aggregate metrics...</p>
         </div>
 
-        <div *ngIf="!isLoading() && globalPosts().length === 0" class="empty-state">
-          <p>No published posts in this period</p>
+        <div *ngIf="!isLoading() && globalPosts().length === 0" class="flex flex-col items-center justify-center p-10 bg-white/5 border border-dashed border-border rounded-lg mt-4 text-muted-foreground">
+          <p class="m-0">No published posts in this period</p>
         </div>
 
         <ng-container *ngIf="!isLoading() && globalPosts().length > 0">
-          <div class="kpi-cards">
-            <div class="card">
-              <div class="label">Total Views</div>
-              <div class="value">{{ globalTotalViews() | number }}</div>
+          <div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mt-4 mb-5">
+            <div class="bg-white/5 border border-border p-5 rounded-lg">
+              <div class="text-muted-foreground text-sm mb-2">Total Views</div>
+              <div class="text-3xl font-bold">{{ globalTotalViews() | number }}</div>
             </div>
-            <div class="card">
-              <div class="label">Total Posts</div>
-              <div class="value">{{ globalPosts().length | number }}</div>
+            <div class="bg-white/5 border border-border p-5 rounded-lg">
+              <div class="text-muted-foreground text-sm mb-2">Total Posts</div>
+              <div class="text-3xl font-bold">{{ globalPosts().length | number }}</div>
             </div>
-            <div class="card">
-              <div class="label">Avg Views per Post</div>
-              <div class="value">{{ (globalTotalViews() / globalPosts().length) | number:'1.0-0' }}</div>
+            <div class="bg-white/5 border border-border p-5 rounded-lg">
+              <div class="text-muted-foreground text-sm mb-2">Avg Views per Post</div>
+              <div class="text-3xl font-bold">{{ (globalTotalViews() / globalPosts().length) | number:'1.0-0' }}</div>
             </div>
           </div>
 
-          <div class="charts-row">
-            <div class="chart-container">
-              <h3>Views Trend (Last 30 Days)</h3>
+          <div class="grid grid-cols-1 gap-5 mb-5">
+            <div class="bg-white/5 border border-border rounded-lg p-5 h-[300px]">
+              <h3 class="mt-0 mb-4 text-lg font-display">Views Trend (Last 30 Days)</h3>
               <canvas baseChart
                 [data]="viewsChartData()"
                 [options]="viewsChartOptions"
@@ -71,25 +71,25 @@ import { PostMetricsService } from '../../core/services/post-metrics.service';
             </div>
           </div>
 
-          <div class="table-container">
-            <h3>Published Posts</h3>
-            <table class="data-table">
+          <div class="bg-white/5 border border-border rounded-lg p-5">
+            <h3 class="mt-0 mb-4 text-lg font-display">Published Posts</h3>
+            <table class="w-full border-collapse">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Content Snippet</th>
-                  <th>Views</th>
-                  <th>Reactions</th>
-                  <th>Forwards</th>
+                  <th class="p-3 text-left border-b border-border text-muted-foreground font-medium">Date</th>
+                  <th class="p-3 text-left border-b border-border text-muted-foreground font-medium">Content Snippet</th>
+                  <th class="p-3 text-left border-b border-border text-muted-foreground font-medium">Views</th>
+                  <th class="p-3 text-left border-b border-border text-muted-foreground font-medium">Reactions</th>
+                  <th class="p-3 text-left border-b border-border text-muted-foreground font-medium">Forwards</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let post of globalPosts()">
-                  <td>{{ post.publishedAt | date:'shortDate' }}</td>
-                  <td class="content-cell" [title]="post.content">{{ post.content }}</td>
-                  <td>{{ post.views | number }}</td>
-                  <td>{{ getReactionsCount(post.reactions) | number }}</td>
-                  <td>{{ post.forwards | number }}</td>
+                <tr *ngFor="let post of globalPosts()" class="hover:bg-white/5">
+                  <td class="p-3 text-left border-b border-border whitespace-nowrap">{{ post.publishedAt | date:'shortDate' }}</td>
+                  <td class="p-3 text-left border-b border-border max-w-[300px] whitespace-nowrap overflow-hidden text-ellipsis" [title]="post.content">{{ post.content }}</td>
+                  <td class="p-3 text-left border-b border-border">{{ post.views | number }}</td>
+                  <td class="p-3 text-left border-b border-border">{{ getReactionsCount(post.reactions) | number }}</td>
+                  <td class="p-3 text-left border-b border-border">{{ post.forwards | number }}</td>
                 </tr>
               </tbody>
             </table>
@@ -100,237 +100,57 @@ import { PostMetricsService } from '../../core/services/post-metrics.service';
       <!-- INDIVIDUAL VIEW -->
       <ng-container *ngIf="viewMode() === 'individual'">
         <div *ngIf="individualPostId(); else noPostSelected">
-          <div class="individual-view">
-            <h3>Individual Post Analytics</h3>
+          <div>
+            <h3 class="mt-4 mb-4 text-xl font-display font-bold">Individual Post Analytics</h3>
             
-            <div *ngIf="isLoading()" class="loading-state">
-              <div class="spinner"></div>
-              <p>Loading real Telegram data...</p>
+            <div *ngIf="isLoading()" class="flex flex-col items-center justify-center p-10 bg-white/5 border border-dashed border-border rounded-lg mt-4 text-muted-foreground">
+              <div class="w-10 h-10 border-4 border-white/10 border-t-primary rounded-full animate-spin mb-4"></div>
+              <p class="m-0">Loading real Telegram data...</p>
             </div>
 
-            <div *ngIf="!isLoading() && individualMetrics() === null" class="empty-state">
-              <p>No engagement data available yet</p>
-              <small>The Telegram API request returned no views/reactions for this post.</small>
+            <div *ngIf="!isLoading() && individualMetrics() === null" class="flex flex-col items-center justify-center p-10 bg-white/5 border border-dashed border-border rounded-lg mt-4 text-muted-foreground">
+              <p class="m-0 mb-2">No engagement data available yet</p>
+              <small class="opacity-70">The Telegram API request returned no views/reactions for this post.</small>
             </div>
 
-            <div class="kpi-cards" *ngIf="!isLoading() && individualMetrics() !== null">
-              <div class="card">
-                <div class="label">Post Views</div>
-                <div class="value">{{ individualMetrics()?.views !== null && individualMetrics()?.views !== undefined ? (individualMetrics()?.views | number) : 'N/A' }}</div>
+            <div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5 mt-4 mb-5" *ngIf="!isLoading() && individualMetrics() !== null">
+              <div class="bg-white/5 border border-border p-5 rounded-lg">
+                <div class="text-muted-foreground text-sm mb-2">Post Views</div>
+                <div class="text-3xl font-bold">{{ individualMetrics()?.views !== null && individualMetrics()?.views !== undefined ? (individualMetrics()?.views | number) : 'N/A' }}</div>
               </div>
-              <div class="card">
-                <div class="label">Reactions</div>
-                <div class="value">{{ getReactionsCount(individualMetrics()?.reactions) !== null ? (getReactionsCount(individualMetrics()?.reactions) | number) : 'N/A' }}</div>
+              <div class="bg-white/5 border border-border p-5 rounded-lg">
+                <div class="text-muted-foreground text-sm mb-2">Reactions</div>
+                <div class="text-3xl font-bold">{{ getReactionsCount(individualMetrics()?.reactions) !== null ? (getReactionsCount(individualMetrics()?.reactions) | number) : 'N/A' }}</div>
                 
-                <div class="reaction-bar" *ngIf="getReactionsCount(individualMetrics()?.reactions)">
-                  <div class="reaction-pill" *ngFor="let entry of getReactionEntries(individualMetrics()?.reactions)">
-                    <span class="emoji">{{ entry.emoji }}</span>
-                    <span class="count">{{ entry.count }}</span>
+                <div class="flex gap-2 flex-wrap mt-3" *ngIf="getReactionsCount(individualMetrics()?.reactions)">
+                  <div class="bg-white/5 px-2 py-1 rounded-full text-sm flex items-center gap-1 border border-border" *ngFor="let entry of getReactionEntries(individualMetrics()?.reactions)">
+                    <span>{{ entry.emoji }}</span>
+                    <span>{{ entry.count }}</span>
                   </div>
                 </div>
               </div>
-              <div class="card">
-                <div class="label">Forwards</div>
-                <div class="value">{{ individualMetrics()?.forwards !== null && individualMetrics()?.forwards !== undefined ? (individualMetrics()?.forwards | number) : 'N/A' }}</div>
+              <div class="bg-white/5 border border-border p-5 rounded-lg">
+                <div class="text-muted-foreground text-sm mb-2">Forwards</div>
+                <div class="text-3xl font-bold">{{ individualMetrics()?.forwards !== null && individualMetrics()?.forwards !== undefined ? (individualMetrics()?.forwards | number) : 'N/A' }}</div>
               </div>
-              <div class="card">
-                <div class="label">Replies</div>
-                <div class="value">{{ individualMetrics()?.replies !== null && individualMetrics()?.replies !== undefined ? (individualMetrics()?.replies | number) : 'N/A' }}</div>
+              <div class="bg-white/5 border border-border p-5 rounded-lg">
+                <div class="text-muted-foreground text-sm mb-2">Replies</div>
+                <div class="text-3xl font-bold">{{ individualMetrics()?.replies !== null && individualMetrics()?.replies !== undefined ? (individualMetrics()?.replies | number) : 'N/A' }}</div>
               </div>
             </div>
           </div>
         </div>
 
         <ng-template #noPostSelected>
-          <div class="empty-state">
-            <p>No post selected.</p>
-            <small>Please navigate from the Calendar by clicking "View Metrics" on a specific post.</small>
+          <div class="flex flex-col items-center justify-center p-10 bg-white/5 border border-dashed border-border rounded-lg mt-4 text-muted-foreground">
+            <p class="m-0 mb-2">No post selected.</p>
+            <small class="opacity-70">Please navigate from the Calendar by clicking "View Metrics" on a specific post.</small>
           </div>
         </ng-template>
       </ng-container>
     </div>
   `,
-  styles: [`
-    .metrics-container {
-      padding: var(--space-4) var(--space-5);
-      background: var(--color-ink);
-      color: var(--color-paper);
-      height: 100%;
-      overflow-y: auto;
-    }
-    .reaction-bar {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
-    .reaction-pill {
-      background: rgba(255, 255, 255, 0.05);
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      border: 1px solid var(--color-steel);
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--space-5);
-    }
-    .controls {
-      display: flex;
-      gap: 16px;
-      align-items: flex-end;
-    }
-    .view-toggle {
-      display: flex;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 6px;
-      padding: 4px;
-      gap: 4px;
-    }
-    .view-toggle .btn {
-      background: transparent;
-      border: none;
-      color: var(--color-gray-300);
-      padding: 6px 12px;
-      font-size: 0.85rem;
-    }
-    .view-toggle .btn.btn-active {
-      background: var(--color-steel);
-      color: var(--color-paper);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .control-group label {
-      font-size: 0.85rem;
-      color: var(--color-gray-300);
-    }
-    select {
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--color-steel);
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--color-paper);
-    }
-    select:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .btn {
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .btn-outline {
-      background: transparent;
-      border: 1px solid var(--color-steel);
-      color: var(--color-paper);
-    }
-    .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.05);
-    }
-    .kpi-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 20px;
-      margin-top: var(--space-4);
-      margin-bottom: var(--space-5);
-    }
-    .card {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--color-steel);
-      padding: 20px;
-      border-radius: 8px;
-    }
-    .card .label {
-      color: var(--color-gray-300);
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-    }
-    .card .value {
-      font-size: 2rem;
-      font-weight: 700;
-    }
-    .loading-state, .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px dashed var(--color-steel);
-      border-radius: 8px;
-      margin-top: var(--space-4);
-      color: var(--color-gray-300);
-    }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255,255,255,0.1);
-      border-radius: 50%;
-      border-top-color: var(--color-live);
-      animation: spin 1s ease-in-out infinite;
-      margin-bottom: 16px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .charts-row {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 20px;
-      margin-bottom: var(--space-5);
-    }
-    .chart-container {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--color-steel);
-      border-radius: 8px;
-      padding: 20px;
-      height: 300px;
-    }
-    .chart-container h3 {
-      margin-top: 0;
-      margin-bottom: 16px;
-      font-size: 1.1rem;
-    }
-    .table-container {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--color-steel);
-      border-radius: 8px;
-      padding: 20px;
-    }
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .data-table th, .data-table td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid var(--color-steel);
-    }
-    .data-table th {
-      color: var(--color-gray-300);
-      font-weight: 500;
-    }
-    .content-cell {
-      max-width: 300px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  `]
+  styles: []
 })
 export class MetricsComponent implements OnInit {
   private postMetricsService = inject(PostMetricsService);
