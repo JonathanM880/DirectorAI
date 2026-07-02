@@ -4,6 +4,7 @@ import {
   GeneratedCopy,
   ImageRequest,
   GeneratedImage,
+  BrainstormRequest,
   BrainstormResult,
   CampaignParseRequest,
   CampaignParseResult,
