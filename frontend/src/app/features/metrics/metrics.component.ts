@@ -16,8 +16,8 @@ import { PostMetricsService } from '../../core/services/post-metrics.service';
         
         <div class="flex items-end gap-4">
           <div class="flex bg-white/5 rounded-md p-1 gap-1">
-            <button class="px-3 py-1.5 rounded text-sm bg-transparent border-none text-muted-foreground cursor-pointer" [class.bg-white]="viewMode() === 'global'" [style.background-opacity]="viewMode() === 'global' ? '0.1' : '0'" [class.text-foreground]="viewMode() === 'global'" [class.shadow-sm]="viewMode() === 'global'" (click)="setViewMode('global')">Estadísticas globales del canal</button>
-            <button class="px-3 py-1.5 rounded text-sm bg-transparent border-none text-muted-foreground cursor-pointer" [class.bg-white]="viewMode() === 'individual'" [style.background-opacity]="viewMode() === 'individual' ? '0.1' : '0'" [class.text-foreground]="viewMode() === 'individual'" [class.shadow-sm]="viewMode() === 'individual'" (click)="setViewMode('individual')">Análisis de publicaciones individuales</button>
+            <button class="px-3 py-1.5 rounded text-sm bg-transparent border-none text-muted-foreground cursor-pointer" [class.bg-white/10]="viewMode() === 'global'" [class.text-foreground]="viewMode() === 'global'" [class.shadow-sm]="viewMode() === 'global'" (click)="setViewMode('global')">Estadísticas globales del canal</button>
+            <button class="px-3 py-1.5 rounded text-sm bg-transparent border-none text-muted-foreground cursor-pointer" [class.bg-white/10]="viewMode() === 'individual'" [class.text-foreground]="viewMode() === 'individual'" [class.shadow-sm]="viewMode() === 'individual'" (click)="setViewMode('individual')">Análisis de publicaciones individuales</button>
           </div>
 
           <div class="flex flex-col gap-1">

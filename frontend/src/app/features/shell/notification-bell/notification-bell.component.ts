@@ -26,7 +26,7 @@ import { NotificationService } from '../../../core/services/notification.service
           </div>
           <div class="flex-1 overflow-y-auto">
             @for (notification of notificationService.notifications(); track notification.id) {
-              <div class="px-5 py-4 border-b border-border cursor-pointer transition-colors hover:bg-white/5" [class.bg-yellow-500]="!notification.read" [style.background-opacity]="!notification.read ? '0.05' : '1'">
+              <div class="px-5 py-4 border-b border-border cursor-pointer transition-colors hover:bg-white/5" [class.bg-yellow-500/5]="!notification.read">
                 <div>
                   <div class="text-[0.9375rem] font-semibold text-foreground mb-1">{{ notification.title }}</div>
                   <div class="text-sm text-muted-foreground mb-2">{{ notification.message }}</div>

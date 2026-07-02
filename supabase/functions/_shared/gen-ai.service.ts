@@ -52,7 +52,17 @@ export class GenAIServiceImpl implements GenAIService {
   }
 
   private buildPrompt(request: CopyRequest): string {
-    return `Generate a social media copy for ${request.platform}. Tone: ${request.tone || 'professional'}. Prompt: ${request.prompt}`
+    return `You are a professional, high-converting copywriter writing for private communities.
+Generate a copy for ${request.platform}.
+Tone: ${request.tone || 'professional'}.
+Prompt instructions: ${request.prompt}
+
+CRITICAL RULES:
+- The content must be highly concise, direct, and really short.
+- Do NOT use any emojis.
+- Output ONLY the final generated copy.
+- Do NOT include any conversational introduction, filler, or transition words (such as "Of course!", "Sure, here is the copy", "Here you go", etc.).
+- Start directly with the copy itself.`
   }
 
   async generateCopy(request: CopyRequest): Promise<GeneratedCopy> {

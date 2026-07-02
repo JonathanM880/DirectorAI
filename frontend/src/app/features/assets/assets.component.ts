@@ -30,17 +30,10 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
           </div>
         </div>
 
-        <h3 class="mt-6 mb-3 text-sm uppercase tracking-wider text-muted-foreground">Etiquetas</h3>
-        <div class="flex flex-wrap gap-2">
-          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#campaña2026</span>
-          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#verano</span>
-          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#generado_por_ia</span>
-        </div>
       </div>
 
       <div class="p-4 flex flex-col relative transition-colors"
-           [class.bg-primary]="isDraggingOver()"
-           [style.background-opacity]="isDraggingOver() ? '0.05' : '1'"
+           [class.bg-primary/5]="isDraggingOver()"
            cdkDropList
            (cdkDropListDropped)="onFileDropped($event)"
            (dragover)="onDragOver($event)"
@@ -49,8 +42,8 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
         
         <div class="flex justify-between items-center mb-4">
           <div class="flex gap-1 bg-secondary p-1 rounded-lg">
-            <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white]="viewMode() === 'grid'" [style.background-opacity]="viewMode() === 'grid' ? '0.1' : '0'" [class.text-foreground]="viewMode() === 'grid'" (click)="viewMode.set('grid')">▦</button>
-            <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white]="viewMode() === 'list'" [style.background-opacity]="viewMode() === 'list' ? '0.1' : '0'" [class.text-foreground]="viewMode() === 'list'" (click)="viewMode.set('list')">☰</button>
+            <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white/10]="viewMode() === 'grid'" [class.text-foreground]="viewMode() === 'grid'" (click)="viewMode.set('grid')">▦</button>
+            <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white/10]="viewMode() === 'list'" [class.text-foreground]="viewMode() === 'list'" (click)="viewMode.set('list')">☰</button>
           </div>
           
           <div class="flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full text-sm" *ngIf="selectedCount() > 0">
