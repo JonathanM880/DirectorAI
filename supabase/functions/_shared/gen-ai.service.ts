@@ -58,7 +58,8 @@ export class GenAIServiceImpl implements GenAIService {
   Instrucciones del prompt: ${request.prompt}
 
   REGLAS CRÍTICAS:
-  - El contenido debe ser muy conciso, directo y realmente corto.
+  - El idioma de respuesta es español
+  - El contenido debe ser muy conciso, directo y realmente corto, máximo 50 palabras.
   - NO uses ningún emoji.
   - Muestra SOLAMENTE el copy final generado.
   - NO incluyas ninguna introducción conversacional, palabras de relleno ni de transición (como "¡Por supuesto!", "Claro, aquí tienes el copy", "Aquí tienes", etc.).
@@ -198,8 +199,14 @@ export class GenAIServiceImpl implements GenAIService {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'google/gemma-4-31b-it:free',
-        messages: [{ role: 'user', content: `Brainstorm exactly ${request.count} ideas for ${request.platform} about ${request.topic}. Output strictly a JSON array of strings.` }]
+        model: 'google/gemma-4-31b-it:free', // Ojo aquí con el nombre del modelo
+        messages: [{ 
+          role: 'user', 
+          content: `Genera exactamente ${request.count} ideas de contenido para ${request.platform} sobre el tema: "${request.topic}". 
+            La respuesta debe estar en ESPAÑOL. 
+            Devuelve estrictamente un array JSON de strings plano. 
+            No incluyas bloques de código markdown (como \`\`\`json), devuelve únicamente el JSON crudo.` 
+        }]
       })
     })
 
@@ -233,16 +240,18 @@ export class GenAIServiceImpl implements GenAIService {
     await this.checkGates(request.userId)
     const apiKey = await this.getApiKey(request.userId)
 
-    const sysPrompt = `You are a social media campaign scheduler. Parse the user's prompt into a JSON array of posts.
-Format strictly as JSON:
+    const sysPrompt = `Eres un programador de campañas de redes sociales. Analiza la petición del usuario y conviértela en un array JSON de publicaciones.
+Asegúrate de que todo el contenido generado (especialmente el texto de las publicaciones) esté en ESPAÑOL.
+
+El formato debe ser estrictamente JSON:
 [
   {
-    "text": "The post text",
-    "imagePrompt": "Description of the image to generate, or null if no image",
+    "text": "El texto de la publicación en español",
+    "imagePrompt": "Descripción de la imagen a generar (máximo 40 palabras), o null si no requiere imagen",
     "offsetMinutes": 30
   }
 ]
-No markdown blocks, just raw JSON.`;
+No incluyas bloques de código markdown (como \`\`\`json), devuelve únicamente el JSON crudo.`;
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -301,7 +310,7 @@ No markdown blocks, just raw JSON.`;
 
     const request: CopyRequest = {
       userId: asset.user_id,
-      prompt: `Original content: "${originalContent}". Instructions: ${instructions || 'Regenerate this.'}`,
+      prompt: `Contenido original: "${originalContent}". Instrucciones: ${instructions || 'Reescribe y mejora este contenido, manteniendo el idioma español.'}`,
       platform: 'twitter' // fallback, as we don't store platform in assets
     }
 
