@@ -179,15 +179,7 @@ async function resolveBotToken(userId: string): Promise<string | null> {
 
 /** Send one post to Telegram. Returns a structured outcome. */
 async function publishToTelegram(post: DbPost): Promise<PublishOutcome> {
-  const token = await resolveBotToken(post.user_id);
-  if (!token) {
-    return {
-      success:      false,
-      errorCode:    'INVALID_TOKEN',
-      errorMessage: 'telegram_bot_token not set. Add TELEGRAM_BOT_TOKEN to .env or store it in Supabase Vault.',
-      retryable:    false,
-    };
-  }
+  const token = await resolveBotToken(post.user_id) ?? '';
 
   const chatId   = post.channels.channel_identifier; // e.g. "@grupitoepiquito"
   const endpoint = getEndpoint(post.media_type);

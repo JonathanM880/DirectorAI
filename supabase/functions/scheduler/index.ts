@@ -435,16 +435,7 @@ async function publishToTelegram(
   post: DbPost,
   globalToken: string | null,
 ): Promise<PublishOutcome> {
-  const token = await resolveBotToken(supabase, post.user_id, globalToken);
-
-  if (!token) {
-    return {
-      success:      false,
-      errorCode:    'INVALID_TOKEN',
-      errorMessage: 'telegram_bot_token not set. Configure TELEGRAM_BOT_TOKEN env var or store it in Supabase Vault.',
-      retryable:    false,
-    };
-  }
+  const token = await resolveBotToken(supabase, post.user_id, globalToken) ?? '';
 
   let mediaUrl: string | null = null;
   const firstAssetId = post.media_asset_ids?.[0];
