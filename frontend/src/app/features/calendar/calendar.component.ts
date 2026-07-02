@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { FullCalendarModule, FullCalendarComponent } from '@fullcalendar/angular';
 
 import { CalendarOptions, EventClickArg, EventDropArg } from '@fullcalendar/core';
+import esLocale from '@fullcalendar/core/locales/es';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -61,6 +62,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     initialView: 'dayGridMonth',
     editable: true,
     selectable: true,
+    locales: [esLocale],
+    locale: 'es',
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',
@@ -159,7 +162,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         events
       };
     } catch (err: any) {
-      this.showToast(err.message || 'Failed to load posts', 'error');
+      this.showToast(err.message || 'Error al cargar las publicaciones', 'error');
     } finally {
       this.loading.set(false);
     }
@@ -197,7 +200,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const postId = arg.event.id;
     try {
       await this.schedulingEngine.reschedulePost(postId, newDate);
-      this.showToast('Post reprogramado exitosamente ✓', 'success');
+      this.showToast('Publicación reprogramada exitosamente ✓', 'success');
       // Update selected post if drawer is open
       if (this.selectedPost()?.id === postId) {
         const updated = this.selectedPost()!;
@@ -240,19 +243,19 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (!post) return;
 
     if (post.status !== 'scheduled') {
-      this.drawerError.set(`Cannot cancel a post with status "${post.status}"`);
+      this.drawerError.set(`No se puede cancelar una publicación con estado "${post.status}"`);
       return;
     }
 
     try {
       await this.schedulingEngine.cancelPost(post.id);
-      this.showToast('Post cancelado exitosamente ✓', 'success');
+      this.showToast('Publicación cancelada exitosamente ✓', 'success');
       this.closeDrawer();
       // Reload current view range
       const calApi = (document.querySelector('full-calendar') as any)?.__zone_symbol__calendarApi;
       if (calApi) calApi.refetchEvents();
     } catch (err: any) {
-      this.drawerError.set(err.message || 'No se pudo cancelar el post');
+      this.drawerError.set(err.message || 'No se pudo cancelar la publicación');
     }
   }
 
@@ -307,7 +310,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         
         const checkStatus = async () => {
           if (attempts >= maxAttempts) {
-            this.showToast('El post tarda en responder. Revisa el historial de actividad.', 'success');
+            this.showToast('La publicación tarda en responder. Revisa el historial de actividad.', 'success');
             await refreshEvents();
             return;
           }
@@ -317,7 +320,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
             const post = await this.schedulingEngine.getPostById(createdPost.id);
             if (post) {
               if (post.status === 'published') {
-                this.showToast('¡Post publicado en Telegram exitosamente! ✓', 'success');
+                this.showToast('¡Publicación publicada en Telegram exitosamente! ✓', 'success');
                 await refreshEvents();
               } else if (post.status === 'failed') {
                 this.showToast('Error al publicar en Telegram. Revisa el historial.', 'error');
@@ -334,13 +337,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
         };
         setTimeout(checkStatus, 1500);
       } else {
-        this.showToast('Post programado exitosamente ✓', 'success');
+        this.showToast('Publicación programada exitosamente ✓', 'success');
         await refreshEvents();
       }
 
       this.closeNewPostPanel();
     } catch (err: any) {
-      this.formError.set(err.message || 'No se pudo programar el post');
+      this.formError.set(err.message || 'No se pudo programar la publicación');
     } finally {
       this.submitting.set(false);
     }
@@ -363,7 +366,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
         scheduledAt: data.scheduledAt,
         recurrenceRule: data.recurrenceRule
       });
-      this.showToast('Post actualizado exitosamente ✓', 'success');
+      this.showToast('Publicación actualizada exitosamente ✓', 'success');
       
       const calApi = this.calendarRef?.getApi();
       if (calApi) {
@@ -374,7 +377,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
       this.editPostOpen.set(false);
     } catch (err: any) {
-      this.formError.set(err.message || 'No se pudo actualizar el post');
+      this.formError.set(err.message || 'No se pudo actualizar la publicación');
     } finally {
       this.submitting.set(false);
     }
@@ -382,7 +385,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   /* ── Helpers ─────────────────────────────────────────────── */
   formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('es-ES', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',

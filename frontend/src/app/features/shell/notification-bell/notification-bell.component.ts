@@ -21,8 +21,8 @@ import { NotificationService } from '../../../core/services/notification.service
       @if (isDropdownOpen()) {
         <div class="absolute top-[calc(100%+0.5rem)] right-0 w-[380px] max-h-[480px] rounded-lg bg-background border border-border shadow-2xl z-[999999] overflow-hidden flex flex-col" (click)="$event.stopPropagation()">
           <div class="flex justify-between items-center px-5 py-4 border-b border-border">
-            <h3 class="m-0 text-base font-semibold text-foreground">Notifications</h3>
-            <button class="border-none bg-transparent text-primary text-sm font-medium cursor-pointer hover:underline" (click)="markAllAsRead()">Mark all as read</button>
+            <h3 class="m-0 text-base font-semibold text-foreground">Notificaciones</h3>
+            <button class="border-none bg-transparent text-primary text-sm font-medium cursor-pointer hover:underline" (click)="markAllAsRead()">Marcar todo como leído</button>
           </div>
           <div class="flex-1 overflow-y-auto">
             @for (notification of notificationService.notifications(); track notification.id) {
@@ -34,7 +34,7 @@ import { NotificationService } from '../../../core/services/notification.service
                 </div>
               </div>
             } @empty {
-              <div class="p-8 text-center text-muted-foreground">No notifications</div>
+              <div class="p-8 text-center text-muted-foreground">No hay notificaciones</div>
             }
           </div>
         </div>

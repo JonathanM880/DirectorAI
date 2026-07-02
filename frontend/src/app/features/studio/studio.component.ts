@@ -18,39 +18,39 @@ import { PostFormComponent } from '../../shared/components/post-form/post-form.c
         <h2 class="mt-0 mb-6 font-display text-2xl font-bold">AI Studio</h2>
         
         <div class="flex flex-col gap-2 mb-4">
-          <label class="font-medium text-muted-foreground text-sm">Mode</label>
+          <label class="font-medium text-muted-foreground text-sm">Modo</label>
           <select class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="mode()" (ngModelChange)="mode.set($event)">
-            <option value="copy">Social Media Copy</option>
-            <option value="brainstorm">Brainstorm Ideas</option>
-            <option value="image">Image Generation</option>
-            <option value="campaign">Campaign Automation</option>
+            <option value="copy">Texto para redes sociales</option>
+            <option value="brainstorm">Lluvia de ideas</option>
+            <option value="image">Generación de imágenes</option>
+            <option value="campaign">Automatización de campañas</option>
           </select>
         </div>
 
         <div class="flex flex-col gap-2 mb-4" *ngIf="mode() === 'copy'">
-          <label class="font-medium text-muted-foreground text-sm">Tone</label>
+          <label class="font-medium text-muted-foreground text-sm">Tono</label>
           <select class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="tone()" (ngModelChange)="tone.set($event)">
-            <option value="professional">Professional</option>
-            <option value="casual">Casual</option>
-            <option value="urgent">Urgent</option>
-            <option value="educational">Educational</option>
+            <option value="professional">Profesional</option>
+            <option value="casual">Informal</option>
+            <option value="urgent">Urgente</option>
+            <option value="educational">Educativo</option>
           </select>
         </div>
 
         <div class="flex flex-col gap-2 mb-4">
-          <label class="font-medium text-muted-foreground text-sm">Prompt / Topic</label>
-          <textarea class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans resize-y focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="prompt()" (ngModelChange)="prompt.set($event)" rows="5" placeholder="What do you want to generate?"></textarea>
+          <label class="font-medium text-muted-foreground text-sm">Indicación / Tema</label>
+          <textarea class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans resize-y focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="prompt()" (ngModelChange)="prompt.set($event)" rows="5" placeholder="¿Qué quieres generar?"></textarea>
         </div>
 
         <button class="w-full py-2.5 px-4 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors" (click)="generate()" [disabled]="isGenerating()">
           <span *ngIf="isGenerating()" class="w-4 h-4 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin inline-block align-middle mr-2"></span>
-          {{ isGenerating() ? 'Generating...' : 'Generate with AI' }}
+          {{ isGenerating() ? 'Generando...' : 'Generar con IA' }}
         </button>
       </div>
 
       <div class="p-4 md:p-6 flex flex-col overflow-y-auto relative">
         <div class="self-end text-sm text-muted-foreground mb-4">
-          Generations this month: {{ usage() }}/{{ usageLimit() }}
+          Generaciones este mes: {{ usage() }}/{{ usageLimit() }}
           <div class="w-[200px] h-1.5 bg-border rounded-full mt-1 overflow-hidden">
             <div class="h-full bg-primary transition-all duration-300 ease-out" [style.width.%]="(usage() / usageLimit()) * 100"></div>
           </div>
@@ -58,11 +58,11 @@ import { PostFormComponent } from '../../shared/components/post-form/post-form.c
 
         <div class="flex-1 bg-white/[0.02] border border-border rounded-lg p-6 flex flex-col shadow-sm">
           <div *ngIf="!output() && !isGenerating()" class="m-auto text-muted-foreground italic">
-            Select your preferences and click Generate.
+            Selecciona tus preferencias y haz clic en Generar.
           </div>
           
           <div *ngIf="output()" class="flex-1 whitespace-pre-wrap text-lg leading-relaxed overflow-x-hidden">
-            <img *ngIf="generatedImageUrl" [src]="generatedImageUrl" alt="AI Generated Image" class="w-full rounded-lg mt-2 object-cover">
+            <img *ngIf="generatedImageUrl" [src]="generatedImageUrl" alt="Imagen generada por IA" class="w-full rounded-lg mt-2 object-cover">
             <pre *ngIf="!generatedImageUrl && mode() === 'campaign'" class="whitespace-pre-wrap break-words font-sans m-0">{{ output() }}</pre>
             <p *ngIf="!generatedImageUrl && mode() !== 'campaign'" class="m-0">{{ output() }}</p>
           </div>
@@ -70,9 +70,9 @@ import { PostFormComponent } from '../../shared/components/post-form/post-form.c
           <div class="mt-6 flex gap-3" *ngIf="output() && !isGenerating()">
             <button class="py-2.5 px-4 rounded-md cursor-pointer font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50" (click)="saveToAssets()" [disabled]="isSaving()">
               <span *ngIf="isSaving()" class="w-4 h-4 border-2 border-secondary-foreground/20 border-t-secondary-foreground rounded-full animate-spin inline-block align-middle mr-2"></span>
-              {{ isSaving() ? 'Saving...' : 'Save to Assets' }}
+              {{ isSaving() ? 'Guardando...' : 'Guardar en Recursos' }}
             </button>
-            <button class="py-2.5 px-4 rounded-md cursor-pointer font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50" (click)="scheduleNow()" [disabled]="isSaving()">Schedule Now</button>
+            <button class="py-2.5 px-4 rounded-md cursor-pointer font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50" (click)="scheduleNow()" [disabled]="isSaving()">Programar ahora</button>
           </div>
         </div>
 
@@ -84,11 +84,11 @@ import { PostFormComponent } from '../../shared/components/post-form/post-form.c
         }
       </div>
 
-      <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center animate-in fade-in duration-150" *ngIf="scheduleFormOpen()" (click)="scheduleFormOpen.set(false)" role="dialog" aria-modal="true" aria-label="Schedule post">
+      <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center animate-in fade-in duration-150" *ngIf="scheduleFormOpen()" (click)="scheduleFormOpen.set(false)" role="dialog" aria-modal="true" aria-label="Programar publicación">
         <div class="bg-background border border-white/10 rounded-xl shadow-2xl w-[900px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-4rem)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 duration-200" (click)="$event.stopPropagation()">
           <div class="flex items-center justify-between p-5 md:px-6 border-b border-white/10 shrink-0">
-            <h2 class="m-0 text-lg font-display uppercase tracking-wider text-foreground">Schedule Post</h2>
-            <button class="w-8 h-8 flex items-center justify-center bg-white/5 border-none rounded-md text-muted-foreground cursor-pointer hover:bg-white/10 hover:text-foreground transition-all" (click)="scheduleFormOpen.set(false)" aria-label="Close">✕</button>
+            <h2 class="m-0 text-lg font-display uppercase tracking-wider text-foreground">Programar publicación</h2>
+            <button class="w-8 h-8 flex items-center justify-center bg-white/5 border-none rounded-md text-muted-foreground cursor-pointer hover:bg-white/10 hover:text-foreground transition-all" (click)="scheduleFormOpen.set(false)" aria-label="Cerrar">✕</button>
           </div>
           <div class="flex-1 overflow-y-auto p-6 pb-0">
             <app-post-form
@@ -218,10 +218,10 @@ export class StudioComponent implements OnInit, OnDestroy {
         
         let formatted = '';
         result.posts.forEach((p: any, i: number) => {
-          formatted += `📌 Post ${i + 1}\n`;
-          if (p.imagePrompt) formatted += `📷 Image Concept: ${p.imagePrompt}\n`;
-          formatted += `📝 Text:\n${p.text}\n`;
-          formatted += `⏱️ Offset: +${p.offsetMinutes} mins\n\n`;
+          formatted += `📌 Publicación ${i + 1}\n`;
+          if (p.imagePrompt) formatted += `📷 Concepto de imagen: ${p.imagePrompt}\n`;
+          formatted += `📝 Texto:\n${p.text}\n`;
+          formatted += `⏱️ Margen: +${p.offsetMinutes} mins\n\n`;
         });
         this.output.set(formatted.trim());
         
@@ -280,14 +280,14 @@ export class StudioComponent implements OnInit, OnDestroy {
       this.notificationService.notify(
         'assets_saved',
         'success',
-        'Assets Saved',
-        `Successfully saved ${postsToSave.length} item(s) to your assets library.`
+        'Recursos guardados',
+        `Se han guardado correctamente ${postsToSave.length} elemento(s) en tu biblioteca de recursos.`
       );
-      this.showToast(`Successfully saved ${postsToSave.length} item(s) to your assets library.`, 'success');
+      this.showToast(`Se han guardado correctamente ${postsToSave.length} elemento(s) en tu biblioteca de recursos.`, 'success');
     } catch (err: any) {
       console.error(err);
       this.isSaving.set(false);
-      this.showToast('Error saving to assets: ' + err.message, 'error');
+      this.showToast('Error al guardar en recursos: ' + err.message, 'error');
     }
   }
 
@@ -338,7 +338,7 @@ export class StudioComponent implements OnInit, OnDestroy {
     } catch (err: any) {
       console.error(err);
       this.isSaving.set(false);
-      alert('Error preparing schedule form: ' + err.message);
+      alert('Error al preparar el formulario de programación: ' + err.message);
     }
   }
 
@@ -380,13 +380,13 @@ export class StudioComponent implements OnInit, OnDestroy {
       this.notificationService.notify(
         'post_scheduled',
         'success',
-        'Post Scheduled',
-        'Your post has been successfully scheduled.'
+        'Publicación programada',
+        'Tu publicación se ha programado correctamente.'
       );
     } catch (err: any) {
       console.error(err);
       this.isSaving.set(false);
-      alert('Error scheduling post: ' + err.message);
+      alert('Error al programar la publicación: ' + err.message);
     }
   }
 }

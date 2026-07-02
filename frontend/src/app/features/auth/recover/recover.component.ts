@@ -28,24 +28,24 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
           <hlm-card-header class="space-y-1">
             <h3 hlmCardTitle class="text-2xl font-bold tracking-tight text-center text-primary">DirectorAI</h3>
             <p hlmCardDescription class="text-center text-muted-foreground">
-              Reset your password
+              Restablece tu contraseña
             </p>
           </hlm-card-header>
           <div hlmCardContent>
             <form [formGroup]="recoverForm" (ngSubmit)="onSubmit()" class="space-y-4">
               <hlm-field-group class="space-y-4">
                 <hlm-field>
-                  <label hlmFieldLabel for="email">Email</label>
+                  <label hlmFieldLabel for="email">Correo electrónico</label>
                   <input
                     hlmInput
                     type="email"
                     id="email"
-                    placeholder="you@example.com"
+                    placeholder="tucorreo@ejemplo.com"
                     formControlName="email"
                     class="w-full"
                   />
-                  <hlm-field-error validator="required">Email is required.</hlm-field-error>
-                  <hlm-field-error validator="email">Enter a valid email address.</hlm-field-error>
+                  <hlm-field-error validator="required">El correo electrónico es obligatorio.</hlm-field-error>
+                  <hlm-field-error validator="email">Introduce una dirección de correo electrónico válida.</hlm-field-error>
                 </hlm-field>
 
                 @if (errorMessage()) {
@@ -67,15 +67,15 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
                     [disabled]="recoverForm.invalid || isLoading()"
                     class="w-full"
                   >
-                    {{ isLoading() ? 'Sending reset link...' : 'Send reset link' }}
+                    {{ isLoading() ? 'Enviando enlace...' : 'Enviar enlace de restablecimiento' }}
                   </button>
                 </div>
 
                 <div class="text-center text-sm mt-4 flex flex-col gap-2 pt-2">
                   <p class="text-muted-foreground text-xs">
-                    Remembered your password?
+                    ¿Te has acordado de tu contraseña?
                     <a routerLink="/auth/login" class="text-primary hover:underline font-semibold">
-                      Sign in
+                      Inicia sesión
                     </a>
                   </p>
                 </div>
@@ -112,9 +112,9 @@ export class RecoverComponent {
     try {
       const { email } = this.recoverForm.value;
       await this.authService.resetPassword(email!);
-      this.successMessage.set('Password reset link sent! Please check your email.');
+      this.successMessage.set('¡Enlace de restablecimiento enviado! Por favor, comprueba tu correo electrónico.');
     } catch (err) {
-      this.errorMessage.set('An unexpected error occurred. Please try again.');
+      this.errorMessage.set('Ocurrió un error inesperado. Por favor, inténtalo de nuevo.');
     } finally {
       this.isLoading.set(false);
     }

@@ -2,20 +2,20 @@
 
   <!-- ── Header ─────────────────────────────────────────── -->
   <div class="calendar-header">
-    <h1>Editorial Calendar</h1>
+    <h1>Calendario Editorial</h1>
     <div class="header-actions">
       <!-- View toggle -->
-      <div class="view-toggle" role="group" aria-label="Calendar view">
+      <div class="view-toggle" role="group" aria-label="Vista del calendario">
         <button
           id="view-month"
           [class.active]="currentView() === 'dayGridMonth'"
           (click)="setView('dayGridMonth')"
-        >Month</button>
+        >Mes</button>
         <button
           id="view-week"
           [class.active]="currentView() === 'timeGridWeek'"
           (click)="setView('timeGridWeek')"
-        >Week</button>
+        >Semana</button>
       </div>
 
       <!-- New Post -->
@@ -24,10 +24,10 @@
         class="btn-new-post"
         (click)="openNewPostPanel()"
         [disabled]="!hasChannels"
-        [title]="hasChannels ? 'Create a new post' : 'Connect a channel first'"
+        [title]="hasChannels ? 'Crear una nueva publicación' : 'Primero conecta un canal'"
       >
         <span class="icon">＋</span>
-        New Post
+        Nueva publicación
       </button>
     </div>
   </div>
@@ -37,7 +37,7 @@
     @if (loading()) {
       <div class="loading-overlay">
         <span class="spinner"></span>
-        Loading posts…
+        Cargando publicaciones…
       </div>
     }
     <full-calendar [options]="calendarOptions"></full-calendar>
@@ -48,13 +48,13 @@
     class="side-drawer"
     [class.open]="isDrawerOpen"
     role="complementary"
-    aria-label="Post details"
+    aria-label="Detalles de la publicación"
     id="post-drawer"
   >
     @if (selectedPost(); as post) {
       <div class="drawer-header">
-        <h3>Post Details</h3>
-        <button class="close-btn" (click)="closeDrawer()" aria-label="Close drawer">✕</button>
+        <h3>Detalles de la publicación</h3>
+        <button class="close-btn" (click)="closeDrawer()" aria-label="Cerrar panel">✕</button>
       </div>
 
       <div class="drawer-body">
@@ -74,29 +74,29 @@
 
         <!-- Content preview -->
         <div class="drawer-content-preview">
-          <h4>Content</h4>
-          <p>{{ post.content.text || '(No text content)' }}</p>
+          <h4>Contenido</h4>
+          <p>{{ post.content.text || '(Sin contenido de texto)' }}</p>
         </div>
 
         <!-- Meta grid -->
         <div class="drawer-meta">
           <div class="meta-item">
-            <label>Retry Count</label>
+            <label>Reintentos</label>
             <span>{{ post.retryCount }} / {{ post.maxRetries }}</span>
           </div>
           <div class="meta-item">
-            <label>Created</label>
-            <span>{{ post.createdAt | date:'MMM d' }}</span>
+            <label>Creado</label>
+            <span>{{ post.createdAt | date:'d MMM' }}</span>
           </div>
           @if (post.publishedAt) {
             <div class="meta-item">
-              <label>Published</label>
+              <label>Publicado</label>
               <span>{{ formatDate(post.publishedAt) }}</span>
             </div>
           }
           @if (post.nextRetryAt) {
             <div class="meta-item">
-              <label>Next Retry</label>
+              <label>Siguiente reintento</label>
               <span>{{ formatDate(post.nextRetryAt) }}</span>
             </div>
           }
@@ -115,23 +115,23 @@
             id="drawer-btn-metrics"
             class="btn-metrics"
             (click)="goToMetrics()"
-          >📈 View Metrics</button>
+          >📈 Ver métricas</button>
 
           <button
             id="drawer-btn-edit"
             class="btn-edit"
             (click)="openEditForm()"
             [disabled]="post.status === 'published' || post.status === 'cancelled'"
-            [title]="(post.status === 'published' || post.status === 'cancelled') ? 'Cannot edit published or cancelled posts' : 'Edit this post'"
-          >✏️ Edit & Reschedule</button>
+            [title]="(post.status === 'published' || post.status === 'cancelled') ? 'No se pueden editar publicaciones publicadas o canceladas' : 'Editar esta publicación'"
+          >✏️ Editar y reprogramar</button>
 
           <button
             id="drawer-btn-cancel"
             class="btn-cancel"
             (click)="cancelSelectedPost()"
             [disabled]="post.status !== 'scheduled'"
-            [title]="post.status !== 'scheduled' ? 'Can only cancel scheduled posts' : 'Cancel this post'"
-          >🗑 Cancel Post</button>
+            [title]="post.status !== 'scheduled' ? 'Solo se pueden cancelar publicaciones programadas' : 'Cancelar esta publicación'"
+          >🗑 Cancelar publicación</button>
         </div>
       </div>
     }
@@ -140,12 +140,12 @@
 
 <!-- ── New Post Modal ─────────────────────────────────────── -->
 @if (newPostOpen()) {
-  <div class="new-post-overlay" (click)="closeNewPostPanel()" role="dialog" aria-modal="true" aria-label="Create new post">
+  <div class="new-post-overlay" (click)="closeNewPostPanel()" role="dialog" aria-modal="true" aria-label="Crear nueva publicación">
     <div class="new-post-panel" (click)="$event.stopPropagation()">
 
       <div class="panel-header">
-        <h2>New Post</h2>
-        <button class="close-btn" (click)="closeNewPostPanel()" aria-label="Close">✕</button>
+        <h2>Nueva publicación</h2>
+        <button class="close-btn" (click)="closeNewPostPanel()" aria-label="Cerrar">✕</button>
       </div>
 
       <div class="panel-body" style="padding-bottom: 0;">
@@ -160,11 +160,11 @@
 
 <!-- ── Edit Post Modal ─────────────────────────────────────── -->
 @if (editPostOpen()) {
-  <div class="new-post-overlay" (click)="editPostOpen.set(false)" role="dialog" aria-modal="true" aria-label="Edit post">
+  <div class="new-post-overlay" (click)="editPostOpen.set(false)" role="dialog" aria-modal="true" aria-label="Editar publicación">
     <div class="new-post-panel" (click)="$event.stopPropagation()">
       <div class="panel-header">
-        <h2>Edit Post</h2>
-        <button class="close-btn" (click)="editPostOpen.set(false)" aria-label="Close">✕</button>
+        <h2>Editar publicación</h2>
+        <button class="close-btn" (click)="editPostOpen.set(false)" aria-label="Cerrar">✕</button>
       </div>
       <div class="panel-body" style="padding-bottom: 0;">
         <app-edit-post [postToEdit]="selectedPost()!" (saved)="onEditSaved($event)" (cancel)="editPostOpen.set(false)"></app-edit-post>

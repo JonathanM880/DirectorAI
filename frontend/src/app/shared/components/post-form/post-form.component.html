@@ -2,13 +2,13 @@
 
   <!-- ── Content Group ── -->
   <hlm-field class="flex flex-col gap-2">
-    <label hlmFieldLabel for="pf-content" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Content</label>
+    <label hlmFieldLabel for="pf-content" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Contenido</label>
     <textarea
       hlmInput
       id="pf-content"
       name="text"
       [(ngModel)]="text"
-      placeholder="Write your post content here..."
+      placeholder="Escribe el contenido de tu publicación aquí..."
       rows="4"
       required
       class="min-h-[120px] resize-y w-full bg-black/20 border-border rounded-lg p-3 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary placeholder:text-muted-foreground/50 transition-all duration-200"
@@ -17,7 +17,7 @@
 
   <!-- ── Media Attachments Group ── -->
   <div class="flex flex-col gap-2">
-    <label hlmLabel class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Media Attachments</label>
+    <label hlmLabel class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Archivos adjuntos</label>
     
     <div
       (dragover)="onDragOver($event)"
@@ -33,7 +33,7 @@
       [class.border-border]="!isDragOver() && uploadedAssets().length === 0"
       [class.p-3]="uploadedAssets().length > 0"
       [class.min-h-0]="uploadedAssets().length > 0"
-      aria-label="Upload media files"
+      aria-label="Subir archivos multimedia"
     >
       <!-- Hidden native file input -->
       <input
@@ -53,9 +53,9 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
           <p class="text-sm">
-            <strong class="text-foreground font-semibold">Drag &amp; drop</strong> files here, or click to browse
+            <strong class="text-foreground font-semibold">Arrastra y suelta</strong> archivos aquí, o haz clic para buscar
           </p>
-          <p class="text-xs text-muted-foreground/60">Images, Videos, Audio, PDF — max 50 MB each</p>
+          <p class="text-xs text-muted-foreground/60">Imágenes, vídeos, audio, PDF — máx. 50 MB cada uno</p>
         </div>
       }
 
@@ -63,7 +63,7 @@
       @if (uploading()) {
         <div class="flex items-center gap-3 text-sm text-muted-foreground">
           <div class="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-          <span>Uploading {{ pendingCount() }} file{{ pendingCount() > 1 ? 's' : '' }}…</span>
+          <span>Subiendo {{ pendingCount() }} archivo{{ pendingCount() > 1 ? 's' : '' }}…</span>
         </div>
       }
     </div>
@@ -86,7 +86,7 @@
               type="button"
               (click)="removeAsset(asset)"
               class="w-6 h-6 flex items-center justify-center rounded-full bg-muted/20 text-muted-foreground text-[10px] transition-all hover:bg-destructive hover:text-destructive-foreground focus:outline-none"
-              [attr.aria-label]="'Remove ' + asset.filename"
+              [attr.aria-label]="'Eliminar ' + asset.filename"
             >✕</button>
           </div>
         }
@@ -103,11 +103,11 @@
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <!-- Channel Select -->
     <hlm-field class="flex flex-col gap-2">
-      <label hlmFieldLabel for="pf-channel" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Channel</label>
+      <label hlmFieldLabel for="pf-channel" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Canal</label>
       @if (loading()) {
-        <span class="text-xs text-muted-foreground italic p-2">Loading channels…</span>
+        <span class="text-xs text-muted-foreground italic p-2">Cargando canales…</span>
       } @else if (channels().length === 0) {
-        <span class="text-xs text-destructive italic p-2">No channels configured. Add one in Settings.</span>
+        <span class="text-xs text-destructive italic p-2">No hay canales configurados. Añade uno en Configuración.</span>
       } @else {
         <select
           hlmInput
@@ -134,12 +134,12 @@
           name="publishImmediately"
           class="w-4 h-4 rounded border-border text-primary accent-primary focus:ring-primary focus:ring-offset-background"
         />
-        <span class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Publish immediately</span>
+        <span class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Publicar inmediatamente</span>
       </label>
 
       @if (!publishImmediately) {
         <hlm-field class="flex flex-col gap-1.5">
-          <label hlmFieldLabel for="pf-date" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Schedule Date &amp; Time</label>
+          <label hlmFieldLabel for="pf-date" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Fecha y hora de programación</label>
           <input
             hlmInput
             type="datetime-local"
@@ -165,13 +165,13 @@
           name="enableRecurrence"
           class="w-4 h-4 rounded border-border text-primary accent-primary focus:ring-primary"
         />
-        <span class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Recurring post</span>
+        <span class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Publicación recurrente</span>
       </label>
 
       @if (enableRecurrence) {
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-black/15 border border-border/40 rounded-lg">
           <hlm-field class="flex flex-col gap-1">
-            <label hlmFieldLabel for="pf-frequency" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Frequency</label>
+            <label hlmFieldLabel for="pf-frequency" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Frecuencia</label>
             <select
               hlmInput
               id="pf-frequency"
@@ -179,14 +179,14 @@
               [(ngModel)]="frequency"
               class="w-full bg-black/20 border-border rounded p-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <option value="daily" class="bg-zinc-950 text-foreground">Daily</option>
-              <option value="weekly" class="bg-zinc-950 text-foreground">Weekly</option>
-              <option value="monthly" class="bg-zinc-950 text-foreground">Monthly</option>
+              <option value="daily" class="bg-zinc-950 text-foreground">Diario</option>
+              <option value="weekly" class="bg-zinc-950 text-foreground">Semanal</option>
+              <option value="monthly" class="bg-zinc-950 text-foreground">Mensual</option>
             </select>
           </hlm-field>
           
           <hlm-field class="flex flex-col gap-1">
-            <label hlmFieldLabel for="pf-interval" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Interval</label>
+            <label hlmFieldLabel for="pf-interval" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Intervalo</label>
             <input
               hlmInput
               type="number"
@@ -200,7 +200,7 @@
           </hlm-field>
 
           <hlm-field class="flex flex-col gap-1">
-            <label hlmFieldLabel for="pf-end-date" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">End Date (optional)</label>
+            <label hlmFieldLabel for="pf-end-date" class="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70 font-semibold">Fecha de finalización (opcional)</label>
             <input
               hlmInput
               type="date"
@@ -231,7 +231,7 @@
       (click)="cancel.emit()"
       class="hover:bg-muted/50 border-border text-foreground px-4 py-2 text-sm h-9 rounded-lg"
     >
-      Cancel
+      Cancelar
     </button>
 
     <button
@@ -243,9 +243,9 @@
     >
       @if (submitting()) {
         <div class="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2 inline-block"></div>
-        {{ postToEdit ? 'Updating…' : (publishImmediately ? 'Publishing…' : 'Scheduling…') }}
+        {{ postToEdit ? 'Actualizando…' : (publishImmediately ? 'Publicando…' : 'Programando…') }}
       } @else {
-        {{ postToEdit ? 'Update Post' : (publishImmediately ? 'Publish Now' : 'Schedule Post') }}
+        {{ postToEdit ? 'Actualizar publicación' : (publishImmediately ? 'Publicar ahora' : 'Programar publicación') }}
       }
     </button>
   </div>

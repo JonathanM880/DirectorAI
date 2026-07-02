@@ -213,8 +213,8 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
                     <tbody hlmTableBody>
                       @for (log of auditLogs(); track log.id) {
                         <tr hlmTableRow class="border-t border-border hover:bg-white/[0.01] transition-colors">
-                          <td hlmTableCell class="font-medium p-3 text-white capitalize">{{ log.action }}</td>
-                          <td hlmTableCell class="p-3 text-gray-300 uppercase text-xs">{{ log.platform || '-' }}</td>
+                          <td hlmTableCell class="font-medium p-3 text-white capitalize">{{ translateAction(log.action) }}</td>
+                          <td hlmTableCell class="p-3 text-gray-300 uppercase text-xs">{{ translatePlatform(log.platform) }}</td>
                           <td hlmTableCell class="p-3 text-gray-300 text-xs">{{ log.occurredAt | date:'medium' }}</td>
                           <td hlmTableCell class="text-right font-mono text-xs p-3 text-gray-400">{{ log.errorCode || '-' }}</td>
                         </tr>
@@ -412,5 +412,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
   getSelectedChannelName(): string {
     const ch = this.channels().find(c => c.id === this.selectedChannelId());
     return ch ? ch.name : '';
+  }
+
+  translateAction(action: string): string {
+    const map: Record<string, string> = {
+      published: 'Publicado',
+      failed: 'Fallido',
+      retried: 'Reintentado',
+      cancelled: 'Cancelado',
+      edited: 'Editado',
+      deleted: 'Eliminado'
+    };
+    return map[action.toLowerCase()] || action;
+  }
+
+  translatePlatform(platform: string): string {
+    if (!platform) return '-';
+    const map: Record<string, string> = {
+      telegram: 'Telegram',
+      twitter: 'Twitter',
+      instagram: 'Instagram',
+      linkedin: 'LinkedIn'
+    };
+    return map[platform.toLowerCase()] || platform;
   }
 }

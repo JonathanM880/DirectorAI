@@ -27,8 +27,8 @@ import { AuditLogEntry } from '../../services/scheduling-engine.service';
 				<tbody hlmTableBody>
 					@for (log of logs(); track log.id) {
 						<tr hlmTableRow>
-							<td hlmTableCell class="font-medium">{{ log.action }}</td>
-							<td hlmTableCell>{{ log.platform || '-' }}</td>
+							<td hlmTableCell class="font-medium capitalize">{{ translateAction(log.action) }}</td>
+							<td hlmTableCell>{{ translatePlatform(log.platform) }}</td>
 							<td hlmTableCell>{{ log.occurredAt | date:'medium' }}</td>
 							<td hlmTableCell class="text-right font-mono text-xs">{{ log.errorCode || '-' }}</td>
 						</tr>
@@ -67,5 +67,28 @@ export class TablePreview implements OnInit {
 		} catch (error) {
 			console.error('Error loading audit log preview:', error);
 		}
+	}
+
+	translateAction(action: string): string {
+		const map: Record<string, string> = {
+			published: 'Publicado',
+			failed: 'Fallido',
+			retried: 'Reintentado',
+			cancelled: 'Cancelado',
+			edited: 'Editado',
+			deleted: 'Eliminado'
+		};
+		return map[action.toLowerCase()] || action;
+	}
+
+	translatePlatform(platform: string): string {
+		if (!platform) return '-';
+		const map: Record<string, string> = {
+			telegram: 'Telegram',
+			twitter: 'Twitter',
+			instagram: 'Instagram',
+			linkedin: 'LinkedIn'
+		};
+		return map[platform.toLowerCase()] || platform;
 	}
 }

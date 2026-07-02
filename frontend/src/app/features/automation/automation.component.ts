@@ -106,7 +106,7 @@ export class AutomationComponent implements OnInit, OnDestroy {
       const posts = await this.schedulingEngine.getRecurringPosts();
       this.recurringPosts.set(posts);
     } catch (err: any) {
-      this.showToast(err.message || 'Failed to load recurring posts', 'error');
+      this.showToast(err.message || 'Error al cargar las publicaciones recurrentes', 'error');
     } finally {
       this.recurrenceLoading.set(false);
     }
@@ -117,28 +117,44 @@ export class AutomationComponent implements OnInit, OnDestroy {
     try {
       if (newStatus === 'cancelled') {
         await this.schedulingEngine.cancelPost(post.id);
-        this.showToast('Recurrence paused', 'info');
+        this.showToast('Recurrencia pausada', 'info');
       } else {
         // Re-activate: reschedule to next logical time (now + 1 min as placeholder)
         const next = new Date(Date.now() + 60_000);
         await this.schedulingEngine.reschedulePost(post.id, next);
-        this.showToast('Recurrence resumed', 'success');
+        this.showToast('Recurrencia reanudada', 'success');
       }
       await this.loadRecurring();
     } catch (err: any) {
-      this.showToast(err.message || 'Failed to update post', 'error');
+      this.showToast(err.message || 'Error al actualizar la publicación', 'error');
     }
   }
 
   frequencyLabel(post: RecurringPost): string {
     const rule: RecurrenceRuleRow = post.recurrenceRule;
-    const intervalStr = rule.interval > 1 ? `${rule.interval} ` : '';
-    return `Every ${intervalStr}${rule.frequency}`;
+    const freq = rule.frequency.toLowerCase();
+    if (rule.interval > 1) {
+      const units: Record<string, string> = {
+        daily: 'días',
+        weekly: 'semanas',
+        monthly: 'meses',
+        yearly: 'años'
+      };
+      return `Cada ${rule.interval} ${units[freq] || freq}`;
+    } else {
+      const unitsSingle: Record<string, string> = {
+        daily: 'día',
+        weekly: 'semana',
+        monthly: 'mes',
+        yearly: 'año'
+      };
+      return `Cada ${unitsSingle[freq] || freq}`;
+    }
   }
 
   nextRunLabel(post: RecurringPost): string {
-    if (!post.scheduledAt) return 'Not scheduled';
-    return new Intl.DateTimeFormat('en-US', {
+    if (!post.scheduledAt) return 'No programada';
+    return new Intl.DateTimeFormat('es-ES', {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     }).format(post.scheduledAt);
   }
@@ -169,7 +185,7 @@ export class AutomationComponent implements OnInit, OnDestroy {
       this.logRows.set(result.rows);
       this.logTotal.set(result.total);
     } catch (err: any) {
-      this.showToast(err.message || 'Failed to load activity log', 'error');
+      this.showToast(err.message || 'Error al cargar el registro de actividad', 'error');
     } finally {
       this.logLoading.set(false);
     }
@@ -188,10 +204,33 @@ export class AutomationComponent implements OnInit, OnDestroy {
   }
 
   formatOccurred(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('es-ES', {
       month: 'short', day: 'numeric',
       hour: '2-digit', minute: '2-digit'
     }).format(date);
+  }
+
+  translateAction(action: string): string {
+    const map: Record<string, string> = {
+      published: 'Publicado',
+      failed: 'Fallido',
+      retried: 'Reintentado',
+      cancelled: 'Cancelado',
+      edited: 'Editado',
+      deleted: 'Eliminado'
+    };
+    return map[action.toLowerCase()] || action;
+  }
+
+  translatePlatform(platform: string): string {
+    if (!platform) return '-';
+    const map: Record<string, string> = {
+      telegram: 'Telegram',
+      twitter: 'Twitter',
+      instagram: 'Instagram',
+      linkedin: 'LinkedIn'
+    };
+    return map[platform.toLowerCase()] || platform;
   }
 
   platformIcon(platform: string): string {
@@ -208,7 +247,7 @@ export class AutomationComponent implements OnInit, OnDestroy {
       const posts = await this.schedulingEngine.getFailedPosts();
       this.failedPosts.set(posts);
     } catch (err: any) {
-      this.showToast(err.message || 'Failed to load failed posts', 'error');
+      this.showToast(err.message || 'Error al cargar las publicaciones fallidas', 'error');
     } finally {
       this.failedLoading.set(false);
     }
@@ -238,7 +277,7 @@ export class AutomationComponent implements OnInit, OnDestroy {
 
     const newDate = new Date(state.newDate);
     if (newDate <= new Date()) {
-      this.republishState.set({ ...state, error: 'Date must be in the future' });
+      this.republishState.set({ ...state, error: 'La fecha debe estar en el futuro' });
       return;
     }
 
@@ -246,11 +285,11 @@ export class AutomationComponent implements OnInit, OnDestroy {
     try {
       // SchedulingEngine.reschedulePost handles the 'failed' → 'scheduled' transition
       await this.schedulingEngine.reschedulePost(post.id, newDate);
-      this.showToast('Post re-queued for publishing ✓', 'success');
+      this.showToast('Publicación encolada de nuevo para publicar ✓', 'success');
       this.republishState.set(null);
       await this.loadFailed();
     } catch (err: any) {
-      this.republishState.set({ ...state, submitting: false, error: err.message || 'Failed to republish' });
+      this.republishState.set({ ...state, submitting: false, error: err.message || 'Error al volver a publicar' });
     }
   }
 

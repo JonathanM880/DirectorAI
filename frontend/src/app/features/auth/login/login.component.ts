@@ -28,28 +28,28 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
           <hlm-card-header class="space-y-1">
             <h3 hlmCardTitle class="text-2xl font-bold tracking-tight text-center text-primary">DirectorAI</h3>
             <p hlmCardDescription class="text-center text-muted-foreground">
-              Sign in to your account
+              Inicia sesión en tu cuenta
             </p>
           </hlm-card-header>
           <div hlmCardContent>
             <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-4">
               <hlm-field-group class="space-y-4">
                 <hlm-field>
-                  <label hlmFieldLabel for="email">Email</label>
+                  <label hlmFieldLabel for="email">Correo electrónico</label>
                   <input
                     hlmInput
                     type="email"
                     id="email"
-                    placeholder="you@example.com"
+                    placeholder="tucorreo@ejemplo.com"
                     formControlName="email"
                     class="w-full"
                   />
-                  <hlm-field-error validator="required">Email is required.</hlm-field-error>
-                  <hlm-field-error validator="email">Enter a valid email address.</hlm-field-error>
+                  <hlm-field-error validator="required">El correo electrónico es obligatorio.</hlm-field-error>
+                  <hlm-field-error validator="email">Introduce una dirección de correo electrónico válida.</hlm-field-error>
                 </hlm-field>
 
                 <hlm-field>
-                  <label hlmFieldLabel for="password">Password</label>
+                  <label hlmFieldLabel for="password">Contraseña</label>
                   <input
                     hlmInput
                     type="password"
@@ -58,7 +58,7 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
                     formControlName="password"
                     class="w-full"
                   />
-                  <hlm-field-error validator="required">Password is required.</hlm-field-error>
+                  <hlm-field-error validator="required">La contraseña es obligatoria.</hlm-field-error>
                 </hlm-field>
 
                 @if (errorMessage()) {
@@ -74,7 +74,7 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
                     [disabled]="loginForm.invalid || isLoading()"
                     class="w-full"
                   >
-                    {{ isLoading() ? 'Signing in...' : 'Sign in' }}
+                    {{ isLoading() ? 'Iniciando sesión...' : 'Iniciar sesión' }}
                   </button>
                   <!-- <button
                     hlmBtn
@@ -84,18 +84,18 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
                     [disabled]="isLoading()"
                     class="w-full"
                   >
-                    Sign in with Google
+                    Iniciar sesión con Google
                   </button> -->
                 </div>
 
                 <div class="text-center text-sm mt-4 flex flex-col gap-2 pt-2">
                   <a routerLink="/auth/recover" class="text-primary hover:underline font-medium">
-                    Forgot password?
+                    ¿Has olvidado tu contraseña?
                   </a>
                   <p class="text-muted-foreground text-xs mt-1">
-                    Don't have an account?
+                    ¿No tienes una cuenta?
                     <a routerLink="/auth/register" class="text-primary hover:underline font-semibold">
-                      Sign up
+                      Regístrate
                     </a>
                   </p>
                 </div>
@@ -141,7 +141,7 @@ export class LoginComponent {
       const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/app';
       this.router.navigateByUrl(returnUrl);
     } catch (err) {
-      this.errorMessage.set('An unexpected error occurred. Please try again.');
+      this.errorMessage.set('Ocurrió un error inesperado. Por favor, inténtalo de nuevo.');
     } finally {
       this.isLoading.set(false);
     }
@@ -153,7 +153,7 @@ export class LoginComponent {
     try {
       await this.authService.signInWithOAuth('google');
     } catch (err) {
-      this.errorMessage.set('Google sign-in failed. Please try again.');
+      this.errorMessage.set('Error al iniciar sesión con Google. Por favor, inténtalo de nuevo.');
       this.isLoading.set(false);
     }
   }

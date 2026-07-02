@@ -14,27 +14,27 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
   template: `
     <div class="grid grid-cols-[280px_1fr] h-full bg-background text-foreground">
       <div class="p-4 border-r border-border bg-muted/30">
-        <h2 class="text-xl font-bold mb-4 font-display">Assets</h2>
+        <h2 class="text-xl font-bold mb-4 font-display">Recursos</h2>
         <div>
           <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'All Files'" [class.text-foreground]="activeFilter() === 'All Files'" [class.font-medium]="activeFilter() === 'All Files'" (click)="setFilter('All Files')">
-            <span>📁</span> All Files
+            <span>📁</span> Todos los archivos
           </div>
           <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Images'" [class.text-foreground]="activeFilter() === 'Images'" [class.font-medium]="activeFilter() === 'Images'" (click)="setFilter('Images')">
-            <span>📁</span> Images
+            <span>📁</span> Imágenes
           </div>
           <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Videos'" [class.text-foreground]="activeFilter() === 'Videos'" [class.font-medium]="activeFilter() === 'Videos'" (click)="setFilter('Videos')">
-            <span>📁</span> Videos
+            <span>📁</span> Vídeos
           </div>
           <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Documents'" [class.text-foreground]="activeFilter() === 'Documents'" [class.font-medium]="activeFilter() === 'Documents'" (click)="setFilter('Documents')">
-            <span>📁</span> Documents
+            <span>📁</span> Documentos
           </div>
         </div>
 
-        <h3 class="mt-6 mb-3 text-sm uppercase tracking-wider text-muted-foreground">Tags</h3>
+        <h3 class="mt-6 mb-3 text-sm uppercase tracking-wider text-muted-foreground">Etiquetas</h3>
         <div class="flex flex-wrap gap-2">
-          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#campaign2026</span>
-          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#summer</span>
-          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#ai_generated</span>
+          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#campaña2026</span>
+          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#verano</span>
+          <span class="bg-white/10 px-2.5 py-1 rounded-full text-xs cursor-pointer">#generado_por_ia</span>
         </div>
       </div>
 
@@ -54,19 +54,19 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
           </div>
           
           <div class="flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full text-sm" *ngIf="selectedCount() > 0">
-            <span>{{ selectedCount() }} selected</span>
-            <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm">Move</button>
-            <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm">Delete</button>
+            <span>{{ selectedCount() }} seleccionado(s)</span>
+            <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm">Mover</button>
+            <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm">Eliminar</button>
           </div>
           
-          <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="fileInput.click()">Upload Files</button>
+          <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="fileInput.click()">Subir archivos</button>
           <input type="file" #fileInput multiple hidden (change)="onFileSelected($event)">
         </div>
 
         <div class="absolute inset-0 bg-black/90 backdrop-blur-sm z-10 flex items-center justify-center border-2 border-dashed border-primary rounded-xl pointer-events-none" *ngIf="isDraggingOver()">
           <div class="text-center">
-            <h3 class="text-primary mb-2 text-xl font-bold">Drop files here to upload</h3>
-            <p class="text-muted-foreground">Images, videos, and documents up to 50MB</p>
+            <h3 class="text-primary mb-2 text-xl font-bold">Suelta los archivos aquí para subirlos</h3>
+            <p class="text-muted-foreground">Imágenes, vídeos y documentos de hasta 50 MB</p>
           </div>
         </div>
 
@@ -74,7 +74,7 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
           <div class="bg-white/5 border border-border rounded-lg overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 hover:border-white/20" *ngFor="let asset of filteredAssets" (click)="openPreview(asset)">
             <div class="h-[140px] bg-black/20 relative flex items-center justify-center">
               <span class="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-xs font-semibold" [class.bg-primary]="asset.source === 'ai_generated'" [class.text-primary-foreground]="asset.source === 'ai_generated'">
-                {{ asset.source === 'ai_generated' ? 'AI' : 'Upload' }}
+                {{ asset.source === 'ai_generated' ? 'IA' : 'Subido' }}
               </span>
               <img *ngIf="asset.type === 'image'" [src]="asset.preview" alt="Preview" class="w-full h-full object-cover">
               <div *ngIf="asset.type !== 'image'" class="text-5xl">📄</div>
@@ -91,19 +91,19 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
             <thead>
               <tr>
                 <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm"><input type="checkbox"></th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Name</th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Type</th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Source</th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Size</th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Date Added</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Nombre</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Tipo</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Origen</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Tamaño</th>
+                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Fecha añadido</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let asset of filteredAssets" (click)="openPreview(asset)" class="cursor-pointer hover:bg-white/5">
                 <td class="px-4 py-3 text-left border-b border-border"><input type="checkbox" (click)="$event.stopPropagation()"></td>
                 <td class="px-4 py-3 text-left border-b border-border">{{ asset.filename }}</td>
-                <td class="px-4 py-3 text-left border-b border-border">{{ asset.type }}</td>
-                <td class="px-4 py-3 text-left border-b border-border">{{ asset.source }}</td>
+                <td class="px-4 py-3 text-left border-b border-border">{{ translateType(asset.type) }}</td>
+                <td class="px-4 py-3 text-left border-b border-border">{{ translateSource(asset.source) }}</td>
                 <td class="px-4 py-3 text-left border-b border-border">{{ asset.size }}</td>
                 <td class="px-4 py-3 text-left border-b border-border">{{ asset.date | date:'short' }}</td>
               </tr>
@@ -121,7 +121,7 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
                 <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
               </video>
               <div *ngIf="previewAsset()?.type === 'document'" class="p-8 max-h-[60vh] overflow-y-auto bg-background text-foreground">
-                <p *ngIf="!previewAsset().textContent">Loading text content...</p>
+                <p *ngIf="!previewAsset().textContent">Cargando contenido de texto...</p>
                 <pre *ngIf="previewAsset().textContent" class="whitespace-pre-wrap font-inherit m-0 leading-relaxed">{{ previewAsset().textContent }}</pre>
               </div>
               
@@ -129,14 +129,14 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
                 <div class="flex justify-between items-center">
                   <div>
                     <h3 class="m-0 mb-2 font-display font-bold text-xl">{{ previewAsset().filename }}</h3>
-                    <p class="m-0 text-muted-foreground text-sm">{{ previewAsset().size }} • {{ previewAsset().source }}</p>
+                    <p class="m-0 text-muted-foreground text-sm">{{ previewAsset().size }} • {{ translateSource(previewAsset().source) }}</p>
                   </div>
                   <div class="flex gap-2" *ngIf="previewAsset()?.type !== 'video'">
-                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="startEditing()">Edit</button>
-                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Delete</button>
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="startEditing()">Editar</button>
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Eliminar</button>
                   </div>
                   <div class="flex gap-2" *ngIf="previewAsset()?.type === 'video'">
-                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Delete</button>
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Eliminar</button>
                   </div>
                 </div>
               </div>
@@ -145,13 +145,13 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
             <!-- Text Editor -->
             <div class="flex flex-col w-full h-[70vh] bg-background" *ngIf="isEditing() && previewAsset()?.type === 'document'">
               <div class="p-4 border-b border-border">
-                <input class="w-full px-3 py-2 bg-black/20 border border-border rounded-md text-foreground font-inherit outline-none focus:border-primary" [(ngModel)]="editFilename" placeholder="Filename">
+                <input class="w-full px-3 py-2 bg-black/20 border border-border rounded-md text-foreground font-inherit outline-none focus:border-primary" [(ngModel)]="editFilename" placeholder="Nombre de archivo">
               </div>
               <textarea class="flex-1 p-5 bg-transparent border-none text-foreground font-mono resize-none leading-relaxed outline-none" [(ngModel)]="editTextContent"></textarea>
               <div class="p-4 border-t border-border flex justify-end gap-3">
-                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground" (click)="cancelEditing()">Cancel</button>
-                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="saveTextEdit(false)">Overwrite Original</button>
-                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="saveTextEdit(true)">Save as New</button>
+                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground" (click)="cancelEditing()">Cancelar</button>
+                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="saveTextEdit(false)">Sobrescribir original</button>
+                <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="saveTextEdit(true)">Guardar como nuevo</button>
               </div>
             </div>
 
@@ -216,10 +216,10 @@ export class AssetsComponent implements OnInit {
           const text = await res.text();
           this.previewAsset.set({ ...asset, textContent: text });
         } else {
-          this.previewAsset.set({ ...asset, textContent: 'Could not generate text URL' });
+          this.previewAsset.set({ ...asset, textContent: 'No se pudo generar la URL de texto' });
         }
       } catch (e) {
-        this.previewAsset.set({ ...asset, textContent: 'Failed to load text content' });
+        this.previewAsset.set({ ...asset, textContent: 'Error al cargar el contenido de texto' });
       }
     }
   }
@@ -298,11 +298,11 @@ export class AssetsComponent implements OnInit {
         }).eq('id', asset.id);
       }
       
-      this.notificationService.notify('asset_updated', 'success', 'Asset Saved', `Successfully saved text asset.`);
+      this.notificationService.notify('asset_updated', 'success', 'Recurso guardado', `El recurso de texto se ha guardado correctamente.`);
       this.closePreview();
       this.loadAssets();
     } catch (e: any) {
-      this.notificationService.notify('asset_error', 'error', 'Error Saving', e.message);
+      this.notificationService.notify('asset_error', 'error', 'Error al guardar', e.message);
     }
   }
   
@@ -321,8 +321,8 @@ export class AssetsComponent implements OnInit {
           const res = await fetch(editedImageObject.imageBase64);
           const blob = await res.blob();
           
-          const asNew = confirm('Save as new image? (Cancel to overwrite)');
-          const newName = prompt('Filename:', this.editFilename) || this.editFilename;
+          const asNew = confirm('¿Guardar como nueva imagen? (Cancelar para sobrescribir)');
+          const newName = prompt('Nombre de archivo:', this.editFilename) || this.editFilename;
           
           let path = asset.storage_path;
           if (asNew || newName !== asset.filename) {
@@ -354,17 +354,17 @@ export class AssetsComponent implements OnInit {
             }).eq('id', asset.id);
           }
           
-          this.notificationService.notify('asset_updated', 'success', 'Image Saved', `Successfully saved image.`);
+          this.notificationService.notify('asset_updated', 'success', 'Imagen guardada', `Imagen guardada con éxito.`);
           this.closePreview();
           this.loadAssets();
         } catch (e: any) {
-          this.notificationService.notify('asset_error', 'error', 'Error Saving', e.message);
+          this.notificationService.notify('asset_error', 'error', 'Error al guardar', e.message);
         }
       },
       annotationsCommon: {
         fill: '#ff0000'
       },
-      Text: { text: 'Your Text Here' }
+      Text: { text: 'Tu texto aquí' }
     };
     
     this.imageEditorInstance = new FilerobotImageEditor(container, config);
@@ -376,7 +376,7 @@ export class AssetsComponent implements OnInit {
   }
 
   async deleteAsset(asset: any) {
-    if (!confirm(`Are you sure you want to delete ${asset.filename}?`)) return;
+    if (!confirm(`¿Estás seguro de que quieres eliminar ${asset.filename}?`)) return;
     
     // Optimistic UI update: remove from local signal first
     this.mockAssets.update(assets => assets.filter(a => a.id !== asset.id));
@@ -384,11 +384,11 @@ export class AssetsComponent implements OnInit {
     const { error: dbError } = await this.supabase.from('assets').delete().eq('id', asset.id);
     if (!dbError) {
       await this.supabase.storage.from('assets').remove([asset.storage_path]);
-      this.notificationService.notify('asset_deleted', 'success', 'Asset Deleted', `Successfully deleted ${asset.filename}`);
+      this.notificationService.notify('asset_deleted', 'success', 'Recurso eliminado', `Se ha eliminado correctamente ${asset.filename}`);
       this.closePreview();
       this.loadAssets();
     } else {
-      this.notificationService.notify('asset_error', 'error', 'Delete Failed', dbError.message);
+      this.notificationService.notify('asset_error', 'error', 'Error al eliminar', dbError.message);
       // Rollback on error by reloading
       this.loadAssets();
     }
@@ -466,7 +466,7 @@ export class AssetsComponent implements OnInit {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) return;
 
-    this.notificationService.notify('upload_start', 'info', 'Uploading', `Uploading ${files.length} file(s)...`);
+    this.notificationService.notify('upload_start', 'info', 'Subiendo', `Subiendo ${files.length} archivo(s)...`);
     try {
       for (const file of files) {
         const path = `${session.user.id}/${Date.now()}-${file.name}`;
@@ -511,11 +511,29 @@ export class AssetsComponent implements OnInit {
         };
         this.mockAssets.update(assets => [newAsset, ...assets]);
       }
-      this.notificationService.notify('upload_success', 'success', 'Upload Complete', 'Successfully uploaded files.');
+      this.notificationService.notify('upload_success', 'success', 'Subida completada', 'Archivos subidos correctamente.');
       this.loadAssets();
     } catch (e: any) {
       console.error(e);
-      this.notificationService.notify('upload_error', 'error', 'Upload Failed', e.message);
+      this.notificationService.notify('upload_error', 'error', 'Error de subida', e.message);
     }
+  }
+
+  translateType(type: string): string {
+    const map: Record<string, string> = {
+      image: 'Imagen',
+      video: 'Vídeo',
+      document: 'Documento'
+    };
+    return map[type.toLowerCase()] || type;
+  }
+
+  translateSource(source: string): string {
+    const map: Record<string, string> = {
+      user_upload: 'Subido',
+      ai_generated: 'Generado por IA',
+      edited: 'Editado'
+    };
+    return map[source.toLowerCase()] || source;
   }
 }

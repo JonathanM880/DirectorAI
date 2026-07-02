@@ -194,7 +194,7 @@ export class EditPostComponent implements OnInit, OnDestroy {
         const asset = await this.assetUpload.upload(file);
         newAssets.push(asset);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Upload failed';
+        const msg = err instanceof Error ? err.message : 'Fallo al subir';
         this.uploadError.set(`${file.name}: ${msg}`);
       } finally {
         this.pendingCount.update(n => n - 1);
@@ -220,12 +220,12 @@ export class EditPostComponent implements OnInit, OnDestroy {
   submit(): void {
     this.error.set(null);
 
-    if (!this.text.trim())  { this.error.set('Content is required');            return; }
-    if (!this.channelId)    { this.error.set('Channel is required');            return; }
-    if (!this.scheduledAt)  { this.error.set('Schedule date is required');      return; }
+    if (!this.text.trim())  { this.error.set('El contenido es obligatorio');            return; }
+    if (!this.channelId)    { this.error.set('El canal es obligatorio');            return; }
+    if (!this.scheduledAt)  { this.error.set('La fecha de programación es obligatoria');      return; }
 
     const dt = new Date(this.scheduledAt);
-    if (dt <= new Date())   { this.error.set('Scheduled time must be in the future'); return; }
+    if (dt <= new Date())   { this.error.set('La fecha programada debe ser en el futuro'); return; }
 
     let recurrenceRule: RecurrenceRule | undefined;
     if (this.enableRecurrence) {
