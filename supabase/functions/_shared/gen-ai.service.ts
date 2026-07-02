@@ -175,21 +175,16 @@ export class GenAIServiceImpl implements GenAIService {
   async generateImage(request: ImageRequest): Promise<GeneratedImage> {
     await this.checkGates(request.userId)
     
-    // Pollinations.ai es gratuito y no requiere API key.
-    // Codificamos el prompt para que sea válido en una URL (ej: "un perro" -> "un%20perro")
-    const encodedPrompt = encodeURIComponent(request.prompt)
-    
-    // Usamos un seed aleatorio para que si pides "un perro" dos veces, te dé imágenes distintas
-    const seed = Math.floor(Math.random() * 100000)
-    
-    // Armamos la URL. Le puedes pedir dimensiones específicas y quitar el logo
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${seed}&width=1024&height=1024&nologo=true`
+    // OpenRouter does not provide free image models. 
+    // For testing purposes, we return a high-quality placeholder from Unsplash.
+    const seed = Math.floor(Math.random() * 1000)
+    const mockUrl = `https://picsum.photos/seed/${seed}/1024/1024`
 
     return {
       id: crypto.randomUUID(),
-      url: imageUrl, 
+      url: mockUrl, 
       prompt: request.prompt,
-      model: 'pollinations-ai',
+      model: 'mock-image-generator',
       createdAt: new Date()
     }
   }
