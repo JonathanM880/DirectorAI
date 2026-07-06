@@ -18,15 +18,18 @@ import {
 
 export class GenAIServiceImpl implements GenAIService {
   private readonly defaultOpenRouterKey: string
+  private readonly defaultGeminiKey: string
 
   constructor(
     private billingService: BillingService,
     private assetStorage: AssetStorageService,
     private keyVault: KeyVaultService,
     private supabase: any,
-    defaultKey?: string
+    defaultOpenRouterKey?: string,
+    defaultGeminiKey?: string
   ) {
-    this.defaultOpenRouterKey = defaultKey || process.env.OPENROUTER_API_KEY || ''
+    this.defaultOpenRouterKey = defaultOpenRouterKey || process.env.OPENROUTER_API_KEY || ''
+    this.defaultGeminiKey = defaultGeminiKey || process.env.GEMINI_API_KEY || ''
   }
 
   private async getApiKey(userId: string): Promise<string> {
@@ -37,6 +40,17 @@ export class GenAIServiceImpl implements GenAIService {
         throw new Error('No OpenRouter API key configured.')
       }
       return this.defaultOpenRouterKey
+    }
+  }
+
+  private async getGeminiKey(userId: string): Promise<string> {
+    try {
+      return await this.keyVault.getKey(userId, 'gemini_api_key')
+    } catch {
+      if (!this.defaultGeminiKey) {
+        throw new Error('No Gemini API key configured.')
+      }
+      return this.defaultGeminiKey
     }
   }
 
@@ -174,17 +188,54 @@ export class GenAIServiceImpl implements GenAIService {
 
   async generateImage(request: ImageRequest): Promise<GeneratedImage> {
     await this.checkGates(request.userId)
-    
-    // OpenRouter does not provide free image models. 
-    // For testing purposes, we return a high-quality placeholder from Unsplash.
-    const seed = Math.floor(Math.random() * 1000)
-    const mockUrl = `https://picsum.photos/seed/${seed}/1024/1024`
+    const apiKey = await this.getGeminiKey(request.userId)
+
+    const aspectRatioMap: Record<string, string> = {
+      '1:1': '1:1',
+      '16:9': '16:9',
+      '9:16': '9:16',
+      '4:3': '4:3',
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt: request.prompt }],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: aspectRatioMap[request.aspectRatio || '1:1'] || '1:1',
+          },
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorBody = await response.text()
+      throw new Error(`Gemini Imagen API error (${response.status}): ${errorBody}`)
+    }
+
+    const data = await response.json()
+    const prediction = data.predictions?.[0]
+    if (!prediction?.bytesBase64Encoded) {
+      throw new Error('Gemini Imagen API returned no image data.')
+    }
+
+    const mimeType = prediction.mimeType || 'image/png'
+    const imageUrl = `data:${mimeType};base64,${prediction.bytesBase64Encoded}`
+
+    const usage = await this.billingService.getUsage(request.userId)
+    await this.supabase.from('subscriptions')
+      .update({ ai_generations_this_month: usage.aiGenerationsThisMonth + 1 })
+      .eq('user_id', request.userId)
 
     return {
       id: crypto.randomUUID(),
-      url: mockUrl, 
+      url: imageUrl,
       prompt: request.prompt,
-      model: 'mock-image-generator',
+      model: 'imagen-3.0-generate-001',
       createdAt: new Date()
     }
   }

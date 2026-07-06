@@ -64,7 +64,14 @@ Deno.serve(async (req) => {
     const billing = new MockBillingService()
     
     // Pass the supabase admin correctly (as 4th argument)
-    const genAI = new GenAIServiceImpl(billing, assetStorage, keyVault, supabaseAdmin, Deno.env.get('OPENROUTER_API_KEY'))
+    const genAI = new GenAIServiceImpl(
+      billing,
+      assetStorage,
+      keyVault,
+      supabaseAdmin,
+      Deno.env.get('OPENROUTER_API_KEY'),
+      Deno.env.get('GEMINI_API_KEY')
+    )
 
     if (action === 'streamGenerate') {
       const { readable, writable } = new TransformStream()

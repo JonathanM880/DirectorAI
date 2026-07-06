@@ -78,6 +78,7 @@ export type KeyName =
   | 'telegram_bot_token'
   | 'openrouter_api_key'
   | 'google_calendar_refresh_token'
+  | 'gemini_api_key'
 
 export interface KeyVaultService {
   storeKey(userId: string, keyName: KeyName, value: string): Promise<void>
