@@ -20,13 +20,6 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
           <!-- Page Title -->
           <div class="flex items-center justify-between flex-wrap gap-4">
             <h2 class="text-2xl font-bold text-white">Estudio de IA</h2>
-            
-            <div class="text-sm text-muted-foreground">
-              Generaciones este mes: {{ usage() }}/{{ usageLimit() }}
-              <div class="w-[200px] h-1.5 bg-border rounded-full mt-1 overflow-hidden">
-                <div class="h-full bg-primary transition-all duration-300 ease-out" [style.width.%]="(usage() / usageLimit()) * 100"></div>
-              </div>
-            </div>
           </div>
 
           <div class="flex flex-wrap gap-8 w-full items-stretch">
@@ -136,15 +129,11 @@ export class StudioComponent implements OnInit, OnDestroy {
   output = signal('');
   generatedImageUrl = signal<string | null>(null);
   
-  usage = signal(0);
-  usageLimit = signal(100);
-
   // Toast status
   toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   async ngOnInit() {
-    this.usage.set(100);
   }
 
   ngOnDestroy() {
@@ -184,7 +173,6 @@ export class StudioComponent implements OnInit, OnDestroy {
           },
           complete: () => {
             this.isGenerating.set(false);
-            this.usage.update(u => u + 1); 
           },
           error: (err) => {
             console.error('Generation error', err);
@@ -201,7 +189,6 @@ export class StudioComponent implements OnInit, OnDestroy {
         
         this.output.set(result.ideas.join('\n\n'));
         this.isGenerating.set(false);
-        this.usage.update(u => u + 1);
       } else if (this.mode() === 'image') {
         this.generatedImageUrl.set(null);
         const result = await this.genAiService.generateImage({
@@ -218,7 +205,6 @@ export class StudioComponent implements OnInit, OnDestroy {
         }
         
         this.isGenerating.set(false);
-        this.usage.update(u => u + 1);
       } else if (this.mode() === 'campaign') {
         const result = await this.genAiService.parseCampaign({
           userId: session?.user.id || '',
@@ -236,7 +222,6 @@ export class StudioComponent implements OnInit, OnDestroy {
         this.output.set(formatted.trim());
         
         this.isGenerating.set(false);
-        this.usage.update(u => u + 1);
         (this as any).lastCampaignResult = result.posts;
       }
     } catch (err: any) {

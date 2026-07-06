@@ -5,13 +5,14 @@ import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { SupabaseClient } from '@supabase/supabase-js';
 import FilerobotImageEditor from 'filerobot-image-editor';
 import { NotificationService } from '../../core/services/notification.service';
-import { AssetUploadService } from '../../core/services/asset-upload.service';
+import { AssetUploadService, UploadedAsset } from '../../core/services/asset-upload.service';
+import { PostFormComponent } from '../../shared/components/post-form/post-form.component';
 import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
 
 @Component({
   selector: 'app-assets',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule, MaxWidthHeightWrapperComponent],
+  imports: [CommonModule, FormsModule, DragDropModule, MaxWidthHeightWrapperComponent, PostFormComponent],
   template: `
     <div class="p-4 md:p-8 bg-background text-foreground min-h-screen">
       <app-max-width-height-wrapper>
@@ -142,10 +143,12 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
                     <p class="m-0 text-muted-foreground text-sm">{{ previewAsset().size }} • {{ translateSource(previewAsset().source) }}</p>
                   </div>
                   <div class="flex gap-2" *ngIf="previewAsset()?.type !== 'video'">
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="openScheduleForm()">Programar</button>
                     <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="startEditing()">Editar</button>
                     <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Eliminar</button>
                   </div>
                   <div class="flex gap-2" *ngIf="previewAsset()?.type === 'video'">
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="openScheduleForm()">Programar</button>
                     <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Eliminar</button>
                   </div>
                 </div>
@@ -171,6 +174,24 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
             </div>
           </div>
         </div>
+
+      <!-- Schedule Form Modal -->
+      <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center animate-in fade-in duration-150" *ngIf="scheduleFormOpen()" (click)="scheduleFormOpen.set(false)" role="dialog" aria-modal="true" aria-label="Programar publicación">
+        <div class="bg-background border border-white/10 rounded-xl shadow-2xl w-[900px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-4rem)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 duration-200" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-between p-5 md:px-6 border-b border-white/10 shrink-0">
+            <h2 class="m-0 text-lg font-display uppercase tracking-wider text-foreground">Programar publicación</h2>
+            <button class="w-8 h-8 flex items-center justify-center bg-white/5 border-none rounded-md text-muted-foreground cursor-pointer hover:bg-white/10 hover:text-foreground transition-all" (click)="scheduleFormOpen.set(false)" aria-label="Cerrar">✕</button>
+          </div>
+          <div class="flex-1 overflow-y-auto p-6 pb-0">
+            <app-post-form
+              [initialText]="initialTextForForm"
+              [initialAssets]="initialAssetsForForm"
+              (saved)="onScheduleSaved($event)"
+              (cancel)="scheduleFormOpen.set(false)">
+            </app-post-form>
+          </div>
+        </div>
+      </div>
   `
 })
 export class AssetsComponent implements OnInit {
@@ -189,11 +210,16 @@ export class AssetsComponent implements OnInit {
   editTextContent = '';
   private imageEditorInstance: any = null;
 
+  initialTextForForm = '';
+  initialAssetsForForm: UploadedAsset[] = [];
+  scheduleFormOpen = signal(false);
+  isScheduling = signal(false);
+
   // Mock data for UI layout
   mockAssets = signal<any[]>([
-    { id: '1', filename: 'summer_promo.jpg', type: 'image', source: 'user_upload', size: '2.4 MB', date: new Date(), preview: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400' },
-    { id: '2', filename: 'ai_generated_copy_1.txt', type: 'document', source: 'ai_generated', size: '1.2 KB', date: new Date() },
-    { id: '3', filename: 'product_video_raw.mp4', type: 'video', source: 'user_upload', size: '45.1 MB', date: new Date() }
+    { id: '1', filename: 'summer_promo.jpg', type: 'image', source: 'user_upload', size: '2.4 MB', date: new Date(), preview: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400', mime_type: 'image/jpeg', size_bytes: 2516582 },
+    { id: '2', filename: 'ai_generated_copy_1.txt', type: 'document', source: 'ai_generated', size: '1.2 KB', date: new Date(), mime_type: 'text/plain', size_bytes: 1228 },
+    { id: '3', filename: 'product_video_raw.mp4', type: 'video', source: 'user_upload', size: '45.1 MB', date: new Date(), mime_type: 'video/mp4', size_bytes: 47290778 }
   ]);
 
   get filteredAssets() {
@@ -402,6 +428,73 @@ export class AssetsComponent implements OnInit {
     }
   }
 
+  openScheduleForm() {
+    const asset = this.previewAsset();
+    if (!asset) return;
+
+    const uploadedAsset: UploadedAsset = {
+      id: asset.id,
+      filename: asset.filename,
+      mimeType: asset.mime_type || 'application/octet-stream',
+      sizeBytes: asset.size_bytes || 0,
+      storagePath: asset.storage_path,
+      previewUrl: asset.preview || ''
+    };
+
+    this.initialTextForForm = '';
+    this.initialAssetsForForm = [uploadedAsset];
+    this.scheduleFormOpen.set(true);
+  }
+
+  async onScheduleSaved(formData: any) {
+    try {
+      this.isScheduling.set(true);
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session) {
+        this.isScheduling.set(false);
+        return;
+      }
+
+      let recurrenceRuleId: string | undefined = undefined;
+      if (formData.recurrenceRule) {
+        const { data: rule, error: rErr } = await this.supabase.from('recurrence_rules').insert({
+          user_id: session.user.id,
+          frequency: formData.recurrenceRule.frequency,
+          interval: formData.recurrenceRule.interval,
+          end_date: formData.recurrenceRule.endDate ? formData.recurrenceRule.endDate.toISOString() : null
+        }).select().single();
+        if (rErr) throw rErr;
+        recurrenceRuleId = rule.id;
+      }
+
+      const { error } = await this.supabase.from('scheduled_posts').insert({
+        user_id: session.user.id,
+        channel_id: formData.channelId,
+        text_content: formData.text,
+        media_asset_ids: formData.mediaAssetIds,
+        scheduled_at: formData.scheduledAt.toISOString(),
+        status: formData.publishImmediately ? 'published' : 'scheduled',
+        recurrence_rule_id: recurrenceRuleId
+      });
+
+      if (error) throw error;
+
+      this.scheduleFormOpen.set(false);
+      this.isScheduling.set(false);
+      this.notificationService.notify(
+        'post_scheduled',
+        'success',
+        'Publicación programada',
+        'Tu publicación se ha programado correctamente.'
+      );
+      this.closePreview();
+    } catch (err: any) {
+      console.error(err);
+      this.isScheduling.set(false);
+      alert('Error al programar la publicación: ' + err.message);
+    }
+  }
+
   async loadAssets() {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (!session) return;
@@ -431,7 +524,9 @@ export class AssetsComponent implements OnInit {
           size: (a.size_bytes / 1024).toFixed(1) + ' KB',
           date: new Date(a.created_at),
           storage_path: a.storage_path,
-          preview
+          preview,
+          mime_type: a.mime_type,
+          size_bytes: a.size_bytes
         };
       }));
       this.mockAssets.set(mapped);
@@ -515,7 +610,9 @@ export class AssetsComponent implements OnInit {
           size: (file.size / 1024).toFixed(1) + ' KB',
           date: new Date(),
           preview,
-          storage_path: path
+          storage_path: path,
+          mime_type: file.type,
+          size_bytes: file.size
         };
         this.mockAssets.update(assets => [newAsset, ...assets]);
       }
