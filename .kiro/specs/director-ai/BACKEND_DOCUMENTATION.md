@@ -55,6 +55,11 @@ Separarlas permite:
 │  │  │metrics-  │◄───┤ (cron, polls Telegram)              │
 │  │  │poller    │    │                                      │
 │  │  └──────────┘    │                                      │
+│  │                   │                                      │
+│  │  ┌──────────┐    │  ┌──────────────────────┐            │
+│  │  │telegram- │◄───┼──┤ Telegram Bot API     │            │
+│  │  │webhook   │    │  │ (webhook, real-time) │            │
+│  │  └──────────┘    │  └──────────────────────┘            │
 │  └──────────────────┘                                      │
 │                                                            │
 │  ┌──────────────────────────────────────────────────┐      │
@@ -134,6 +139,32 @@ Separarlas permite:
 2. Obtiene tokens de Telegram desde `channels.credentials`.
 3. Llama a `getUpdates` de Telegram API.
 4. Ingesta métricas vía `MetricsServiceImpl` → tabla `post_metrics`.
+
+> Nota: `views` y `forwards` se guardan como `null` porque la Bot API no expone esos datos de forma confiable. El frontend muestra "no disponible" cuando el valor es `null`.
+
+---
+
+### 4. `telegram-webhook` — Receptor de Reacciones en Tiempo Real
+
+**Archivo**: `supabase/functions/telegram-webhook/index.ts`
+
+**Invocación**: Telegram Bot API vía webhook (POST), en tiempo real cuando alguien reacciona a un mensaje.
+
+**Autenticación**: Valida header `X-Telegram-Bot-Api-Secret-Token` contra `TELEGRAM_WEBHOOK_SECRET`.
+
+**Flujo**:
+1. Recibe update de tipo `message_reaction_count` (o `message_reaction`) de Telegram.
+2. Busca el post en `scheduled_posts` por `telegram_chat_id` + `platform_message_id`.
+3. Construye objeto `Record<string, number>` con emoji → conteo.
+4. Hace `upsert` en `post_metrics.reactions` usando `post_id` como conflicto.
+
+**Registro del webhook** (una sola vez, manual):
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d "url=https://dnrbgoxvxkiczjtpdevu.supabase.co/functions/v1/telegram-webhook" \
+  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>" \
+  -d 'allowed_updates=["message_reaction","message_reaction_count"]'
+```
 
 ---
 
@@ -228,5 +259,33 @@ Fallback automático: si el primary falla, se prueba el siguiente en la lista.
 | `SUPABASE_ANON_KEY` | gen-ai-studio |
 | `CRON_SECRET` | scheduler, metrics-poller (auth) |
 | `TELEGRAM_BOT_TOKEN` | scheduler (global token) |
+| `TELEGRAM_WEBHOOK_SECRET` | telegram-webhook (auth, validación de secret_token) |
 | `OPENROUTER_API_KEY` | gen-ai-studio |
 | `GEMINI_API_KEY` | gen-ai-studio |
+
+---
+
+## Telegram Webhook — Setup Inicial
+
+Registrar el webhook una sola vez (no en cada deploy):
+
+```bash
+curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
+  -d "url=https://dnrbgoxvxkiczjtpdevu.supabase.co/functions/v1/telegram-webhook" \
+  -d "secret_token=<TU_WEBHOOK_SECRET>" \
+  -d 'allowed_updates=["message_reaction","message_reaction_count"]'
+```
+
+Para verificar que está activo:
+
+```bash
+curl "https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo"
+```
+
+Para eliminarlo si es necesario:
+
+```bash
+curl "https://api.telegram.org/bot<BOT_TOKEN>/deleteWebhook"
+```
+
+> **Aviso**: Al registrar un webhook, `getUpdates` deja de funcionar (devuelve array vacío). No afecta al scheduler ni al metrics-poller porque ninguno depende de `getUpdates` para su lógica principal.

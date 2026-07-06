@@ -86,6 +86,7 @@ interface DbPost {
 interface PublishOutcome {
   success: boolean;
   platformMessageId?: string;
+  chatId?: number;
   errorCode?: string;
   errorMessage?: string;
   /** If true, the error is transient and the post should be re-queued. */
@@ -284,12 +285,14 @@ async function markPublished(
   postId: string,
   platformMessageId: string,
   publishedAt: Date,
+  telegramChatId?: number,
 ): Promise<void> {
   const { error } = await supabase
     .from('scheduled_posts')
     .update({
       status:              'published',
       platform_message_id: platformMessageId,
+      telegram_chat_id:    telegramChatId ?? null,
       published_at:        publishedAt.toISOString(),
       updated_at:          new Date().toISOString(),
     })
@@ -466,6 +469,7 @@ async function publishToTelegram(
       return {
         success:           true,
         platformMessageId: response.result.message_id.toString(),
+        chatId:            response.result.chat.id,
       };
     }
     return mapTelegramError(response.error_code, response.description);
@@ -538,7 +542,7 @@ async function processPost(
 
   // ── Handle success ────────────────────────────────────────────────────────
   if (outcome.success && outcome.platformMessageId) {
-    await markPublished(supabase, post.id, outcome.platformMessageId, publishedAt);
+    await markPublished(supabase, post.id, outcome.platformMessageId, publishedAt, outcome.chatId);
     await writeAuditLog(supabase, post, 'published', {
       platformMessageId: outcome.platformMessageId,
       publishedAt:       publishedAt.toISOString(),

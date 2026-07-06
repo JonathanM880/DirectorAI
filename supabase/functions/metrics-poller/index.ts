@@ -68,31 +68,23 @@ Deno.serve(async (req: Request) => {
           continue
         }
 
-        // 3. Call Telegram getUpdates to extract view & reaction updates
-        let views = 0
+        // 3. Call Telegram getUpdates — Telegram Bot API does not expose views/forwards
+        // via getUpdates. These fields are set to null and handled downstream.
+        let views: number | null = null
         let reactions: Record<string, number> = {}
-        let forwards = 0
-        let replies = 0
+        let forwards: number | null = null
+        let replies: number | null = null
 
         try {
           const url = `https://api.telegram.org/bot${token}/getUpdates`
           const response = await fetch(url)
           if (response.ok) {
-            const data = await response.json()
-            // In a real environment, we'd parse updates to match channel post edits or view/reaction updates.
-            // But since the standard Telegram bot API doesn't return view stats inside getUpdates,
-            // we will simulate/increment views/reactions stats so that they are non-zero,
-            // combined with reading standard updates if any.
-            const rand = Math.floor(Math.random() * 10)
-            views = 50 + rand * 12
-            reactions = { "👍": 2 + Math.floor(rand / 3), "🔥": 1 }
-            forwards = Math.floor(rand / 5)
-            replies = 0
+            // getUpdates in webhook mode returns empty; this path exists for legacy polling.
+            // Reactions are now handled by the telegram-webhook edge function.
+            reactions = {}
           }
         } catch (err) {
           console.error(`Error polling Telegram updates: ${err.message}`)
-          views = 25
-          reactions = { "👍": 1 }
         }
 
         // 4. Ingest metrics

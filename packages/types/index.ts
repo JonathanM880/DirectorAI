@@ -380,20 +380,20 @@ export interface TrendPoint {
 }
 
 export interface RawPlatformMetrics {
-  views: number
+  views: number | null
   reactions: Record<string, number>
-  forwards: number
-  replies: number
+  forwards: number | null
+  replies: number | null
   measuredAt: Date
 }
 
 export interface PostMetrics {
   postId: string
   platformMessageId: string
-  views: number
+  views: number | null
   reactions: Record<string, number>
-  forwards: number
-  replies: number
+  forwards: number | null
+  replies: number | null
   measuredAt: Date
 }
 

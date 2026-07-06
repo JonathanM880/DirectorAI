@@ -114,6 +114,7 @@ Este documento describe todas las tablas, políticas RLS, índices, funciones y 
 | `platform_message_id` | `TEXT` | ID del mensaje en la plataforma |
 | `published_at` | `TIMESTAMPTZ` | Fecha de publicación |
 | `next_retry_at` | `TIMESTAMPTZ` | Próximo intento de retry |
+| `telegram_chat_id` | `BIGINT` | Chat ID numérico de Telegram para mapear webhook updates |
 | `recurrence_rule_id` | `UUID` | FK → `recurrence_rules(id)` ON DELETE SET NULL |
 | `parent_post_id` | `UUID` | FK → `scheduled_posts(id)` ON DELETE SET NULL |
 | `created_at` | `TIMESTAMPTZ` | Server-set |

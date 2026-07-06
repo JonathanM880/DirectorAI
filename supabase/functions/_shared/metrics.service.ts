@@ -175,7 +175,7 @@ export class MetricsServiceImpl implements MetricsService {
         Object.values(row.reactions ?? {}).reduce((s: number, v) => s + (v as number), 0)
       totalViews += views
       totalEngagement += eng
-      if (!topRow || views > (topRow.views ?? 0)) topRow = row
+      if (!topRow || (row.views ?? 0) > (topRow.views ?? 0)) topRow = row
     }
 
     const avgEngagementRate = totalViews > 0
@@ -448,10 +448,10 @@ function rowToPostMetrics(row: any): PostMetrics {
   return {
     postId: row.post_id,
     platformMessageId: row.platform_message_id ?? '',
-    views: row.views ?? 0,
+    views: row.views ?? null,
     reactions: row.reactions ?? {},
-    forwards: row.forwards ?? 0,
-    replies: row.replies ?? 0,
+    forwards: row.forwards ?? null,
+    replies: row.replies ?? null,
     measuredAt: new Date(row.measured_at),
   }
 }
