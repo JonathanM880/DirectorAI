@@ -173,12 +173,8 @@ export class PostMetricsService {
         channel_id,
         retry_count,
         media_type,
-        post_metrics (
-          views,
-          reactions,
-          forwards,
-          replies
-        )
+        channels ( name ),
+        post_metrics ( views, reactions, forwards, replies )
       `)
       .eq('status', 'published')
       .gte('published_at', startDate.toISOString())
@@ -192,23 +188,59 @@ export class PostMetricsService {
     }
 
     const posts = (data ?? []).map((post: any) => {
-      const metrics = Array.isArray(post.post_metrics) ? post.post_metrics[0] : post.post_metrics;
+      const ch = Array.isArray(post.channels) ? post.channels[0] : post.channels;
       return {
         id: post.id,
         publishedAt: new Date(post.published_at),
         content: post.text_content,
         platformMessageId: post.platform_message_id,
         channelId: post.channel_id,
+        channelName: ch?.name ?? 'Desconocido',
         retryCount: post.retry_count,
-        mediaType: post.media_type,
-        views: metrics?.views ?? 0,
-        reactions: metrics?.reactions ?? {},
-        forwards: metrics?.forwards ?? 0,
-        replies: metrics?.replies ?? 0
+        mediaType: post.media_type ?? 'Texto'
       };
     });
 
     return { posts, total: total ?? 0 };
+  }
+
+  async getAllPostsForExport(
+    startDate: Date,
+    endDate: Date
+  ): Promise<any[]> {
+    const { data, error } = await this.supabase
+      .from('scheduled_posts')
+      .select(`
+        id,
+        published_at,
+        text_content,
+        platform_message_id,
+        channel_id,
+        retry_count,
+        media_type,
+        channels ( name )
+      `)
+      .eq('status', 'published')
+      .gte('published_at', startDate.toISOString())
+      .lte('published_at', endDate.toISOString())
+      .order('published_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all posts for export:', error);
+      throw error;
+    }
+
+    return (data ?? []).map((post: any) => {
+      const ch = Array.isArray(post.channels) ? post.channels[0] : post.channels;
+      return {
+        id: post.id,
+        publishedAt: new Date(post.published_at),
+        content: post.text_content,
+        channelName: ch?.name ?? 'Desconocido',
+        retryCount: post.retry_count,
+        mediaType: post.media_type ?? 'Texto'
+      };
+    });
   }
 
   async fetchTelegramMetrics(postId: string): Promise<PostMetrics | null> {
