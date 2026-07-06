@@ -397,6 +397,19 @@ export interface PostMetrics {
   measuredAt: Date
 }
 
+export interface PostAnalytics {
+  postId: string
+  publishedAt: Date
+  timeSincePublished: string
+  postNumberInChannel: number
+  channelName: string
+  publishHour: string
+  publishDayOfWeek: string
+  contentType: string
+  attempts: number
+  status: string
+}
+
 export interface MetricsService {
   ingestMetrics(platformMessageId: string, metrics: RawPlatformMetrics): Promise<void>
   getPostMetrics(postId: string): Promise<PostMetrics | null>

@@ -43,6 +43,8 @@ export interface PostFormData {
   mediaAssetIds: string[];
   /** Derived from the first attached file's MIME type. */
   mediaType?: 'photo' | 'video' | 'audio' | 'document';
+  publishImmediately?: boolean;
+  isUpdate?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -281,7 +283,7 @@ export class PostFormComponent implements OnInit, OnDestroy {
       recurrenceRule,
       isUpdate: !!this.postToEdit,
       publishImmediately: this.publishImmediately
-    } as any);
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -10,13 +10,16 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 SELECT cron.unschedule('directorai-publish-cron');
 
 -- 3. Schedule the new cron job using pg_net
-SELECT cron.schedule(
+  SELECT cron.schedule(
   'directorai-publish-cron',
   '* * * * *', -- every 1 minute
   $$
   SELECT net.http_post(
     url := 'https://dnrbgoxvxkiczjtpdevu.supabase.co/functions/v1/scheduler',
-    headers := '{"Content-Type": "application/json"}'::jsonb,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRucmJnb3h2eGtpY3pqdHBkZXZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NDM1NzcsImV4cCI6MjA5NzMxOTU3N30.OMAjndlkrYZcU9dkBYOyO8UzW3CqmPpgGFbk5qXG-EA'
+    ),
     body := '{}'::jsonb
   );
   $$

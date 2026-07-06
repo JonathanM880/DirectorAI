@@ -37,6 +37,7 @@ export class AngularAuthService {
           }, 0);
         }
       });
+      this.initSession();
     }
   }
 

@@ -6,7 +6,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import FilerobotImageEditor from 'filerobot-image-editor';
 import { NotificationService } from '../../core/services/notification.service';
 import { AssetUploadService, UploadedAsset } from '../../core/services/asset-upload.service';
-import { PostFormComponent } from '../../shared/components/post-form/post-form.component';
+import { PostFormComponent, PostFormData } from '../../shared/components/post-form/post-form.component';
 import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
 
 @Component({
@@ -217,9 +217,9 @@ export class AssetsComponent implements OnInit {
 
   // Mock data for UI layout
   mockAssets = signal<any[]>([
-    { id: '1', filename: 'summer_promo.jpg', type: 'image', source: 'user_upload', size: '2.4 MB', date: new Date(), preview: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400', mime_type: 'image/jpeg', size_bytes: 2516582 },
-    { id: '2', filename: 'ai_generated_copy_1.txt', type: 'document', source: 'ai_generated', size: '1.2 KB', date: new Date(), mime_type: 'text/plain', size_bytes: 1228 },
-    { id: '3', filename: 'product_video_raw.mp4', type: 'video', source: 'user_upload', size: '45.1 MB', date: new Date(), mime_type: 'video/mp4', size_bytes: 47290778 }
+    { id: '1', filename: 'summer_promo.jpg', type: 'image', source: 'user_upload', size: '2.4 MB', date: new Date(), preview: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400', mime_type: 'image/jpeg', size_bytes: 2516582, storage_path: 'mock/summer_promo.jpg' },
+    { id: '2', filename: 'ai_generated_copy_1.txt', type: 'document', source: 'ai_generated', size: '1.2 KB', date: new Date(), mime_type: 'text/plain', size_bytes: 1228, storage_path: 'mock/ai_generated_copy_1.txt' },
+    { id: '3', filename: 'product_video_raw.mp4', type: 'video', source: 'user_upload', size: '45.1 MB', date: new Date(), mime_type: 'video/mp4', size_bytes: 47290778, storage_path: 'mock/product_video_raw.mp4' }
   ]);
 
   get filteredAssets() {
@@ -446,7 +446,7 @@ export class AssetsComponent implements OnInit {
     this.scheduleFormOpen.set(true);
   }
 
-  async onScheduleSaved(formData: any) {
+  async onScheduleSaved(formData: PostFormData) {
     try {
       this.isScheduling.set(true);
       const { data: { session } } = await this.supabase.auth.getSession();
@@ -467,13 +467,14 @@ export class AssetsComponent implements OnInit {
         recurrenceRuleId = rule.id;
       }
 
+      const scheduledAt = formData.publishImmediately ? new Date().toISOString() : formData.scheduledAt.toISOString();
       const { error } = await this.supabase.from('scheduled_posts').insert({
         user_id: session.user.id,
         channel_id: formData.channelId,
         text_content: formData.text,
         media_asset_ids: formData.mediaAssetIds,
-        scheduled_at: formData.scheduledAt.toISOString(),
-        status: formData.publishImmediately ? 'published' : 'scheduled',
+        scheduled_at: scheduledAt,
+        status: 'scheduled',
         recurrence_rule_id: recurrenceRuleId
       });
 
@@ -481,11 +482,14 @@ export class AssetsComponent implements OnInit {
 
       this.scheduleFormOpen.set(false);
       this.isScheduling.set(false);
+      const msg = formData.publishImmediately
+        ? 'Tu publicación se ha encolado para publicarse ahora.'
+        : 'Tu publicación se ha programado correctamente.';
       this.notificationService.notify(
         'post_scheduled',
         'success',
-        'Publicación programada',
-        'Tu publicación se ha programado correctamente.'
+        formData.publishImmediately ? 'Publicando...' : 'Publicación programada',
+        msg
       );
       this.closePreview();
     } catch (err: any) {

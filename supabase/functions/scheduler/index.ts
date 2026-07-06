@@ -287,15 +287,18 @@ async function markPublished(
   publishedAt: Date,
   telegramChatId?: number,
 ): Promise<void> {
+  const updatePayload: Record<string, unknown> = {
+    status:              'published',
+    platform_message_id: platformMessageId,
+    published_at:        publishedAt.toISOString(),
+    updated_at:          new Date().toISOString(),
+  };
+  if (telegramChatId !== undefined) {
+    updatePayload['telegram_chat_id'] = telegramChatId;
+  }
   const { error } = await supabase
     .from('scheduled_posts')
-    .update({
-      status:              'published',
-      platform_message_id: platformMessageId,
-      telegram_chat_id:    telegramChatId ?? null,
-      published_at:        publishedAt.toISOString(),
-      updated_at:          new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq('id', postId);
 
   if (error) {
@@ -724,6 +727,33 @@ async function handleRequest(req: Request): Promise<Response> {
     console.log('[scheduler] TELEGRAM_BOT_TOKEN loaded from environment.');
   } else {
     console.log('[scheduler] TELEGRAM_BOT_TOKEN not in env — will perform per-user Vault lookup.');
+  }
+
+  // ── Parse body for action-based commands ──────────────────────────────
+  let body: Record<string, unknown> = {};
+  try {
+    body = await req.json();
+  } catch { /* not JSON – ignore */ }
+
+  // ── REGISTER_WEBHOOK ───────────────────────────────────────────────────
+  if (body.action === 'REGISTER_WEBHOOK') {
+    const token = Deno.env.get('TELEGRAM_BOT_TOKEN');
+    if (!token) {
+      return json({ error: 'TELEGRAM_BOT_TOKEN is not set.' }, 500);
+    }
+    const secret = Deno.env.get('TELEGRAM_WEBHOOK_SECRET');
+    if (!secret) {
+      return json({ error: 'TELEGRAM_WEBHOOK_SECRET is not set.' }, 500);
+    }
+    const webhookUrl = `${supabaseUrl}/functions/v1/telegram-webhook`;
+
+    const setWebhookRes = await fetch(
+      `https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}&secret_token=${encodeURIComponent(secret)}`,
+      { method: 'POST' },
+    );
+    const result = await setWebhookRes.json();
+    console.log('[scheduler] REGISTER_WEBHOOK result:', JSON.stringify(result));
+    return json(result, setWebhookRes.ok ? 200 : 500);
   }
 
   // ── Execute tick ──────────────────────────────────────────────────────────
