@@ -6,103 +6,120 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import FilerobotImageEditor from 'filerobot-image-editor';
 import { NotificationService } from '../../core/services/notification.service';
 import { AssetUploadService } from '../../core/services/asset-upload.service';
+import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
 
 @Component({
   selector: 'app-assets',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule],
+  imports: [CommonModule, FormsModule, DragDropModule, MaxWidthHeightWrapperComponent],
   template: `
-    <div class="grid grid-cols-[280px_1fr] h-full bg-background text-foreground">
-      <div class="p-4 border-r border-border bg-muted/30">
-        <h2 class="text-xl font-bold mb-4 font-display">Recursos</h2>
-        <div>
-          <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'All Files'" [class.text-foreground]="activeFilter() === 'All Files'" [class.font-medium]="activeFilter() === 'All Files'" (click)="setFilter('All Files')">
-            <span>📁</span> Todos los archivos
-          </div>
-          <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Images'" [class.text-foreground]="activeFilter() === 'Images'" [class.font-medium]="activeFilter() === 'Images'" (click)="setFilter('Images')">
-            <span>📁</span> Imágenes
-          </div>
-          <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Videos'" [class.text-foreground]="activeFilter() === 'Videos'" [class.font-medium]="activeFilter() === 'Videos'" (click)="setFilter('Videos')">
-            <span>📁</span> Vídeos
-          </div>
-          <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 mb-1 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-secondary]="activeFilter() === 'Documents'" [class.text-foreground]="activeFilter() === 'Documents'" [class.font-medium]="activeFilter() === 'Documents'" (click)="setFilter('Documents')">
-            <span>📁</span> Documentos
-          </div>
-        </div>
+    <div class="p-4 md:p-8 bg-background text-foreground min-h-screen">
+      <app-max-width-height-wrapper>
+        <div class="flex flex-col gap-8 w-full">
+          <!-- Page Title & Header Actions -->
+          <div class="flex justify-between items-center flex-wrap gap-4">
+            <h2 class="text-2xl font-bold text-white">Recursos</h2>
+            
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full text-sm" *ngIf="selectedCount() > 0">
+                <span>{{ selectedCount() }} seleccionado(s)</span>
+                <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm">Mover</button>
+                <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm">Eliminar</button>
+              </div>
+              
+              <div class="flex gap-1 bg-secondary p-1 rounded-lg">
+                <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white/10]="viewMode() === 'grid'" [class.text-foreground]="viewMode() === 'grid'" (click)="viewMode.set('grid')">▦</button>
+                <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white/10]="viewMode() === 'list'" [class.text-foreground]="viewMode() === 'list'" (click)="viewMode.set('list')">☰</button>
+              </div>
 
-      </div>
-
-      <div class="p-4 flex flex-col relative transition-colors"
-           [class.bg-primary/5]="isDraggingOver()"
-           cdkDropList
-           (cdkDropListDropped)="onFileDropped($event)"
-           (dragover)="onDragOver($event)"
-           (dragleave)="onDragLeave($event)"
-           (drop)="onNativeDrop($event)">
-        
-        <div class="flex justify-between items-center mb-4">
-          <div class="flex gap-1 bg-secondary p-1 rounded-lg">
-            <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white/10]="viewMode() === 'grid'" [class.text-foreground]="viewMode() === 'grid'" (click)="viewMode.set('grid')">▦</button>
-            <button class="bg-transparent border-none text-muted-foreground px-3 py-1.5 rounded cursor-pointer" [class.bg-white/10]="viewMode() === 'list'" [class.text-foreground]="viewMode() === 'list'" (click)="viewMode.set('list')">☰</button>
-          </div>
-          
-          <div class="flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full text-sm" *ngIf="selectedCount() > 0">
-            <span>{{ selectedCount() }} seleccionado(s)</span>
-            <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm">Mover</button>
-            <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm">Eliminar</button>
-          </div>
-          
-          <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="fileInput.click()">Subir archivos</button>
-          <input type="file" #fileInput multiple hidden (change)="onFileSelected($event)">
-        </div>
-
-        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm z-10 flex items-center justify-center border-2 border-dashed border-primary rounded-xl pointer-events-none" *ngIf="isDraggingOver()">
-          <div class="text-center">
-            <h3 class="text-primary mb-2 text-xl font-bold">Suelta los archivos aquí para subirlos</h3>
-            <p class="text-muted-foreground">Imágenes, vídeos y documentos de hasta 50 MB</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4" *ngIf="viewMode() === 'grid'">
-          <div class="bg-white/5 border border-border rounded-lg overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 hover:border-white/20" *ngFor="let asset of filteredAssets" (click)="openPreview(asset)">
-            <div class="h-[140px] bg-black/20 relative flex items-center justify-center">
-              <span class="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-xs font-semibold" [class.bg-primary]="asset.source === 'ai_generated'" [class.text-primary-foreground]="asset.source === 'ai_generated'">
-                {{ asset.source === 'ai_generated' ? 'IA' : 'Subido' }}
-              </span>
-              <img *ngIf="asset.type === 'image'" [src]="asset.preview" alt="Preview" class="w-full h-full object-cover">
-              <div *ngIf="asset.type !== 'image'" class="text-5xl">📄</div>
-            </div>
-            <div class="p-3">
-              <div class="font-medium whitespace-nowrap overflow-hidden text-ellipsis mb-1">{{ asset.filename }}</div>
-              <div class="text-xs text-muted-foreground">{{ asset.date | date:'shortDate' }} • {{ asset.size }}</div>
+              <button class="px-4 py-2.5 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground" (click)="fileInput.click()">Subir archivos</button>
+              <input type="file" #fileInput multiple hidden (change)="onFileSelected($event)">
             </div>
           </div>
-        </div>
 
-        <div *ngIf="viewMode() === 'list'">
-          <table class="w-full border-collapse">
-            <thead>
-              <tr>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm"><input type="checkbox"></th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Nombre</th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Tipo</th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Origen</th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Tamaño</th>
-                <th class="px-4 py-3 text-left border-b border-border text-muted-foreground font-medium text-sm">Fecha añadido</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let asset of filteredAssets" (click)="openPreview(asset)" class="cursor-pointer hover:bg-white/5">
-                <td class="px-4 py-3 text-left border-b border-border"><input type="checkbox" (click)="$event.stopPropagation()"></td>
-                <td class="px-4 py-3 text-left border-b border-border">{{ asset.filename }}</td>
-                <td class="px-4 py-3 text-left border-b border-border">{{ translateType(asset.type) }}</td>
-                <td class="px-4 py-3 text-left border-b border-border">{{ translateSource(asset.source) }}</td>
-                <td class="px-4 py-3 text-left border-b border-border">{{ asset.size }}</td>
-                <td class="px-4 py-3 text-left border-b border-border">{{ asset.date | date:'short' }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="flex flex-wrap gap-8 w-full items-stretch">
+            <!-- Left Card: Filters -->
+            <div class="w-full md:w-[280px] shrink-0 flex flex-col border border-border rounded-3xl p-6 bg-transparent">
+              <div class="flex flex-col gap-2">
+                <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-white/5]="activeFilter() === 'All Files'" [class.text-white]="activeFilter() === 'All Files'" [class.font-semibold]="activeFilter() === 'All Files'" (click)="setFilter('All Files')">
+                  <span>📁</span> Todos los archivos
+                </div>
+                <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-white/5]="activeFilter() === 'Images'" [class.text-white]="activeFilter() === 'Images'" [class.font-semibold]="activeFilter() === 'Images'" (click)="setFilter('Images')">
+                  <span>📁</span> Imágenes
+                </div>
+                <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-white/5]="activeFilter() === 'Videos'" [class.text-white]="activeFilter() === 'Videos'" [class.font-semibold]="activeFilter() === 'Videos'" (click)="setFilter('Videos')">
+                  <span>📁</span> Vídeos
+                </div>
+                <div class="px-3 py-2.5 rounded-md cursor-pointer flex items-center gap-3 text-muted-foreground transition-colors hover:bg-white/5" [class.bg-white/5]="activeFilter() === 'Documents'" [class.text-white]="activeFilter() === 'Documents'" [class.font-semibold]="activeFilter() === 'Documents'" (click)="setFilter('Documents')">
+                  <span>📁</span> Documentos
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Card: Files display -->
+            <div class="flex-1 min-w-[320px] md:min-w-[500px] flex flex-col border border-border rounded-3xl p-6 bg-transparent min-h-[450px] relative"
+                 [class.bg-primary/5]="isDraggingOver()"
+                 cdkDropList
+                 (cdkDropListDropped)="onFileDropped($event)"
+                 (dragover)="onDragOver($event)"
+                 (dragleave)="onDragLeave($event)"
+                 (drop)="onNativeDrop($event)">
+              
+              <div class="absolute inset-0 bg-black/90 backdrop-blur-sm z-10 flex items-center justify-center border-2 border-dashed border-primary rounded-3xl pointer-events-none" *ngIf="isDraggingOver()">
+                <div class="text-center">
+                  <h3 class="text-primary mb-2 text-xl font-bold">Suelta los archivos aquí para subirlos</h3>
+                  <p class="text-muted-foreground">Imágenes, vídeos y documentos de hasta 50 MB</p>
+                </div>
+              </div>
+
+              <!-- Grid View -->
+              <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4" *ngIf="viewMode() === 'grid'">
+                <div class="bg-white/5 border border-border rounded-2xl overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 hover:border-white/20" *ngFor="let asset of filteredAssets" (click)="openPreview(asset)">
+                  <div class="h-[140px] bg-black/20 relative flex items-center justify-center">
+                    <span class="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-xs font-semibold" [class.bg-primary]="asset.source === 'ai_generated'" [class.text-primary-foreground]="asset.source === 'ai_generated'">
+                      {{ asset.source === 'ai_generated' ? 'IA' : 'Subido' }}
+                    </span>
+                    <img *ngIf="asset.type === 'image'" [src]="asset.preview" alt="Preview" class="w-full h-full object-cover">
+                    <div *ngIf="asset.type !== 'image'" class="text-5xl">📄</div>
+                  </div>
+                  <div class="p-3">
+                    <div class="font-medium whitespace-nowrap overflow-hidden text-ellipsis mb-1 text-white">{{ asset.filename }}</div>
+                    <div class="text-xs text-muted-foreground">{{ asset.date | date:'shortDate' }} • {{ asset.size }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- List View -->
+              <div *ngIf="viewMode() === 'list'" class="w-full overflow-hidden border border-border rounded-2xl bg-transparent">
+                <table class="w-full border-collapse text-left">
+                  <thead class="bg-white/[0.02] border-b border-border">
+                    <tr>
+                      <th class="px-4 py-3 text-muted-foreground font-medium text-xs uppercase tracking-wider w-[50px]"><input type="checkbox"></th>
+                      <th class="px-4 py-3 text-muted-foreground font-medium text-xs uppercase tracking-wider">Nombre</th>
+                      <th class="px-4 py-3 text-muted-foreground font-medium text-xs uppercase tracking-wider">Tipo</th>
+                      <th class="px-4 py-3 text-muted-foreground font-medium text-xs uppercase tracking-wider">Origen</th>
+                      <th class="px-4 py-3 text-muted-foreground font-medium text-xs uppercase tracking-wider">Tamaño</th>
+                      <th class="px-4 py-3 text-muted-foreground font-medium text-xs uppercase tracking-wider">Fecha añadido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let asset of filteredAssets" (click)="openPreview(asset)" class="cursor-pointer border-t border-border hover:bg-white/[0.01] transition-colors">
+                      <td class="px-4 py-3 text-white" (click)="$event.stopPropagation()"><input type="checkbox"></td>
+                      <td class="px-4 py-3 text-white font-medium">{{ asset.filename }}</td>
+                      <td class="px-4 py-3 text-gray-300 text-xs">{{ translateType(asset.type) }}</td>
+                      <td class="px-4 py-3 text-gray-300 text-xs">{{ translateSource(asset.source) }}</td>
+                      <td class="px-4 py-3 text-gray-300 text-xs">{{ asset.size }}</td>
+                      <td class="px-4 py-3 text-gray-300 text-xs">{{ asset.date | date:'short' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
+      </app-max-width-height-wrapper>
+    </div>
+
         
         <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-10" *ngIf="previewAsset()" (click)="closePreview()">
           <div class="bg-background border border-border rounded-xl max-w-4xl w-full relative overflow-hidden flex flex-col" (click)="$event.stopPropagation()">
@@ -154,8 +171,6 @@ import { AssetUploadService } from '../../core/services/asset-upload.service';
             </div>
           </div>
         </div>
-      </div>
-    </div>
   `
 })
 export class AssetsComponent implements OnInit {

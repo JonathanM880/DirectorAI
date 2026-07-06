@@ -24,11 +24,20 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
 import { PostFormComponent, PostFormData } from '../../shared/components/post-form/post-form.component';
 import { EditPostComponent } from '../../shared/components/edit-post/edit-post.component';
 import { ScheduledPost, PostStatus, Channel, RecurrenceRule } from '@director-ai/types';
+import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, FullCalendarModule, StatusBadgeComponent, PostFormComponent, EditPostComponent],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    FullCalendarModule, 
+    StatusBadgeComponent, 
+    PostFormComponent, 
+    EditPostComponent, 
+    MaxWidthHeightWrapperComponent
+  ],
   templateUrl: './calendar.component.html',
   styleUrls: ['./calendar.component.scss']
 })

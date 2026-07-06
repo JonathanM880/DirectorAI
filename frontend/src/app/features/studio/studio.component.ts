@@ -7,82 +7,94 @@ import { CopyRequest } from '@director-ai/types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AssetUploadService, UploadedAsset } from '../../core/services/asset-upload.service';
 import { PostFormComponent } from '../../shared/components/post-form/post-form.component';
+import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
 
 @Component({
   selector: 'app-studio',
   standalone: true,
-  imports: [CommonModule, FormsModule, PostFormComponent],
+  imports: [CommonModule, FormsModule, PostFormComponent, MaxWidthHeightWrapperComponent],
   template: `
-    <div class="grid grid-cols-[350px_1fr] h-full bg-background text-foreground min-h-[calc(100vh-4rem)]">
-      <div class="p-4 border-r border-border bg-white/[0.02]">
-        <h2 class="mt-0 mb-6 font-display text-2xl font-bold">AI Studio</h2>
-        
-        <div class="flex flex-col gap-2 mb-4">
-          <label class="font-medium text-muted-foreground text-sm">Modo</label>
-          <select class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="mode()" (ngModelChange)="mode.set($event)">
-            <option value="copy">Texto para redes sociales</option>
-            <option value="brainstorm">Lluvia de ideas</option>
-            <option value="image">Generación de imágenes</option>
-            <option value="campaign">Automatización de campañas</option>
-          </select>
-        </div>
+    <div class="p-4 md:p-8 bg-background text-foreground min-h-screen">
+      <app-max-width-height-wrapper>
+        <div class="flex flex-col gap-8 w-full">
+          <!-- Page Title -->
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <h2 class="text-2xl font-bold text-white">Estudio de IA</h2>
+            
+            <div class="text-sm text-muted-foreground">
+              Generaciones este mes: {{ usage() }}/{{ usageLimit() }}
+              <div class="w-[200px] h-1.5 bg-border rounded-full mt-1 overflow-hidden">
+                <div class="h-full bg-primary transition-all duration-300 ease-out" [style.width.%]="(usage() / usageLimit()) * 100"></div>
+              </div>
+            </div>
+          </div>
 
-        <div class="flex flex-col gap-2 mb-4" *ngIf="mode() === 'copy'">
-          <label class="font-medium text-muted-foreground text-sm">Tono</label>
-          <select class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="tone()" (ngModelChange)="tone.set($event)">
-            <option value="professional">Profesional</option>
-            <option value="casual">Informal</option>
-            <option value="urgent">Urgente</option>
-            <option value="educational">Educativo</option>
-          </select>
-        </div>
+          <div class="flex flex-wrap gap-8 w-full items-stretch">
+            <!-- Left Card: AI Inputs -->
+            <div class="w-full md:w-[380px] shrink-0 flex flex-col border border-border rounded-3xl p-6 bg-transparent">
+              <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                  <label class="font-medium text-muted-foreground text-sm">Modo</label>
+                  <select class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="mode()" (ngModelChange)="mode.set($event)">
+                    <option value="copy">Texto para redes sociales</option>
+                    <option value="brainstorm">Lluvia de ideas</option>
+                    <option value="image">Generación de imágenes</option>
+                    <option value="campaign">Automatización de campañas</option>
+                  </select>
+                </div>
 
-        <div class="flex flex-col gap-2 mb-4">
-          <label class="font-medium text-muted-foreground text-sm">Indicación / Tema</label>
-          <textarea class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans resize-y focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="prompt()" (ngModelChange)="prompt.set($event)" rows="5" placeholder="¿Qué quieres generar?"></textarea>
-        </div>
+                <div class="flex flex-col gap-2" *ngIf="mode() === 'copy'">
+                  <label class="font-medium text-muted-foreground text-sm">Tono</label>
+                  <select class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="tone()" (ngModelChange)="tone.set($event)">
+                    <option value="professional">Profesional</option>
+                    <option value="casual">Informal</option>
+                    <option value="urgent">Urgente</option>
+                    <option value="educational">Educativo</option>
+                  </select>
+                </div>
 
-        <button class="w-full py-2.5 px-4 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors" (click)="generate()" [disabled]="isGenerating()">
-          <span *ngIf="isGenerating()" class="w-4 h-4 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin inline-block align-middle mr-2"></span>
-          {{ isGenerating() ? 'Generando...' : 'Generar con IA' }}
-        </button>
+                <div class="flex flex-col gap-2">
+                  <label class="font-medium text-muted-foreground text-sm">Indicación / Tema</label>
+                  <textarea class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans resize-y focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="prompt()" (ngModelChange)="prompt.set($event)" rows="5" placeholder="¿Qué quieres generar?"></textarea>
+                </div>
+
+                <button class="w-full py-2.5 px-4 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors" (click)="generate()" [disabled]="isGenerating()">
+                  <span *ngIf="isGenerating()" class="w-4 h-4 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin inline-block align-middle mr-2"></span>
+                  {{ isGenerating() ? 'Generando...' : 'Generar con IA' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Card: Output display -->
+            <div class="flex-1 min-w-[320px] md:min-w-[500px] flex flex-col border border-border rounded-3xl p-6 bg-transparent min-h-[450px]">
+              <div *ngIf="!output() && !isGenerating()" class="m-auto text-muted-foreground italic">
+                Selecciona tus preferencias y haz clic en Generar.
+              </div>
+              
+              <div *ngIf="output()" class="flex-1 whitespace-pre-wrap text-lg leading-relaxed overflow-x-hidden">
+                <img *ngIf="generatedImageUrl" [src]="generatedImageUrl" alt="Imagen generada por IA" class="w-full rounded-lg mt-2 object-cover">
+                <pre *ngIf="!generatedImageUrl && mode() === 'campaign'" class="whitespace-pre-wrap break-words font-sans m-0 text-white">{{ output() }}</pre>
+                <p *ngIf="!generatedImageUrl && mode() !== 'campaign'" class="m-0 text-white">{{ output() }}</p>
+              </div>
+
+              <div class="mt-6 flex gap-3" *ngIf="output() && !isGenerating()">
+                <button class="py-2.5 px-4 rounded-md cursor-pointer font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50" (click)="saveToAssets()" [disabled]="isSaving()">
+                  <span *ngIf="isSaving()" class="w-4 h-4 border-2 border-secondary-foreground/20 border-t-secondary-foreground rounded-full animate-spin inline-block align-middle mr-2"></span>
+                  {{ isSaving() ? 'Guardando...' : 'Guardar en Recursos' }}
+                </button>
+                <button class="py-2.5 px-4 rounded-md cursor-pointer font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50" (click)="scheduleNow()" [disabled]="isSaving()">Programar ahora</button>
+            </div>
+          </div>
+        </div>
       </div>
+    </app-max-width-height-wrapper>
 
-      <div class="p-4 md:p-6 flex flex-col overflow-y-auto relative">
-        <div class="self-end text-sm text-muted-foreground mb-4">
-          Generaciones este mes: {{ usage() }}/{{ usageLimit() }}
-          <div class="w-[200px] h-1.5 bg-border rounded-full mt-1 overflow-hidden">
-            <div class="h-full bg-primary transition-all duration-300 ease-out" [style.width.%]="(usage() / usageLimit()) * 100"></div>
-          </div>
+      <!-- Toast Alert Banner -->
+      @if (toast(); as t) {
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-sm font-semibold z-[999] animate-in slide-in-from-bottom-4 shadow-lg shadow-black/20" [class.bg-[#00E676]]="t.type === 'success'" [class.text-black]="t.type === 'success'" [class.bg-red-500]="t.type === 'error'" [class.text-white]="t.type === 'error'" role="status" aria-live="polite">
+          {{ t.message }}
         </div>
-
-        <div class="flex-1 bg-white/[0.02] border border-border rounded-lg p-6 flex flex-col shadow-sm">
-          <div *ngIf="!output() && !isGenerating()" class="m-auto text-muted-foreground italic">
-            Selecciona tus preferencias y haz clic en Generar.
-          </div>
-          
-          <div *ngIf="output()" class="flex-1 whitespace-pre-wrap text-lg leading-relaxed overflow-x-hidden">
-            <img *ngIf="generatedImageUrl" [src]="generatedImageUrl" alt="Imagen generada por IA" class="w-full rounded-lg mt-2 object-cover">
-            <pre *ngIf="!generatedImageUrl && mode() === 'campaign'" class="whitespace-pre-wrap break-words font-sans m-0">{{ output() }}</pre>
-            <p *ngIf="!generatedImageUrl && mode() !== 'campaign'" class="m-0">{{ output() }}</p>
-          </div>
-
-          <div class="mt-6 flex gap-3" *ngIf="output() && !isGenerating()">
-            <button class="py-2.5 px-4 rounded-md cursor-pointer font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50" (click)="saveToAssets()" [disabled]="isSaving()">
-              <span *ngIf="isSaving()" class="w-4 h-4 border-2 border-secondary-foreground/20 border-t-secondary-foreground rounded-full animate-spin inline-block align-middle mr-2"></span>
-              {{ isSaving() ? 'Guardando...' : 'Guardar en Recursos' }}
-            </button>
-            <button class="py-2.5 px-4 rounded-md cursor-pointer font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50" (click)="scheduleNow()" [disabled]="isSaving()">Programar ahora</button>
-          </div>
-        </div>
-
-        <!-- Toast Alert Banner -->
-        @if (toast(); as t) {
-          <div class="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-sm font-semibold z-[999] animate-in slide-in-from-bottom-4 shadow-lg shadow-black/20" [class.bg-[#00E676]]="t.type === 'success'" [class.text-black]="t.type === 'success'" [class.bg-red-500]="t.type === 'error'" [class.text-white]="t.type === 'error'" role="status" aria-live="polite">
-            {{ t.message }}
-          </div>
-        }
-      </div>
+      }
 
       <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center animate-in fade-in duration-150" *ngIf="scheduleFormOpen()" (click)="scheduleFormOpen.set(false)" role="dialog" aria-modal="true" aria-label="Programar publicación">
         <div class="bg-background border border-white/10 rounded-xl shadow-2xl w-[900px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-4rem)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 duration-200" (click)="$event.stopPropagation()">

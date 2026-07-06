@@ -18,7 +18,7 @@ import {
 } from '../services/scheduling-engine.service';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { ScheduledPost, Channel } from '@director-ai/types';
-
+import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
 
 type TabId = 'recurrence' | 'log' | 'failed';
 
@@ -34,7 +34,7 @@ const PAGE_SIZE = 10;
 @Component({
   selector: 'app-automation',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, MaxWidthHeightWrapperComponent],
   templateUrl: './automation.component.html',
   styleUrls: ['./automation.component.scss']
 })
