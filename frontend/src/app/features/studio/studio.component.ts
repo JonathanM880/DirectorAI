@@ -67,17 +67,17 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
 
             <!-- Right Card: Output display -->
             <div class="flex-1 min-w-[320px] md:min-w-[500px] flex flex-col border border-border rounded-3xl p-6 bg-transparent min-h-[450px]">
-              <div *ngIf="!output() && !isGenerating()" class="m-auto text-muted-foreground italic">
+              <div *ngIf="!output() && !generatedImageUrl() && !isGenerating()" class="m-auto text-muted-foreground italic">
                 Selecciona tus preferencias y haz clic en Generar.
               </div>
               
-              <div *ngIf="output()" class="flex-1 whitespace-pre-wrap text-lg leading-relaxed overflow-x-hidden">
-                <img *ngIf="generatedImageUrl" [src]="generatedImageUrl" alt="Imagen generada por IA" class="w-full rounded-lg mt-2 object-cover">
-                <pre *ngIf="!generatedImageUrl && mode() === 'campaign'" class="whitespace-pre-wrap break-words font-sans m-0 text-white">{{ output() }}</pre>
-                <p *ngIf="!generatedImageUrl && mode() !== 'campaign'" class="m-0 text-white">{{ output() }}</p>
+              <div *ngIf="output() || generatedImageUrl()" class="flex-1 overflow-x-hidden">
+                <img *ngIf="mode() === 'image' && generatedImageUrl()" [src]="generatedImageUrl()!" alt="Imagen generada por IA" class="w-full rounded-lg mt-2 object-cover">
+                <pre *ngIf="mode() === 'campaign' && output()" class="whitespace-pre-wrap break-words font-sans m-0 text-white">{{ output() }}</pre>
+                <p *ngIf="mode() !== 'image' && mode() !== 'campaign' && output()" class="m-0 text-white whitespace-pre-wrap text-lg leading-relaxed">{{ output() }}</p>
               </div>
 
-              <div class="mt-6 flex gap-3" *ngIf="output() && !isGenerating()">
+              <div class="mt-6 flex gap-3" *ngIf="!isGenerating() && (output() || generatedImageUrl())">
                 <button class="py-2.5 px-4 rounded-md cursor-pointer font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50" (click)="saveToAssets()" [disabled]="isSaving()">
                   <span *ngIf="isSaving()" class="w-4 h-4 border-2 border-secondary-foreground/20 border-t-secondary-foreground rounded-full animate-spin inline-block align-middle mr-2"></span>
                   {{ isSaving() ? 'Guardando...' : 'Guardar en Recursos' }}
@@ -134,6 +134,7 @@ export class StudioComponent implements OnInit, OnDestroy {
   isGenerating = signal(false);
   isSaving = signal(false);
   output = signal('');
+  generatedImageUrl = signal<string | null>(null);
   
   usage = signal(0);
   usageLimit = signal(100);
@@ -141,12 +142,6 @@ export class StudioComponent implements OnInit, OnDestroy {
   // Toast status
   toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  get generatedImageUrl(): string | null {
-    if (this.mode() !== 'image' || !this.output()) return null;
-    const match = this.output().match(/\(([^\)]+)\)/);
-    return match ? match[1] : null;
-  }
 
   async ngOnInit() {
     this.usage.set(100);
@@ -208,6 +203,7 @@ export class StudioComponent implements OnInit, OnDestroy {
         this.isGenerating.set(false);
         this.usage.update(u => u + 1);
       } else if (this.mode() === 'image') {
+        this.generatedImageUrl.set(null);
         const result = await this.genAiService.generateImage({
           userId: session?.user.id || '',
           prompt: this.prompt(),
@@ -217,7 +213,8 @@ export class StudioComponent implements OnInit, OnDestroy {
         if (result.error) {
           this.output.set('Error: ' + result.error);
         } else {
-          this.output.set(`[Image Generated](${result.url})`);
+          this.generatedImageUrl.set(result.url);
+          this.output.set('');
         }
         
         this.isGenerating.set(false);
@@ -260,8 +257,8 @@ export class StudioComponent implements OnInit, OnDestroy {
       
       let postsToSave = (this as any).lastCampaignResult || [];
       if (this.mode() === 'image') {
-        const match = this.output().match(/\(([^\)]+)\)/);
-        const url = match ? match[1] : 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800';
+        const url = this.generatedImageUrl();
+        if (!url) throw new Error('No hay imagen generada para guardar');
         postsToSave = [{ imagePrompt: this.prompt(), imageUrl: url, offsetMinutes: 0 }];
       } else if (this.mode() !== 'campaign' || postsToSave.length === 0) {
         postsToSave = [{ text: this.output(), offsetMinutes: 0 }];
@@ -280,7 +277,7 @@ export class StudioComponent implements OnInit, OnDestroy {
             const imgBlob = await imgRes.blob();
             const imgName = `generated-img-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
             const file = new File([imgBlob], imgName, { type: 'image/jpeg' });
-            await this.assetUpload.upload(file);
+            await this.assetUpload.upload(file, 'ai_generated');
           } catch (e) {
             console.error('Failed to save image asset', e);
             throw e;
@@ -317,15 +314,15 @@ export class StudioComponent implements OnInit, OnDestroy {
       this.initialAssetsForForm = [];
 
       if (this.mode() === 'image') {
-        const match = this.output().match(/\(([^\)]+)\)/);
-        const url = match ? match[1] : 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800';
+        const url = this.generatedImageUrl();
+        if (!url) throw new Error('No hay imagen generada');
         
         const imgRes = await fetch(url);
         const imgBlob = await imgRes.blob();
         const imgName = `generated-img-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
         const file = new File([imgBlob], imgName, { type: 'image/jpeg' });
         
-        const asset = await this.assetUpload.upload(file);
+        const asset = await this.assetUpload.upload(file, 'ai_generated');
         this.initialAssetsForForm = [asset];
         this.initialTextForForm = this.prompt();
       } else if (this.mode() === 'campaign') {
