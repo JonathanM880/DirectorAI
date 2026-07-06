@@ -15,6 +15,7 @@ import {
   FeatureGatedError,
   QuotaExceededError
 } from '../../../packages/types/index.ts'
+import { generateText, generateImage } from './providers.ts'
 
 export class GenAIServiceImpl implements GenAIService {
   private readonly defaultOpenRouterKey: string
@@ -28,30 +29,8 @@ export class GenAIServiceImpl implements GenAIService {
     defaultOpenRouterKey?: string,
     defaultGeminiKey?: string
   ) {
-    this.defaultOpenRouterKey = defaultOpenRouterKey || process.env.OPENROUTER_API_KEY || ''
-    this.defaultGeminiKey = defaultGeminiKey || process.env.GEMINI_API_KEY || ''
-  }
-
-  private async getApiKey(userId: string): Promise<string> {
-    try {
-      return await this.keyVault.getKey(userId, 'openrouter_api_key')
-    } catch {
-      if (!this.defaultOpenRouterKey) {
-        throw new Error('No OpenRouter API key configured.')
-      }
-      return this.defaultOpenRouterKey
-    }
-  }
-
-  private async getGeminiKey(userId: string): Promise<string> {
-    try {
-      return await this.keyVault.getKey(userId, 'gemini_api_key')
-    } catch {
-      if (!this.defaultGeminiKey) {
-        throw new Error('No Gemini API key configured.')
-      }
-      return this.defaultGeminiKey
-    }
+    this.defaultOpenRouterKey = defaultOpenRouterKey || Deno.env.get('OPENROUTER_API_KEY') || ''
+    this.defaultGeminiKey = defaultGeminiKey || Deno.env.get('GEMINI_API_KEY') || ''
   }
 
   private async checkGates(userId: string): Promise<void> {
@@ -83,93 +62,44 @@ export class GenAIServiceImpl implements GenAIService {
 
   async generateCopy(request: CopyRequest): Promise<GeneratedCopy> {
     await this.checkGates(request.userId)
-    const apiKey = await this.getApiKey(request.userId)
     
-    const messages = [{ role: 'user', content: this.buildPrompt(request) }]
-    
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'google/gemma-4-31b-it:free',
-        messages
-      })
+    const prompt = this.buildPrompt(request)
+    const result = await generateText(prompt, {
+      userId: request.userId,
+      keyVault: this.keyVault
     })
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content || ''
-    const tokensUsed = data.usage?.total_tokens || 0
-
-    const asset = await this.persistAndIncrement(request.userId, content, request.platform)
+    const asset = await this.persistAndIncrement(request.userId, result.content, request.platform)
     
     return {
       id: asset.id, 
-      content,
+      content: result.content,
       platform: request.platform,
-      model: data.model || 'openai/gpt-4o-mini',
-      tokensUsed,
+      model: result.model,
+      tokensUsed: result.tokensUsed,
       createdAt: asset.createdAt
     }
   }
 
   async streamGenerate(request: CopyRequest, onChunk: (chunk: string) => void): Promise<GeneratedCopy> {
     await this.checkGates(request.userId)
-    const apiKey = await this.getApiKey(request.userId)
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemma-4-31b-it:free',
-        messages: [{ role: 'user', content: this.buildPrompt(request) }],
-        stream: true
-      })
+    
+    const prompt = this.buildPrompt(request)
+    const result = await generateText(prompt, {
+      userId: request.userId,
+      keyVault: this.keyVault,
+      stream: true,
+      onChunk
     })
 
-    if (!response.ok) throw new Error(`OpenRouter API error: ${response.statusText}`)
-    
-    let content = ''
-    const reader = response.body?.getReader()
-    const decoder = new TextDecoder()
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-            try {
-              const data = JSON.parse(line.slice(6))
-              const text = data.choices[0]?.delta?.content || ''
-              content += text
-              if (text) onChunk(text)
-            } catch (e) {
-              // ignore parse errors for incomplete chunks
-            }
-          }
-        }
-      }
-    }
-
-    const asset = await this.persistAndIncrement(request.userId, content, request.platform)
+    const asset = await this.persistAndIncrement(request.userId, result.content, request.platform)
 
     return {
       id: asset.id,
-      content,
+      content: result.content,
       platform: request.platform,
-      model: 'google/gemma-4-31b-it:free',
-      tokensUsed: Math.ceil(content.length / 4), 
+      model: result.model,
+      tokensUsed: result.tokensUsed,
       createdAt: asset.createdAt
     }
   }
@@ -188,43 +118,12 @@ export class GenAIServiceImpl implements GenAIService {
 
   async generateImage(request: ImageRequest): Promise<GeneratedImage> {
     await this.checkGates(request.userId)
-    const apiKey = await this.getGeminiKey(request.userId)
 
-    const aspectRatioMap: Record<string, string> = {
-      '1:1': '1:1',
-      '16:9': '16:9',
-      '9:16': '9:16',
-      '4:3': '4:3',
-    }
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instances: [{ prompt: request.prompt }],
-          parameters: {
-            sampleCount: 1,
-            aspectRatio: aspectRatioMap[request.aspectRatio || '1:1'] || '1:1',
-          },
-        }),
-      }
-    )
-
-    if (!response.ok) {
-      const errorBody = await response.text()
-      throw new Error(`Gemini Imagen API error (${response.status}): ${errorBody}`)
-    }
-
-    const data = await response.json()
-    const prediction = data.predictions?.[0]
-    if (!prediction?.bytesBase64Encoded) {
-      throw new Error('Gemini Imagen API returned no image data.')
-    }
-
-    const mimeType = prediction.mimeType || 'image/png'
-    const imageUrl = `data:${mimeType};base64,${prediction.bytesBase64Encoded}`
+    const result = await generateImage(request.prompt, {
+      userId: request.userId,
+      keyVault: this.keyVault,
+      aspectRatio: request.aspectRatio
+    })
 
     const usage = await this.billingService.getUsage(request.userId)
     await this.supabase.from('subscriptions')
@@ -232,44 +131,30 @@ export class GenAIServiceImpl implements GenAIService {
       .eq('user_id', request.userId)
 
     return {
-      id: crypto.randomUUID(),
-      url: imageUrl,
+      id: result.id,
+      url: result.url,
       prompt: request.prompt,
-      model: 'imagen-3.0-generate-001',
-      createdAt: new Date()
+      model: result.model,
+      createdAt: result.createdAt
     }
   }
 
   async brainstorm(request: BrainstormRequest): Promise<BrainstormResult> {
     await this.checkGates(request.userId)
-    const apiKey = await this.getApiKey(request.userId)
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'google/gemma-4-31b-it:free', // Ojo aquí con el nombre del modelo
-        messages: [{ 
-          role: 'user', 
-          content: `Genera exactamente ${request.count} ideas de contenido para ${request.platform} sobre el tema: "${request.topic}". 
-            La respuesta debe estar en ESPAÑOL. 
-            Devuelve estrictamente un array JSON de strings plano. 
-            No incluyas bloques de código markdown (como \`\`\`json), devuelve únicamente el JSON crudo.` 
-        }]
-      })
+    const prompt = `Genera exactamente ${request.count} ideas de contenido para ${request.platform} sobre el tema: "${request.topic}". 
+      La respuesta debe estar en ESPAÑOL. 
+      Devuelve estrictamente un array JSON de strings plano. 
+      No incluyas bloques de código markdown (como \`\`\`json), devuelve únicamente el JSON crudo.`
+
+    const result = await generateText(prompt, {
+      userId: request.userId,
+      keyVault: this.keyVault
     })
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error (brainstorm): ${response.statusText}`)
-    }
-
-    const data = await response.json()
     let ideas: string[] = []
     try {
-      const content = data.choices?.[0]?.message?.content || '[]'
+      const content = result.content
       const jsonStart = content.indexOf('[')
       const jsonEnd = content.lastIndexOf(']')
       if (jsonStart !== -1 && jsonEnd !== -1) {
@@ -278,7 +163,7 @@ export class GenAIServiceImpl implements GenAIService {
         ideas = [content]
       }
     } catch {
-      ideas = [data.choices?.[0]?.message?.content || '']
+      ideas = [result.content]
     }
 
     return {
@@ -290,7 +175,6 @@ export class GenAIServiceImpl implements GenAIService {
 
   async parseCampaign(request: CampaignParseRequest): Promise<CampaignParseResult> {
     await this.checkGates(request.userId)
-    const apiKey = await this.getApiKey(request.userId)
 
     const sysPrompt = `Eres un programador de campañas de redes sociales. Analiza la petición del usuario y conviértela en un array JSON de publicaciones.
 Asegúrate de que todo el contenido generado (especialmente el texto de las publicaciones) esté en ESPAÑOL.
@@ -305,29 +189,15 @@ El formato debe ser estrictamente JSON:
 ]
 No incluyas bloques de código markdown (como \`\`\`json), devuelve únicamente el JSON crudo.`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'google/gemma-4-31b-it:free',
-        messages: [
-          { role: 'system', content: sysPrompt },
-          { role: 'user', content: request.prompt }
-        ]
-      })
+    const result = await generateText(request.prompt, {
+      userId: request.userId,
+      keyVault: this.keyVault,
+      systemPrompt: sysPrompt
     })
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error (parseCampaign): ${response.statusText}`)
-    }
-
-    const data = await response.json()
     let posts = []
     try {
-      const content = data.choices?.[0]?.message?.content || '[]'
+      const content = result.content
       const jsonStart = content.indexOf('[')
       const jsonEnd = content.lastIndexOf(']')
       if (jsonStart !== -1 && jsonEnd !== -1) {

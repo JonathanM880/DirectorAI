@@ -117,7 +117,8 @@ Deno.serve(async (req) => {
     })
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error('gen-ai-studio error:', err.message, err.stack)
+    return new Response(JSON.stringify({ error: err.message, stack: err.stack }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })

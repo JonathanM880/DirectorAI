@@ -75,11 +75,25 @@ export class GenAiService {
   }
 
   async generateImage(request: any): Promise<any> {
-    const { data, error } = await this.supabase.functions.invoke('gen-ai-studio', {
-      body: { action: 'generateImage', payload: request }
-    });
-    if (error) throw error;
-    return data;
+    const { data: { session } } = await this.supabase.auth.getSession()
+    if (!session) throw new Error('Not authenticated')
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/gen-ai-studio`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ action: 'generateImage', payload: request })
+    })
+
+    const body = await response.json()
+
+    if (!response.ok) {
+      throw new Error(body.error || `HTTP ${response.status}`)
+    }
+
+    return body
   }
 
   async parseCampaign(request: any): Promise<any> {

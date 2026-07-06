@@ -144,7 +144,7 @@ export class StudioComponent implements OnInit, OnDestroy {
 
   get generatedImageUrl(): string | null {
     if (this.mode() !== 'image' || !this.output()) return null;
-    const match = this.output().match(/\((https?:\/\/[^\)]+)\)/);
+    const match = this.output().match(/\(([^\)]+)\)/);
     return match ? match[1] : null;
   }
 
@@ -209,8 +209,9 @@ export class StudioComponent implements OnInit, OnDestroy {
         this.usage.update(u => u + 1);
       } else if (this.mode() === 'image') {
         const result = await this.genAiService.generateImage({
+          userId: session?.user.id || '',
           prompt: this.prompt(),
-          size: '1024x1024'
+          aspectRatio: '1:1'
         });
         
         if (result.error) {
@@ -259,7 +260,7 @@ export class StudioComponent implements OnInit, OnDestroy {
       
       let postsToSave = (this as any).lastCampaignResult || [];
       if (this.mode() === 'image') {
-        const match = this.output().match(/\((https?:\/\/[^\)]+)\)/);
+        const match = this.output().match(/\(([^\)]+)\)/);
         const url = match ? match[1] : 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800';
         postsToSave = [{ imagePrompt: this.prompt(), imageUrl: url, offsetMinutes: 0 }];
       } else if (this.mode() !== 'campaign' || postsToSave.length === 0) {
@@ -316,7 +317,7 @@ export class StudioComponent implements OnInit, OnDestroy {
       this.initialAssetsForForm = [];
 
       if (this.mode() === 'image') {
-        const match = this.output().match(/\((https?:\/\/[^\)]+)\)/);
+        const match = this.output().match(/\(([^\)]+)\)/);
         const url = match ? match[1] : 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800';
         
         const imgRes = await fetch(url);

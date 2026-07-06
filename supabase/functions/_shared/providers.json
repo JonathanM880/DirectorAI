@@ -1,0 +1,55 @@
+{
+  "text": [
+    {
+      "id": "groq",
+      "type": "openai",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile",
+      "apiKeyEnv": "GROQ_API_KEY"
+    },
+    {
+      "id": "cerebras",
+      "type": "openai",
+      "baseUrl": "https://api.cerebras.ai/v1",
+      "model": "llama3.1-8b",
+      "apiKeyEnv": "CEREBRAS_API_KEY"
+    },
+    {
+      "id": "openrouter",
+      "type": "openai",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "model": "google/gemma-4-31b-it:free",
+      "apiKeyEnv": "OPENROUTER_API_KEY"
+    },
+    {
+      "id": "gemini",
+      "type": "openai",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "model": "gemini-2.5-flash",
+      "apiKeyEnv": "GEMINI_API_KEY"
+    }
+  ],
+  "image": [
+    {
+      "id": "pollinations",
+      "type": "pollinations",
+      "baseUrl": "https://gen.pollinations.ai/image",
+      "model": "default",
+      "apiKeyEnv": "POLLINATIONS_API_KEY"
+    },
+    {
+      "id": "gemini-image",
+      "type": "gemini-native",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent",
+      "model": "gemini-3.1-flash-lite-image",
+      "apiKeyEnv": "GEMINI_API_KEY"
+    },
+    {
+      "id": "huggingface",
+      "type": "huggingface",
+      "baseUrl": "https://router.huggingface.co/hf-inference/models",
+      "model": "black-forest-labs/FLUX.1-schnell",
+      "apiKeyEnv": "HF_API_KEY"
+    }
+  ]
+}
