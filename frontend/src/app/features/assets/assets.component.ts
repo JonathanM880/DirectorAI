@@ -144,11 +144,13 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
                   </div>
                   <div class="flex gap-2" *ngIf="previewAsset()?.type !== 'video'">
                     <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="openScheduleForm()">Programar</button>
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="renameAsset(previewAsset())">Renombrar</button>
                     <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="startEditing()">Editar</button>
                     <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Eliminar</button>
                   </div>
                   <div class="flex gap-2" *ngIf="previewAsset()?.type === 'video'">
                     <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="openScheduleForm()">Programar</button>
+                    <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-secondary text-secondary-foreground text-sm" (click)="renameAsset(previewAsset())">Renombrar</button>
                     <button class="px-3 py-1.5 rounded-md border-none cursor-pointer font-semibold bg-destructive text-destructive-foreground text-sm" (click)="deleteAsset(previewAsset())">Eliminar</button>
                   </div>
                 </div>
@@ -302,14 +304,16 @@ export class AssetsComponent implements OnInit {
       let path = asset.storage_path;
       let newFilename = this.editFilename;
       
-      if (asNew || newFilename !== asset.filename) {
+      let uploadPromise;
+      if (asNew) {
         const timestamp = Date.now();
         path = `${session.user.id}/generated-${timestamp}.txt`;
+        uploadPromise = this.supabase.storage.from('assets').upload(path, file);
+      } else {
+        uploadPromise = this.supabase.storage.from('assets').update(path, file, { upsert: true });
       }
       
-      const { data: uploadData, error: uploadErr } = await this.supabase.storage
-        .from('assets')
-        .upload(path, file, { upsert: !asNew && newFilename === asset.filename });
+      const { data: uploadData, error: uploadErr } = await uploadPromise;
         
       if (uploadErr) throw uploadErr;
       
@@ -359,13 +363,15 @@ export class AssetsComponent implements OnInit {
           const newName = prompt('Nombre de archivo:', this.editFilename) || this.editFilename;
           
           let path = asset.storage_path;
-          if (asNew || newName !== asset.filename) {
+          let uploadPromise;
+          if (asNew) {
             path = `${session.user.id}/edited-${Date.now()}.jpg`;
+            uploadPromise = this.supabase.storage.from('assets').upload(path, blob);
+          } else {
+            uploadPromise = this.supabase.storage.from('assets').update(path, blob, { upsert: true });
           }
           
-          const { data: uploadData, error: uploadErr } = await this.supabase.storage
-            .from('assets')
-            .upload(path, blob, { upsert: !asNew && newName === asset.filename });
+          const { data: uploadData, error: uploadErr } = await uploadPromise;
             
           if (uploadErr) throw uploadErr;
           
@@ -407,6 +413,20 @@ export class AssetsComponent implements OnInit {
         this.cancelEditing();
       }
     });
+  }
+
+  async renameAsset(asset: any) {
+    const newName = prompt('Nuevo nombre de archivo:', asset.filename);
+    if (!newName || newName === asset.filename) return;
+
+    const { error } = await this.supabase.from('assets').update({ filename: newName }).eq('id', asset.id);
+    if (error) {
+      this.notificationService.notify('asset_error', 'error', 'Error al renombrar', error.message);
+    } else {
+      this.notificationService.notify('asset_updated', 'success', 'Recurso renombrado', `El recurso ahora se llama ${newName}.`);
+      this.previewAsset.update(a => a ? { ...a, filename: newName } : null);
+      this.loadAssets();
+    }
   }
 
   async deleteAsset(asset: any) {
