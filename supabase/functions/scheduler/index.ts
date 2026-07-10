@@ -444,6 +444,7 @@ async function publishToTelegram(
   const token = await resolveBotToken(supabase, post.user_id, globalToken) ?? '';
 
   let mediaUrl: string | null = null;
+  let resolutionErrorDetail: string | null = null;
   const firstAssetId = post.media_asset_ids?.[0];
 
   if (firstAssetId) {
@@ -453,11 +454,51 @@ async function publishToTelegram(
       .eq('id', firstAssetId)
       .single();
 
-    if (!assetError && assetData?.storage_path) {
-      const { data } = supabase.storage.from('assets').getPublicUrl(assetData.storage_path);
-      if (data && typeof data.publicUrl === 'string') {
-        mediaUrl = String(data.publicUrl).trim();
+    if (assetError) {
+      resolutionErrorDetail = `Asset not found in database for ID ${firstAssetId}: ${assetError.message}`;
+      console.error(
+        `[scheduler] [${post.id.slice(0, 8)}] Failed to fetch asset ${firstAssetId} for post ${post.id}: ${assetError.message}`
+      );
+    } else if (!assetData?.storage_path) {
+      resolutionErrorDetail = `Asset metadata has empty storage_path for ID ${firstAssetId}`;
+      console.error(
+        `[scheduler] [${post.id.slice(0, 8)}] Asset ${firstAssetId} for post ${post.id} has empty storage_path`
+      );
+    } else {
+      const { data, error: signError } = await supabase.storage
+        .from('assets')
+        .createSignedUrl(assetData.storage_path, 3600);
+      if (signError) {
+        resolutionErrorDetail = `Failed to sign URL for path ${assetData.storage_path}: ${signError.message}`;
+        console.error(
+          `[scheduler] [${post.id.slice(0, 8)}] Failed to create signed URL for path ${assetData.storage_path} on post ${post.id}: ${signError.message}`
+        );
+      } else if (!data?.signedUrl) {
+        resolutionErrorDetail = `Signed URL is empty for path ${assetData.storage_path}`;
+        console.error(
+          `[scheduler] [${post.id.slice(0, 8)}] Signed URL is empty for path ${assetData.storage_path} on post ${post.id}`
+        );
+      } else {
+        mediaUrl = data.signedUrl;
       }
+    }
+  } else if (post.media_type !== null && post.media_type !== undefined) {
+    resolutionErrorDetail = `No asset ID provided in media_asset_ids, but media_type is '${post.media_type}'`;
+    console.error(
+      `[scheduler] [${post.id.slice(0, 8)}] No asset ID provided in media_asset_ids for post ${post.id}, but media_type is '${post.media_type}'`
+    );
+  }
+
+  // Explicit validation to prevent sending posts with invalid/missing media to Telegram
+  if (post.media_type !== null && post.media_type !== undefined) {
+    if (mediaUrl === null) {
+      const errMsg = resolutionErrorDetail || "Failed to resolve media asset URL (unknown reason)";
+      return {
+        success: false,
+        errorCode: 'MEDIA_RESOLUTION_FAILED',
+        errorMessage: errMsg,
+        retryable: false,
+      };
     }
   }
 

@@ -108,15 +108,15 @@ export class CalendarComponent implements OnInit, OnDestroy {
       const events: any[] = [];
       
       for (const post of posts) {
-        if (!post.content.text?.trim()) {
-          continue; // Filter out corrupted or empty posts
+        if (!post.content.text?.trim() && !post.content.mediaAssetIds?.length) {
+          continue; // Filter out truly empty posts (neither text nor media)
         }
 
         if (!post.recurrenceRule) {
           if (post.scheduledAt >= from && post.scheduledAt <= to) {
             events.push({
               id: post.id,
-              title: post.content.text.slice(0, 60),
+              title: post.content.text?.trim() ? post.content.text.slice(0, 60) : `[${(post.content.mediaType || 'Multimedia').toUpperCase()}]`,
               start: post.scheduledAt.toISOString(),
               extendedProps: { status: post.status, post }
             });
@@ -140,7 +140,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
             const displayStatus = isFuture && post.status === 'published' ? 'scheduled' : post.status;
             events.push({
               id: `${post.id}_${occurrenceIdx}`,
-              title: post.content.text.slice(0, 60),
+              title: post.content.text?.trim() ? post.content.text.slice(0, 60) : `[${(post.content.mediaType || 'Multimedia').toUpperCase()}]`,
               start: current.toISOString(),
               extendedProps: { status: displayStatus, post }
             });

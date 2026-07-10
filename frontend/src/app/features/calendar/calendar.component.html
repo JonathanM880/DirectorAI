@@ -145,7 +145,7 @@
       <div class="flex-1 overflow-y-auto p-6 pb-0">
         <app-post-form
           (saved)="onPostFormSaved($event)"
-          (cancel)="closeNewPostPanel()">
+          (formCancel)="closeNewPostPanel()">
         </app-post-form>
       </div>
     </div>
@@ -161,7 +161,7 @@
         <button class="w-8 h-8 flex items-center justify-center bg-white/5 border-none rounded-md text-muted-foreground cursor-pointer hover:bg-white/10 hover:text-white transition-all" (click)="editPostOpen.set(false)" aria-label="Cerrar">✕</button>
       </div>
       <div class="flex-1 overflow-y-auto p-6 pb-0">
-        <app-edit-post [postToEdit]="selectedPost()!" (saved)="onEditSaved($event)" (cancel)="editPostOpen.set(false)"></app-edit-post>
+        <app-edit-post [postToEdit]="selectedPost()!" (saved)="onEditSaved($event)" (formCancel)="editPostOpen.set(false)"></app-edit-post>
       </div>
     </div>
   </div>

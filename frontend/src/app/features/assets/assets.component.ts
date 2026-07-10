@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { SchedulingEngineService } from '../services/scheduling-engine.service';
 import FilerobotImageEditor from 'filerobot-image-editor';
 import { NotificationService } from '../../core/services/notification.service';
 import { AssetUploadService, UploadedAsset } from '../../core/services/asset-upload.service';
@@ -187,7 +188,7 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
               [initialText]="initialTextForForm"
               [initialAssets]="initialAssetsForForm"
               (saved)="onScheduleSaved($event)"
-              (cancel)="scheduleFormOpen.set(false)">
+              (formCancel)="scheduleFormOpen.set(false)">
             </app-post-form>
           </div>
         </div>
@@ -195,6 +196,7 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
   `
 })
 export class AssetsComponent implements OnInit {
+  private schedulingEngine = inject(SchedulingEngineService);
   private supabase = inject(SupabaseClient);
   private notificationService = inject(NotificationService);
   private assetUpload = inject(AssetUploadService);
@@ -449,53 +451,34 @@ export class AssetsComponent implements OnInit {
   async onScheduleSaved(formData: PostFormData) {
     try {
       this.isScheduling.set(true);
-      const { data: { session } } = await this.supabase.auth.getSession();
-      if (!session) {
-        this.isScheduling.set(false);
-        return;
-      }
-
-      let recurrenceRuleId: string | undefined = undefined;
-      if (formData.recurrenceRule) {
-        const { data: rule, error: rErr } = await this.supabase.from('recurrence_rules').insert({
-          user_id: session.user.id,
-          frequency: formData.recurrenceRule.frequency,
-          interval: formData.recurrenceRule.interval,
-          end_date: formData.recurrenceRule.endDate ? formData.recurrenceRule.endDate.toISOString() : null
-        }).select().single();
-        if (rErr) throw rErr;
-        recurrenceRuleId = rule.id;
-      }
-
-      const scheduledAt = formData.publishImmediately ? new Date().toISOString() : formData.scheduledAt.toISOString();
-      const { error } = await this.supabase.from('scheduled_posts').insert({
-        user_id: session.user.id,
-        channel_id: formData.channelId,
-        text_content: formData.text,
-        media_asset_ids: formData.mediaAssetIds,
-        scheduled_at: scheduledAt,
-        status: 'scheduled',
-        recurrence_rule_id: recurrenceRuleId
-      });
-
-      if (error) throw error;
+      await this.schedulingEngine.schedulePost({
+        channelId: formData.channelId,
+        content: {
+          text: formData.text,
+          mediaAssetIds: formData.mediaAssetIds,
+          mediaType: formData.mediaType,
+        },
+        scheduledAt: formData.publishImmediately ? new Date() : formData.scheduledAt,
+        recurrenceRule: formData.recurrenceRule,
+        publishImmediately: formData.publishImmediately
+      } as any);
 
       this.scheduleFormOpen.set(false);
       this.isScheduling.set(false);
       const msg = formData.publishImmediately
-        ? 'Tu publicación se ha encolado para publicarse ahora.'
-        : 'Tu publicación se ha programado correctamente.';
+        ? 'Tu publicaci�n se ha encolado para publicarse ahora.'
+        : 'Tu publicaci�n se ha programado correctamente.';
       this.notificationService.notify(
         'post_scheduled',
         'success',
-        formData.publishImmediately ? 'Publicando...' : 'Publicación programada',
+        formData.publishImmediately ? 'Publicando...' : 'Publicaci�n programada',
         msg
       );
       this.closePreview();
     } catch (err: any) {
       console.error(err);
       this.isScheduling.set(false);
-      alert('Error al programar la publicación: ' + err.message);
+      alert('Error al programar la publicaci�n: ' + err.message);
     }
   }
 

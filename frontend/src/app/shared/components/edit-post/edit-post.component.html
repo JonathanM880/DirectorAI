@@ -9,13 +9,12 @@
       [(ngModel)]="text"
       placeholder="Escribe el contenido de tu publicación aquí..."
       rows="4"
-      required
     ></textarea>
   </div>
 
   <!-- ── Drag-and-Drop Media Upload ──────────────────────────────────── -->
   <div class="form-group">
-    <label>Archivos adjuntos</label>
+    <label for="pf-file-input">Archivos adjuntos</label>
 
     <!-- Drop zone -->
     <div
@@ -174,7 +173,7 @@
 
   <!-- ── Submit ────────────────────────────────────────────────────────── -->
   <div class="form-actions">
-    <button type="button" class="btn-secondary" (click)="cancel.emit()">Cancelar</button>
+    <button type="button" class="btn-secondary" (click)="formCancel.emit()">Cancelar</button>
     <button type="submit" id="pf-submit" [disabled]="submitting() || uploading()">
       @if (submitting()) {
         <span class="spinner-sm"></span> Actualizando…

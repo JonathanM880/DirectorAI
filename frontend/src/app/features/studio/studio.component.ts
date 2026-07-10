@@ -5,6 +5,7 @@ import { GenAiService } from '../../core/services/gen-ai.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { CopyRequest } from '@director-ai/types';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { SchedulingEngineService } from '../services/scheduling-engine.service';
 import { AssetUploadService, UploadedAsset } from '../../core/services/asset-upload.service';
 import { PostFormComponent } from '../../shared/components/post-form/post-form.component';
 import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
@@ -100,7 +101,7 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
               [initialText]="initialTextForForm"
               [initialAssets]="initialAssetsForForm"
               (saved)="onScheduleSaved($event)"
-              (cancel)="scheduleFormOpen.set(false)">
+              (formCancel)="scheduleFormOpen.set(false)">
             </app-post-form>
           </div>
         </div>
@@ -111,6 +112,7 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
   styles: []
 })
 export class StudioComponent implements OnInit, OnDestroy {
+  private schedulingEngine = inject(SchedulingEngineService);
   private genAiService = inject(GenAiService);
   private supabase = inject(SupabaseClient);
   private notificationService = inject(NotificationService);
@@ -340,48 +342,30 @@ export class StudioComponent implements OnInit, OnDestroy {
   async onScheduleSaved(formData: any) {
     try {
       this.isSaving.set(true);
-      const { data: { session } } = await this.supabase.auth.getSession();
-      if (!session) {
-        this.isSaving.set(false);
-        return;
-      }
-
-      let recurrenceRuleId: string | undefined = undefined;
-      if (formData.recurrenceRule) {
-        const { data: rule, error: rErr } = await this.supabase.from('recurrence_rules').insert({
-          user_id: session.user.id,
-          frequency: formData.recurrenceRule.frequency,
-          interval: formData.recurrenceRule.interval,
-          end_date: formData.recurrenceRule.endDate ? formData.recurrenceRule.endDate.toISOString() : null
-        }).select().single();
-        if (rErr) throw rErr;
-        recurrenceRuleId = rule.id;
-      }
-
-      const { error } = await this.supabase.from('scheduled_posts').insert({
-        user_id: session.user.id,
-        channel_id: formData.channelId,
-        text_content: formData.text,
-        media_asset_ids: formData.mediaAssetIds,
-        scheduled_at: formData.scheduledAt.toISOString(),
-        status: formData.publishImmediately ? 'published' : 'scheduled',
-        recurrence_rule_id: recurrenceRuleId
-      });
-
-      if (error) throw error;
+      await this.schedulingEngine.schedulePost({
+        channelId: formData.channelId,
+        content: {
+          text: formData.text,
+          mediaAssetIds: formData.mediaAssetIds,
+          mediaType: formData.mediaType,
+        },
+        scheduledAt: formData.publishImmediately ? new Date() : formData.scheduledAt,
+        recurrenceRule: formData.recurrenceRule,
+        publishImmediately: formData.publishImmediately
+      } as any);
 
       this.scheduleFormOpen.set(false);
       this.isSaving.set(false);
       this.notificationService.notify(
         'post_scheduled',
         'success',
-        'Publicación programada',
-        'Tu publicación se ha programado correctamente.'
+        'Publicaci�n programada',
+        'Tu publicaci�n se ha programado correctamente.'
       );
     } catch (err: any) {
       console.error(err);
       this.isSaving.set(false);
-      alert('Error al programar la publicación: ' + err.message);
+      alert('Error al programar la publicaci�n: ' + err.message);
     }
   }
 }

@@ -4,7 +4,6 @@ import {
   Output,
   EventEmitter,
   OnInit,
-  OnDestroy,
   inject,
   signal
 } from '@angular/core';
@@ -64,11 +63,11 @@ export interface PostFormData {
   ],
   templateUrl: './post-form.component.html'
 })
-export class PostFormComponent implements OnInit, OnDestroy {
+export class PostFormComponent implements OnInit {
   @Output() saved = new EventEmitter<PostFormData & { isUpdate?: boolean }>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() formCancel = new EventEmitter<void>();
   @Input() postToEdit: ScheduledPost | null = null;
-  @Input() initialText: string = '';
+  @Input() initialText = '';
   @Input() initialAssets: UploadedAsset[] = [];
 
   private schedulingEngine = inject(SchedulingEngineService);
@@ -121,6 +120,7 @@ export class PostFormComponent implements OnInit, OnDestroy {
 
         // Note: postToEdit.recurrenceRule is not on ScheduledPost by default, 
         // but if it is passed from the calendar (which now joins it), we can prefill it.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rule = (this.postToEdit as any).recurrenceRule;
         if (rule) {
           this.enableRecurrence = true;
@@ -149,8 +149,6 @@ export class PostFormComponent implements OnInit, OnDestroy {
       this.loading.set(false);
     }
   }
-
-  ngOnDestroy(): void {}
 
   // ─────────────────────────────────────────────────────────────────────────
   // Drag-and-Drop handlers
@@ -241,7 +239,7 @@ export class PostFormComponent implements OnInit, OnDestroy {
   submit(): void {
     this.error.set(null);
 
-    if (!this.text.trim())  { this.error.set('El contenido es obligatorio');            return; }
+    if (!this.text.trim() && this.uploadedAssets().length === 0)  { this.error.set('El contenido de texto o al menos un archivo adjunto es obligatorio');            return; }
     if (!this.channelId)    { this.error.set('El canal es obligatorio');            return; }
 
     let scheduledAtDate: Date;

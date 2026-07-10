@@ -10,14 +10,13 @@
       [(ngModel)]="text"
       placeholder="Escribe el contenido de tu publicación aquí..."
       rows="4"
-      required
       class="min-h-[120px] resize-y w-full bg-black/20 border-border rounded-lg p-3 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary placeholder:text-muted-foreground/50 transition-all duration-200"
     ></textarea>
   </hlm-field>
 
   <!-- ── Media Attachments Group ── -->
   <div class="flex flex-col gap-2">
-    <label hlmLabel class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Archivos adjuntos</label>
+    <label hlmLabel for="pf-file-input" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Archivos adjuntos</label>
     
     <div
       (dragover)="onDragOver($event)"
@@ -228,7 +227,7 @@
       hlmBtn
       variant="outline"
       type="button"
-      (click)="cancel.emit()"
+      (click)="formCancel.emit()"
       class="hover:bg-muted/50 border-border text-foreground px-4 py-2 text-sm h-9 rounded-lg"
     >
       Cancelar
