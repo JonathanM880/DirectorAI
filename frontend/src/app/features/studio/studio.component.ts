@@ -175,6 +175,7 @@ export class StudioComponent implements OnInit, OnDestroy {
           },
           complete: () => {
             this.isGenerating.set(false);
+            this.output.set(stripOuterQuotes(this.output()));
           },
           error: (err) => {
             console.error('Generation error', err);
@@ -189,7 +190,7 @@ export class StudioComponent implements OnInit, OnDestroy {
           platform: 'telegram' // Valor hardcodeado para mantener la firma
         });
         
-        this.output.set(result.ideas.join('\n\n'));
+        this.output.set(result.ideas.map((idea: string) => stripOuterQuotes(idea)).join('\n\n'));
         this.isGenerating.set(false);
       } else if (this.mode() === 'image') {
         this.generatedImageUrl.set(null);
@@ -221,7 +222,7 @@ export class StudioComponent implements OnInit, OnDestroy {
           formatted += `📝 Texto:\n${p.text}\n`;
           formatted += `⏱️ Margen: +${p.offsetMinutes} mins\n\n`;
         });
-        this.output.set(formatted.trim());
+        this.output.set(stripOuterQuotes(formatted.trim()));
         
         this.isGenerating.set(false);
         (this as any).lastCampaignResult = result.posts;
@@ -264,7 +265,7 @@ export class StudioComponent implements OnInit, OnDestroy {
             const imgBlob = await imgRes.blob();
             const imgName = `generated-img-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
             const file = new File([imgBlob], imgName, { type: 'image/jpeg' });
-            await this.assetUpload.upload(file, 'ai_generated');
+            await this.assetUpload.upload(file, 'user_upload');
           } catch (e) {
             console.error('Failed to save image asset', e);
             throw e;
@@ -322,7 +323,7 @@ export class StudioComponent implements OnInit, OnDestroy {
             const imgBlob = await imgRes.blob();
             const imgName = `generated-img-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
             const file = new File([imgBlob], imgName, { type: 'image/jpeg' });
-            const asset = await this.assetUpload.upload(file);
+            const asset = await this.assetUpload.upload(file, 'ai_generated');
             this.initialAssetsForForm = [asset];
           }
         }
@@ -368,4 +369,23 @@ export class StudioComponent implements OnInit, OnDestroy {
       alert('Error al programar la publicaci�n: ' + err.message);
     }
   }
+}
+
+
+function stripOuterQuotes(text: string): string {
+  text = text.trim();
+  const quoteChars = ['"', "'", '“', '”', '`'];
+  if (text.length >= 2) {
+    const first = text[0];
+    const last = text[text.length - 1];
+    if (quoteChars.includes(first) && quoteChars.includes(last)) {
+      if ((first === '"' && last === '"') ||
+          (first === "'" && last === "'") ||
+          (first === '`' && last === '`') ||
+          (first === '“' && last === '”')) {
+        return text.slice(1, -1).trim();
+      }
+    }
+  }
+  return text;
 }

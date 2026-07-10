@@ -44,6 +44,7 @@ export function mimeToMediaType(mime: string): 'photo' | 'video' | 'audio' | 'do
   if (mime.startsWith('image/'))       return 'photo';
   if (mime.startsWith('video/'))       return 'video';
   if (mime.startsWith('audio/'))       return 'audio';
+  if (mime.startsWith('text/'))        return 'document';
   if (mime === 'application/pdf' ||
       mime.startsWith('application/')) return 'document';
   return null;

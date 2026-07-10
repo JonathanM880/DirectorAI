@@ -220,11 +220,7 @@ export class AssetsComponent implements OnInit {
   isScheduling = signal(false);
 
   // Mock data for UI layout
-  mockAssets = signal<any[]>([
-    { id: '1', filename: 'summer_promo.jpg', type: 'image', source: 'user_upload', size: '2.4 MB', date: new Date(), preview: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400', mime_type: 'image/jpeg', size_bytes: 2516582, storage_path: 'mock/summer_promo.jpg' },
-    { id: '2', filename: 'ai_generated_copy_1.txt', type: 'document', source: 'ai_generated', size: '1.2 KB', date: new Date(), mime_type: 'text/plain', size_bytes: 1228, storage_path: 'mock/ai_generated_copy_1.txt' },
-    { id: '3', filename: 'product_video_raw.mp4', type: 'video', source: 'user_upload', size: '45.1 MB', date: new Date(), mime_type: 'video/mp4', size_bytes: 47290778, storage_path: 'mock/product_video_raw.mp4' }
-  ]);
+  mockAssets = signal<any[]>([]);
 
   get filteredAssets() {
     const filter = this.activeFilter();
@@ -463,8 +459,16 @@ export class AssetsComponent implements OnInit {
       previewUrl: asset.preview || ''
     };
 
-    this.initialTextForForm = '';
-    this.initialAssetsForForm = [uploadedAsset];
+    const isTextFile = (asset.mime_type === 'text/plain' || asset.filename?.endsWith('.txt') || asset.filename?.endsWith('.md'));
+    const textVal = asset.textContent || '';
+
+    if (isTextFile && textVal.length <= 2000) {
+      this.initialTextForForm = textVal;
+      this.initialAssetsForForm = [];
+    } else {
+      this.initialTextForForm = '';
+      this.initialAssetsForForm = [uploadedAsset];
+    }
     this.scheduleFormOpen.set(true);
   }
 
@@ -509,6 +513,7 @@ export class AssetsComponent implements OnInit {
     const { data, error } = await this.supabase
       .from('assets')
       .select('*')
+      .eq('source', 'user_upload')
       .order('created_at', { ascending: false });
     
     if (error) {

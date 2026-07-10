@@ -357,3 +357,10 @@
     box-shadow: 0 4px 14px rgba(232, 194, 74, 0.3);
   }
 }
+
+  select,
+  input[type="datetime-local"],
+  input[type="date"] {
+    cursor: pointer;
+    height: 46px;
+  }

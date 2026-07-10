@@ -1,74 +1,11 @@
 <form (ngSubmit)="submit()" class="space-y-6 w-full max-w-full mx-auto p-1 text-card-foreground" id="post-form-inline">
 
-  <!-- ── Content Group ── -->
-  <hlm-field class="flex flex-col gap-2">
-    <label hlmFieldLabel for="pf-content" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Contenido</label>
-    <textarea
-      hlmInput
-      id="pf-content"
-      name="text"
-      [(ngModel)]="text"
-      placeholder="Escribe el contenido de tu publicación aquí..."
-      rows="4"
-      class="min-h-[120px] resize-y w-full bg-black/20 border-border rounded-lg p-3 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary placeholder:text-muted-foreground/50 transition-all duration-200"
-    ></textarea>
-  </hlm-field>
-
   <!-- ── Media Attachments Group ── -->
-  <div class="flex flex-col gap-2">
-    <label hlmLabel for="pf-file-input" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Archivos adjuntos</label>
-    
-    <div
-      (dragover)="onDragOver($event)"
-      (dragleave)="onDragLeave()"
-      (drop)="onDrop($event)"
-      (click)="fileInput.click()"
-      (keydown.enter)="fileInput.click()"
-      role="button"
-      tabindex="0"
-      class="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200 hover:bg-primary/5 focus:outline-none"
-      [class.border-primary]="isDragOver() || uploadedAssets().length > 0"
-      [class.bg-primary/10]="isDragOver()"
-      [class.border-border]="!isDragOver() && uploadedAssets().length === 0"
-      [class.p-3]="uploadedAssets().length > 0"
-      [class.min-h-0]="uploadedAssets().length > 0"
-      aria-label="Subir archivos multimedia"
-    >
-      <!-- Hidden native file input -->
-      <input
-        #fileInput
-        type="file"
-        id="pf-file-input"
-        multiple
-        accept="image/*,video/*,audio/*,application/pdf"
-        style="display:none"
-        (change)="onFileInputChange($event)"
-      />
-
-      <!-- Idle state -->
-      @if (uploadedAssets().length === 0 && !uploading()) {
-        <div class="flex flex-col items-center gap-2 text-center text-muted-foreground">
-          <svg class="w-8 h-8 opacity-60 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-          <p class="text-sm">
-            <strong class="text-foreground font-semibold">Arrastra y suelta</strong> archivos aquí, o haz clic para buscar
-          </p>
-          <p class="text-xs text-muted-foreground/60">Imágenes, vídeos, audio, PDF — máx. 50 MB cada uno</p>
-        </div>
-      }
-
-      <!-- Uploading spinner -->
-      @if (uploading()) {
-        <div class="flex items-center gap-3 text-sm text-muted-foreground">
-          <div class="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-          <span>Subiendo {{ pendingCount() }} archivo{{ pendingCount() > 1 ? 's' : '' }}…</span>
-        </div>
-      }
-    </div>
-
-    <!-- Uploaded asset pills -->
-    @if (uploadedAssets().length > 0) {
+  @if (uploadedAssets().length > 0) {
+    <div class="flex flex-col gap-2">
+      <label hlmLabel for="pf-file-input" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Archivos adjuntos</label>
+      
+      <!-- Uploaded asset pills -->
       <div class="flex flex-col gap-2 mt-2 max-h-[220px] overflow-y-auto">
         @for (asset of uploadedAssets(); track asset.id) {
           <div class="flex items-center gap-3 p-2 bg-black/15 border border-border/40 rounded-lg transition-colors hover:bg-black/25">
@@ -90,13 +27,26 @@
           </div>
         }
       </div>
-    }
 
-    <!-- Per-upload error -->
-    @if (uploadError()) {
-      <div class="text-xs text-destructive flex items-center gap-1.5 mt-1 font-medium">⚠️ {{ uploadError() }}</div>
-    }
-  </div>
+      <!-- Per-upload error -->
+      @if (uploadError()) {
+        <div class="text-xs text-destructive flex items-center gap-1.5 mt-1 font-medium">⚠️ {{ uploadError() }}</div>
+      }
+    </div>
+  }
+  <!-- ── Content Group ── -->
+  <hlm-field class="flex flex-col gap-2">
+    <label hlmFieldLabel for="pf-content" class="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">Comentario{{ uploadedAssets().length > 0 ? ' (Opcional)' : '' }}</label>
+    <textarea
+      hlmInput
+      id="pf-content"
+      name="text"
+      [(ngModel)]="text"
+      placeholder="Escribe tu comentario aquí..."
+      rows="4"
+      class="min-h-[120px] resize-y w-full bg-black/20 border-border rounded-lg p-3 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary placeholder:text-muted-foreground/50 transition-all duration-200"
+    ></textarea>
+  </hlm-field>
 
   <!-- ── Channel + Schedule Grid ── -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -114,7 +64,7 @@
           name="channel"
           [(ngModel)]="channelId"
           required
-          class="w-full bg-black/20 border-border rounded-lg p-2.5 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all duration-200"
+          class="w-full bg-black/20 border-border rounded-lg py-3 px-2.5 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all duration-200 h-[44px] cursor-pointer"
         >
           @for (ch of channels(); track ch.id) {
             <option [value]="ch.id" class="bg-zinc-950 text-foreground">{{ platformIcon(ch.platform) }} {{ ch.name }}</option>
@@ -146,7 +96,8 @@
             name="scheduledAt"
             [(ngModel)]="scheduledAt"
             required
-            class="w-full bg-black/20 border-border rounded-lg p-2.5 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all duration-200"
+            (click)="$any($event.target).showPicker()"
+            class="w-full bg-black/20 border-border rounded-lg py-3 px-2.5 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all duration-200 h-[44px] cursor-pointer"
           />
         </hlm-field>
       }

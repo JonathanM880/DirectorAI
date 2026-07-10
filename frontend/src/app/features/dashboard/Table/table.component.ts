@@ -30,7 +30,7 @@ import { AuditLogEntry } from '../../services/scheduling-engine.service';
 							<td hlmTableCell class="font-medium capitalize">{{ translateAction(log.action) }}</td>
 							<td hlmTableCell>{{ translatePlatform(log.platform) }}</td>
 							<td hlmTableCell>{{ log.occurredAt | date:'medium' }}</td>
-							<td hlmTableCell class="text-right font-mono text-xs">{{ log.errorCode || '-' }}</td>
+							<td hlmTableCell class="text-right font-mono text-xs" [title]="log.errorCode || log.action === 'failed' ? 'El bot no tiene permisos de administrador en el canal de Telegram.' : ''">{{ log.errorCode || '-' }}</td>
 						</tr>
 					} @empty {
 						<tr hlmTableRow>

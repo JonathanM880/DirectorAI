@@ -89,7 +89,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
                 <div class="text-gray-300 text-sm max-w-md space-y-2">
                   <h4 class="font-bold text-white text-base">Instrucciones de configuración:</h4>
                   <p class="leading-relaxed">
-                    Para añadir tu canal de Telegram, primero debes invitar al bot <span class="font-mono text-cyan-400 font-semibold">@direcdirec_bot</span> a tu grupo/canal de Telegram, y luego otorgarle permisos de <span class="text-white font-semibold">Administrador</span> para que pueda publicar.
+                    Para añadir tu canal de Telegram, primero debes invitar al bot <span class="font-mono text-cyan-400 font-semibold">@direcdirec_bot</span> a tu canal de Telegram, y luego otorgarle permisos de <span class="text-white font-semibold">Administrador</span> para que pueda publicar.
                   </p>
                 </div>
               </div>
@@ -216,7 +216,7 @@ import { HlmTableImports } from '@spartan-ng/helm/table';
                           <td hlmTableCell class="font-medium p-3 text-white capitalize">{{ translateAction(log.action) }}</td>
                           <td hlmTableCell class="p-3 text-gray-300 uppercase text-xs">{{ translatePlatform(log.platform) }}</td>
                           <td hlmTableCell class="p-3 text-gray-300 text-xs">{{ log.occurredAt | date:'medium' }}</td>
-                          <td hlmTableCell class="text-right font-mono text-xs p-3 text-gray-400">{{ log.errorCode || '-' }}</td>
+                          <td hlmTableCell class="text-right font-mono text-xs p-3 text-gray-400" [title]="log.errorCode || log.action === 'failed' ? 'El bot no tiene permisos de administrador en el canal de Telegram.' : ''">{{ log.errorCode || '-' }}</td>
                         </tr>
                       } @empty {
                         <tr hlmTableRow class="border-t border-border">

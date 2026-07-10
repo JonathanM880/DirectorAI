@@ -443,14 +443,16 @@ async function publishToTelegram(
 ): Promise<PublishOutcome> {
   const token = await resolveBotToken(supabase, post.user_id, globalToken) ?? '';
 
-  let mediaUrl: string | null = null;
+  let fileBlob: Blob | null = null;
+  let assetFilename = '';
+  let assetMimeType = '';
   let resolutionErrorDetail: string | null = null;
   const firstAssetId = post.media_asset_ids?.[0];
 
   if (firstAssetId) {
     const { data: assetData, error: assetError } = await supabase
       .from('assets')
-      .select('storage_path')
+      .select('storage_path, filename, mime_type')
       .eq('id', firstAssetId)
       .single();
 
@@ -465,21 +467,24 @@ async function publishToTelegram(
         `[scheduler] [${post.id.slice(0, 8)}] Asset ${firstAssetId} for post ${post.id} has empty storage_path`
       );
     } else {
-      const { data, error: signError } = await supabase.storage
+      const { data: downloadedBlob, error: downloadError } = await supabase.storage
         .from('assets')
-        .createSignedUrl(assetData.storage_path, 3600);
-      if (signError) {
-        resolutionErrorDetail = `Failed to sign URL for path ${assetData.storage_path}: ${signError.message}`;
+        .download(assetData.storage_path);
+
+      if (downloadError) {
+        resolutionErrorDetail = `Failed to download file from path ${assetData.storage_path}: ${downloadError.message}`;
         console.error(
-          `[scheduler] [${post.id.slice(0, 8)}] Failed to create signed URL for path ${assetData.storage_path} on post ${post.id}: ${signError.message}`
+          `[scheduler] [${post.id.slice(0, 8)}] Failed to download file from path ${assetData.storage_path} on post ${post.id}: ${downloadError.message}`
         );
-      } else if (!data?.signedUrl) {
-        resolutionErrorDetail = `Signed URL is empty for path ${assetData.storage_path}`;
+      } else if (!downloadedBlob) {
+        resolutionErrorDetail = `Downloaded file is empty for path ${assetData.storage_path}`;
         console.error(
-          `[scheduler] [${post.id.slice(0, 8)}] Signed URL is empty for path ${assetData.storage_path} on post ${post.id}`
+          `[scheduler] [${post.id.slice(0, 8)}] Downloaded file is empty for path ${assetData.storage_path} on post ${post.id}`
         );
       } else {
-        mediaUrl = data.signedUrl;
+        fileBlob = downloadedBlob;
+        assetFilename = assetData.filename || 'file';
+        assetMimeType = assetData.mime_type || 'application/octet-stream';
       }
     }
   } else if (post.media_type !== null && post.media_type !== undefined) {
@@ -491,8 +496,8 @@ async function publishToTelegram(
 
   // Explicit validation to prevent sending posts with invalid/missing media to Telegram
   if (post.media_type !== null && post.media_type !== undefined) {
-    if (mediaUrl === null) {
-      const errMsg = resolutionErrorDetail || "Failed to resolve media asset URL (unknown reason)";
+    if (fileBlob === null) {
+      const errMsg = resolutionErrorDetail || "Failed to resolve media asset (unknown reason)";
       return {
         success: false,
         errorCode: 'MEDIA_RESOLUTION_FAILED',
@@ -504,10 +509,31 @@ async function publishToTelegram(
 
   const chatId   = post.channels.channel_identifier;
   const endpoint = getTelegramEndpoint(post.media_type);
-  const payload  = buildTelegramPayload(post, chatId, mediaUrl);
 
   try {
-    const response = await callTelegramApi(token, endpoint, payload);
+    let response: TelegramApiResponse;
+
+    if (fileBlob && post.media_type) {
+      const formData = new FormData();
+      formData.append('chat_id', chatId);
+      formData.append(post.media_type, fileBlob, assetFilename);
+
+      const text = applyMarkdownFormatting(post.text_content ?? '');
+      if (text) {
+        formData.append('caption', text);
+        formData.append('parse_mode', 'Markdown');
+      }
+
+      const url = `https://api.telegram.org/bot${token}/${endpoint}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
+      response = await res.json() as TelegramApiResponse;
+    } else {
+      const payload = buildTelegramPayload(post, chatId, null);
+      response = await callTelegramApi(token, endpoint, payload);
+    }
 
     if (response.ok && response.result?.message_id) {
       return {

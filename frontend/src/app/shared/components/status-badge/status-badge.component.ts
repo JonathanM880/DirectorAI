@@ -7,7 +7,7 @@ import { PostStatus } from '@director-ai/types';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <span class="status-badge" [class]="statusClass">
+    <span class="status-badge" [class]="statusClass" [title]="status === 'failed' ? 'El bot no tiene permisos de administrador en el canal de Telegram.' : ''">
       {{ status | titlecase }}
     </span>
   `,
