@@ -7,6 +7,7 @@ import { CopyRequest } from '@director-ai/types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SchedulingEngineService } from '../services/scheduling-engine.service';
 import { AssetUploadService, UploadedAsset } from '../../core/services/asset-upload.service';
+import { UsersProfileService } from '../../core/services/users-profile.service';
 import { PostFormComponent } from '../../shared/components/post-form/post-form.component';
 import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width-wrapper/max-width-wrapper.component";
 
@@ -52,10 +53,18 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
                   <textarea class="p-2.5 rounded-md border border-border bg-background text-foreground font-sans resize-y focus:outline-none focus:ring-2 focus:ring-primary/50" [ngModel]="prompt()" (ngModelChange)="prompt.set($event)" rows="5" placeholder="¿Qué quieres generar?"></textarea>
                 </div>
 
-                <button class="w-full py-2.5 px-4 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors" (click)="generate()" [disabled]="isGenerating()">
-                  <span *ngIf="isGenerating()" class="w-4 h-4 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin inline-block align-middle mr-2"></span>
+                <button class="w-full py-2.5 px-4 rounded-md border-none cursor-pointer font-semibold bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors flex items-center justify-center gap-2" (click)="generate()" [disabled]="isGenerating() || usage() >= usageLimit()">
+                  <span *ngIf="isGenerating()" class="w-4 h-4 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin"></span>
                   {{ isGenerating() ? 'Generando...' : 'Generar con IA' }}
                 </button>
+
+                <div *ngIf="usage() >= usageLimit()" class="p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20 font-medium flex items-center gap-2">
+                  Has alcanzado tu límite de generaciones de IA para este mes.
+                </div>
+
+                <div class="text-xs text-muted-foreground text-center mt-2">
+                  Generaciones usadas: {{ usage() }} / {{ usageLimit() }}
+                </div>
               </div>
             </div>
 
@@ -68,7 +77,18 @@ import { MaxWidthHeightWrapperComponent } from "@/shared/components/ui/max-width
               <div *ngIf="output() || generatedImageUrl()" class="flex-1 overflow-x-hidden">
                 <img *ngIf="mode() === 'image' && generatedImageUrl()" [src]="generatedImageUrl()!" alt="Imagen generada por IA" class="w-full rounded-lg mt-2 object-cover">
                 <pre *ngIf="mode() === 'campaign' && output()" class="whitespace-pre-wrap break-words font-sans m-0 text-white">{{ output() }}</pre>
-                <p *ngIf="mode() !== 'image' && mode() !== 'campaign' && output()" class="m-0 text-white whitespace-pre-wrap text-lg leading-relaxed">{{ output() }}</p>
+                
+                <div *ngIf="mode() === 'brainstorm' && brainstormIdeas().length > 0" class="flex flex-col gap-4 w-full">
+                  <div *ngFor="let idea of brainstormIdeas(); let i = index" class="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors shadow-sm">
+                    <div class="flex items-start gap-3">
+                      <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">{{ i + 1 }}</div>
+                      <p class="m-0 mt-1 text-white whitespace-pre-wrap leading-relaxed">{{ idea }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <p *ngIf="mode() !== 'campaign' && mode() !== 'brainstorm' && output() && !generatedImageUrl()" class="m-0 text-white whitespace-pre-wrap text-lg leading-relaxed" [class.text-red-400]="output().includes('Error') || output() === 'Contenido no permitido'">{{ output() }}</p>
+                <p *ngIf="mode() === 'brainstorm' && output() && brainstormIdeas().length === 0" class="m-0 text-white whitespace-pre-wrap text-lg leading-relaxed" [class.text-red-400]="output().includes('Error') || output() === 'Contenido no permitido'">{{ output() }}</p>
               </div>
 
               <div class="mt-6 flex gap-3" *ngIf="!isGenerating() && (output() || generatedImageUrl())">
@@ -117,6 +137,7 @@ export class StudioComponent implements OnInit, OnDestroy {
   private supabase = inject(SupabaseClient);
   private notificationService = inject(NotificationService);
   private assetUpload = inject(AssetUploadService);
+  private usersProfile = inject(UsersProfileService);
 
   initialTextForForm = '';
   initialAssetsForForm: UploadedAsset[] = [];
@@ -130,12 +151,37 @@ export class StudioComponent implements OnInit, OnDestroy {
   isSaving = signal(false);
   output = signal('');
   generatedImageUrl = signal<string | null>(null);
+  brainstormIdeas = signal<string[]>([]);
+
+  usage = signal(0);
+  usageLimit = signal(10); // Límite estático para TC-11
+
+  async incrementUsage() {
+    this.usage.update(v => v + 1);
+    try {
+      await this.usersProfile.updateProfile({ aiGenerationsUsage: this.usage() });
+    } catch (e) {
+      console.error('Error al guardar el uso en la base de datos:', e);
+    }
+  }
+
+
+  
   
   // Toast status
   toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
   private toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   async ngOnInit() {
+    try {
+      const profile = await this.usersProfile.getProfile();
+      if (profile) {
+        this.usage.set(profile.aiGenerationsUsage || 0);
+        this.usageLimit.set(profile.aiGenerationsLimit || 10);
+      }
+    } catch (e) {
+      console.error('Error cargando el perfil de usuario:', e);
+    }
   }
 
   ngOnDestroy() {
@@ -153,10 +199,11 @@ export class StudioComponent implements OnInit, OnDestroy {
   }
 
   async generate() {
-    if (!this.prompt()) return;
+    if (!this.prompt() || this.usage() >= this.usageLimit()) return;
     
     this.isGenerating.set(true);
     this.output.set('');
+    this.brainstormIdeas.set([]);
 
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
@@ -176,11 +223,16 @@ export class StudioComponent implements OnInit, OnDestroy {
           complete: () => {
             this.isGenerating.set(false);
             this.output.set(stripOuterQuotes(this.output()));
+            this.incrementUsage();
           },
           error: (err) => {
             console.error('Generation error', err);
             this.isGenerating.set(false);
-            this.output.set('Error: ' + err.message);
+            if (err.message === 'Servicio no disponible' || err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('Failed to send a request to the Edge Function')) {
+              this.output.set('Servicio no disponible');
+            } else {
+              this.output.set('Error: ' + err.message);
+            }
           }
         });
       } else if (this.mode() === 'brainstorm') {
@@ -190,8 +242,11 @@ export class StudioComponent implements OnInit, OnDestroy {
           platform: 'telegram' // Valor hardcodeado para mantener la firma
         });
         
-        this.output.set(result.ideas.map((idea: string) => stripOuterQuotes(idea)).join('\n\n'));
+        const ideas = result.ideas.map((idea: string) => stripOuterQuotes(idea));
+        this.brainstormIdeas.set(ideas);
+        this.output.set('Brainstorm generado'); // Hidden by template, just used for state/saves
         this.isGenerating.set(false);
+        this.incrementUsage();
       } else if (this.mode() === 'image') {
         this.generatedImageUrl.set(null);
         const result = await this.genAiService.generateImage({
@@ -201,10 +256,20 @@ export class StudioComponent implements OnInit, OnDestroy {
         });
         
         if (result.error) {
-          this.output.set('Error: ' + result.error);
+          if (result.error === 'Contenido no permitido') {
+            this.output.set(result.error);
+          } else {
+            this.output.set('Error: ' + result.error);
+          }
         } else {
           this.generatedImageUrl.set(result.url);
           this.output.set('');
+          this.incrementUsage();
+          
+          // Auto-save just for image mode
+          setTimeout(() => {
+            this.saveToAssets();
+          }, 500);
         }
         
         this.isGenerating.set(false);
@@ -225,12 +290,17 @@ export class StudioComponent implements OnInit, OnDestroy {
         this.output.set(stripOuterQuotes(formatted.trim()));
         
         this.isGenerating.set(false);
+        this.incrementUsage();
         (this as any).lastCampaignResult = result.posts;
       }
     } catch (err: any) {
       console.error(err);
       this.isGenerating.set(false);
-      this.output.set('Error: ' + err.message);
+      if (err.message === 'Servicio no disponible' || err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('Failed to send a request to the Edge Function')) {
+        this.output.set('Servicio no disponible');
+      } else {
+        this.output.set('Error: ' + err.message);
+      }
     }
   }
 
@@ -248,6 +318,8 @@ export class StudioComponent implements OnInit, OnDestroy {
         const url = this.generatedImageUrl();
         if (!url) throw new Error('No hay imagen generada para guardar');
         postsToSave = [{ imagePrompt: this.prompt(), imageUrl: url, offsetMinutes: 0 }];
+      } else if (this.mode() === 'brainstorm' && this.brainstormIdeas().length > 0) {
+        postsToSave = [{ text: this.brainstormIdeas().join('\n\n---\n\n'), offsetMinutes: 0 }];
       } else if (this.mode() !== 'campaign' || postsToSave.length === 0) {
         postsToSave = [{ text: this.output(), offsetMinutes: 0 }];
       }
@@ -256,16 +328,17 @@ export class StudioComponent implements OnInit, OnDestroy {
         if (post.text) {
           const fileName = `generated-${Date.now()}-${Math.floor(Math.random()*1000)}.txt`;
           const file = new File([post.text], fileName, { type: 'text/plain' });
-          await this.assetUpload.upload(file);
+          await this.assetUpload.upload(file, 'ai_generated', ['IA']);
         }
 
         if (post.imagePrompt) {
           try {
-            const imgRes = await fetch(post.imageUrl || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800');
+            const dataUrl = post.imageUrl || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800';
+            const imgRes = await fetch(dataUrl);
             const imgBlob = await imgRes.blob();
             const imgName = `generated-img-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
             const file = new File([imgBlob], imgName, { type: 'image/jpeg' });
-            await this.assetUpload.upload(file, 'user_upload');
+            await this.assetUpload.upload(file, 'ai_generated', ['IA']);
           } catch (e) {
             console.error('Failed to save image asset', e);
             throw e;
@@ -327,6 +400,8 @@ export class StudioComponent implements OnInit, OnDestroy {
             this.initialAssetsForForm = [asset];
           }
         }
+      } else if (this.mode() === 'brainstorm' && this.brainstormIdeas().length > 0) {
+        this.initialTextForForm = this.brainstormIdeas().join('\n\n---\n\n');
       } else {
         this.initialTextForForm = this.output();
       }

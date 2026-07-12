@@ -134,7 +134,13 @@ export class LoginComponent {
       const result = await this.authService.signIn(email!, password!);
 
       if (result.error) {
-        this.errorMessage.set(result.error.message);
+        if (result.error.message.toLowerCase().includes('too many requests') || result.error.status === 429) {
+          this.errorMessage.set('Demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por seguridad. Por favor, inténtalo más tarde.');
+        } else if (result.error.message.toLowerCase().includes('invalid login credentials')) {
+          this.errorMessage.set('Correo electrónico o contraseña incorrectos.');
+        } else {
+          this.errorMessage.set(result.error.message);
+        }
         return;
       }
 

@@ -554,6 +554,8 @@ export interface UserProfile {
   timezone: string
   planId: PlanId
   onboardingCompleted: boolean
+  aiGenerationsUsage: number
+  aiGenerationsLimit: number
   createdAt: Date
   updatedAt: Date
 }

@@ -2,14 +2,17 @@ import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PostMetricsService } from '../../core/services/post-metrics.service';
-import { PostAnalytics } from '@director-ai/types';
+import { PostAnalytics, Channel } from '@director-ai/types';
+import { BaseChartDirective } from 'ng2-charts';
+import { ChartConfiguration, ChartOptions } from 'chart.js';
+import { ChannelsService } from '../../core/services/channels.service';
 
 type DatePreset = '7d' | '30d' | 'all';
 
 @Component({
   selector: 'app-metrics',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BaseChartDirective],
   template: `
     <div class="p-4 md:p-8 bg-background text-foreground min-h-screen">
       <div class="mx-auto" [style.max-width.px]="1280">
@@ -24,10 +27,13 @@ type DatePreset = '7d' | '30d' | 'all';
                 <button class="px-3 py-1.5 rounded text-sm bg-transparent border-none text-muted-foreground cursor-pointer" [class.bg-white/10]="viewMode() === 'individual'" [class.text-white]="viewMode() === 'individual'" [class.font-semibold]="viewMode() === 'individual'" (click)="setViewMode('individual')">Análisis de publicaciones</button>
               </div>
               <div class="relative">
-                <button class="px-4 py-2.5 rounded-md font-semibold flex items-center gap-2 cursor-pointer bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none" (click)="exportPanelOpen.set(!exportPanelOpen())">
+                <button 
+                  class="px-4 py-2.5 rounded-md font-semibold flex items-center gap-2 cursor-pointer bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors border-none disabled:opacity-50 disabled:cursor-not-allowed" 
+                  [disabled]="totalPosts() === 0"
+                  (click)="exportPanelOpen.set(!exportPanelOpen())">
                   <span>&#11015;&#65039;</span> Exportar CSV
                 </button>
-                <div *ngIf="exportPanelOpen()" class="absolute right-0 top-full mt-2 z-50 bg-secondary border border-border rounded-2xl p-4 min-w-[280px] shadow-xl">
+                <div *ngIf="exportPanelOpen() && totalPosts() > 0" class="absolute right-0 top-full mt-2 z-50 bg-secondary border border-border rounded-2xl p-4 min-w-[280px] shadow-xl">
                   <div class="flex flex-col gap-3">
                     <button class="w-full px-4 py-2 rounded-md text-sm bg-primary text-primary-foreground border-none cursor-pointer hover:opacity-90 transition-opacity" (click)="exportCurrentRange()">Exportar página actual</button>
                     <button class="w-full px-4 py-2 rounded-md text-sm bg-primary text-primary-foreground border-none cursor-pointer hover:opacity-90 transition-opacity" (click)="exportAllInRange()">Exportar todo ({{ datePresetLabel() }})</button>
@@ -47,10 +53,17 @@ type DatePreset = '7d' | '30d' | 'all';
 
           <!-- GLOBAL VIEW -->
           <ng-container *ngIf="viewMode() === 'global'">
-            <div class="flex flex-wrap items-center gap-2">
-              <button class="px-3 py-1.5 rounded-md text-sm border-none cursor-pointer transition-colors" [class.bg-primary]="datePreset() === '7d'" [class.text-white]="datePreset() === '7d'" [class.bg-secondary]="datePreset() !== '7d'" [class.text-muted-foreground]="datePreset() !== '7d'" (click)="setDatePreset('7d')">Últimos 7 días</button>
-              <button class="px-3 py-1.5 rounded-md text-sm border-none cursor-pointer transition-colors" [class.bg-primary]="datePreset() === '30d'" [class.text-white]="datePreset() === '30d'" [class.bg-secondary]="datePreset() !== '30d'" [class.text-muted-foreground]="datePreset() !== '30d'" (click)="setDatePreset('30d')">Últimos 30 días</button>
-              <button class="px-3 py-1.5 rounded-md text-sm border-none cursor-pointer transition-colors" [class.bg-primary]="datePreset() === 'all'" [class.text-white]="datePreset() === 'all'" [class.bg-secondary]="datePreset() !== 'all'" [class.text-muted-foreground]="datePreset() !== 'all'" (click)="setDatePreset('all')">Todo</button>
+            <div class="flex flex-wrap items-center gap-4 mb-2">
+              <div class="flex items-center gap-2">
+                <button class="px-3 py-1.5 rounded-md text-sm border-none cursor-pointer transition-colors" [class.bg-primary]="datePreset() === '7d'" [class.text-white]="datePreset() === '7d'" [class.bg-secondary]="datePreset() !== '7d'" [class.text-muted-foreground]="datePreset() !== '7d'" (click)="setDatePreset('7d')">Últimos 7 días</button>
+                <button class="px-3 py-1.5 rounded-md text-sm border-none cursor-pointer transition-colors" [class.bg-primary]="datePreset() === '30d'" [class.text-white]="datePreset() === '30d'" [class.bg-secondary]="datePreset() !== '30d'" [class.text-muted-foreground]="datePreset() !== '30d'" (click)="setDatePreset('30d')">Últimos 30 días</button>
+                <button class="px-3 py-1.5 rounded-md text-sm border-none cursor-pointer transition-colors" [class.bg-primary]="datePreset() === 'all'" [class.text-white]="datePreset() === 'all'" [class.bg-secondary]="datePreset() !== 'all'" [class.text-muted-foreground]="datePreset() !== 'all'" (click)="setDatePreset('all')">Todo</button>
+              </div>
+              <div class="flex-1"></div>
+              <select [ngModel]="selectedChannelId()" (ngModelChange)="setChannelFilter($event)" class="px-3 py-2 rounded-md bg-secondary border-none text-white text-sm cursor-pointer outline-none min-w-[200px]">
+                <option value="all">Todos los canales</option>
+                <option *ngFor="let ch of channels()" [value]="ch.id">{{ ch.name }}</option>
+              </select>
             </div>
 
             <div *ngIf="isLoading()" class="flex flex-col items-center justify-center p-10 border border-dashed border-border rounded-3xl mt-4 text-muted-foreground bg-transparent">
@@ -58,7 +71,12 @@ type DatePreset = '7d' | '30d' | 'all';
               <p class="m-0">Cargando publicaciones...</p>
             </div>
 
-            <div *ngIf="!isLoading() && globalPosts().length === 0" class="flex flex-col items-center justify-center p-10 border border-dashed border-border rounded-3xl mt-4 text-muted-foreground bg-transparent">
+            <div *ngIf="!isLoading() && apiError()" class="flex flex-col items-center justify-center p-10 border border-dashed border-destructive/50 rounded-3xl mt-4 text-destructive bg-transparent">
+              <p class="m-0 text-lg font-bold">Datos no disponibles temporalmente</p>
+              <small class="opacity-80 mt-2">Hubo un problema de conexión con el servidor.</small>
+            </div>
+
+            <div *ngIf="!isLoading() && !apiError() && globalPosts().length === 0" class="flex flex-col items-center justify-center p-10 border border-dashed border-border rounded-3xl mt-4 text-muted-foreground bg-transparent">
               <p class="m-0">No hay publicaciones publicadas en este periodo</p>
             </div>
 
@@ -67,13 +85,29 @@ type DatePreset = '7d' | '30d' | 'all';
                 <div class="text-muted-foreground text-sm mb-2 font-medium">Publicaciones totales</div>
                 <div class="text-3xl font-bold text-white">{{ totalPosts() | number }}</div>
               </div>
-              <div class="border border-border rounded-3xl p-6 bg-transparent flex flex-col justify-center">
+              <div *ngIf="selectedChannelId() === 'all'" class="border border-border rounded-3xl p-6 bg-transparent flex flex-col justify-center">
                 <div class="text-muted-foreground text-sm mb-2 font-medium">Canales activos</div>
                 <div class="text-3xl font-bold text-white">{{ activeChannelsCount() | number }}</div>
               </div>
               <div class="border border-border rounded-3xl p-6 bg-transparent flex flex-col justify-center">
                 <div class="text-muted-foreground text-sm mb-2 font-medium">Última publicación</div>
                 <div class="text-3xl font-bold text-white text-sm">{{ lastPostTime() }}</div>
+              </div>
+            </div>
+
+            <!-- CURVA DE TENDENCIA (Sólo visible cuando se selecciona un canal específico) -->
+            <div *ngIf="selectedChannelId() !== 'all'" class="mt-8 border border-border rounded-3xl p-6 bg-transparent w-full">
+              <h3 class="mt-0 mb-4 text-lg font-bold text-white">Tendencia de publicaciones (últimos 30 días)</h3>
+              <div class="w-full h-[300px]">
+                <canvas baseChart
+                  *ngIf="lineChartData.labels?.length"
+                  [data]="lineChartData"
+                  [options]="lineChartOptions"
+                  type="line">
+                </canvas>
+                <div *ngIf="!lineChartData.labels?.length" class="w-full h-full flex items-center justify-center text-muted-foreground">
+                  <span *ngIf="!isLoading()">No hay datos suficientes para graficar</span>
+                </div>
               </div>
             </div>
           </ng-container>
@@ -136,6 +170,9 @@ type DatePreset = '7d' | '30d' | 'all';
                   <div class="w-6 h-6 border-2 border-white/10 border-t-primary rounded-full animate-spin mr-2"></div>
                   Cargando...
                 </div>
+                <div *ngIf="!selectedPostLoading() && selectedPostApiError()" class="flex flex-col items-center justify-center p-6 text-destructive bg-transparent border border-dashed border-destructive/50 rounded-2xl">
+                  <p class="m-0 text-sm font-bold">Datos no disponibles temporalmente</p>
+                </div>
                 <div *ngIf="!selectedPostLoading() && selectedPostAnalytics()" class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6 w-full items-stretch">
                   <div class="border border-border rounded-2xl p-4 bg-transparent flex flex-col justify-center">
                     <div class="text-muted-foreground text-xs mb-1 font-medium">Fecha de publicación</div>
@@ -189,10 +226,14 @@ type DatePreset = '7d' | '30d' | 'all';
 })
 export class MetricsComponent implements OnInit {
   private postMetricsService = inject(PostMetricsService);
+  private channelsService = inject(ChannelsService);
 
   viewMode = signal<'global' | 'individual'>('global');
   globalPosts = signal<any[]>([]);
+  channels = signal<Channel[]>([]);
+  selectedChannelId = signal<string>('all');
   isLoading = signal<boolean>(false);
+  apiError = signal<boolean>(false);
   currentPage = signal<number>(1);
   totalPostsCount = signal<number>(0);
   datePreset = signal<DatePreset>('30d');
@@ -200,6 +241,7 @@ export class MetricsComponent implements OnInit {
   selectedPostId = signal<string | null>(null);
   selectedPostAnalytics = signal<PostAnalytics | null>(null);
   selectedPostLoading = signal<boolean>(false);
+  selectedPostApiError = signal<boolean>(false);
 
   exportPanelOpen = signal<boolean>(false);
   exportDateFrom = signal<string>('');
@@ -228,6 +270,45 @@ export class MetricsComponent implements OnInit {
     return map[this.datePreset()];
   });
 
+  public lineChartData: ChartConfiguration<'line'>['data'] = {
+    labels: [],
+    datasets: [
+      {
+        data: [],
+        label: 'Publicaciones',
+        fill: true,
+        tension: 0.4,
+        borderColor: 'rgba(255, 255, 255, 0.8)',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        pointBackgroundColor: 'rgba(255, 255, 255, 1)',
+      }
+    ]
+  };
+
+  public lineChartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        suggestedMax: 5,
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+        ticks: { 
+          color: 'rgba(255, 255, 255, 0.6)',
+          stepSize: 1,
+          precision: 0
+        }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: 'rgba(255, 255, 255, 0.6)', maxTicksLimit: 10 }
+      }
+    }
+  };
+
   constructor() {
     const nav = window.history.state;
     if (nav && nav.postId) {
@@ -237,7 +318,28 @@ export class MetricsComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loadChannels();
     this.loadAggregateData();
+  }
+
+  async loadChannels() {
+    try {
+      const chs = await this.channelsService.getChannels();
+      this.channels.set(chs);
+    } catch (e) {
+      console.error('Failed to load channels', e);
+    }
+  }
+
+  setChannelFilter(channelId: string) {
+    this.selectedChannelId.set(channelId);
+    this.currentPage.set(1);
+    this.loadAggregateData();
+    if (channelId !== 'all') {
+      this.loadChannelTrend(channelId);
+    } else {
+      this.lineChartData = { ...this.lineChartData, labels: [], datasets: [{ ...this.lineChartData.datasets[0], data: [] }] };
+    }
   }
 
   setViewMode(mode: 'global' | 'individual') {
@@ -275,12 +377,14 @@ export class MetricsComponent implements OnInit {
   async selectPost(postId: string) {
     this.selectedPostId.set(postId);
     this.selectedPostLoading.set(true);
+    this.selectedPostApiError.set(false);
     this.selectedPostAnalytics.set(null);
     try {
       const analytics = await this.postMetricsService.getPostAnalytics(postId);
       this.selectedPostAnalytics.set(analytics);
     } catch (e) {
       console.error('Failed to load post data', e);
+      this.selectedPostApiError.set(true);
       this.selectedPostAnalytics.set(null);
     } finally {
       this.selectedPostLoading.set(false);
@@ -290,21 +394,45 @@ export class MetricsComponent implements OnInit {
   clearSelectedPost() {
     this.selectedPostId.set(null);
     this.selectedPostAnalytics.set(null);
+    this.selectedPostApiError.set(false);
   }
 
   async loadAggregateData() {
     this.isLoading.set(true);
+    this.apiError.set(false);
     try {
       const { start, end } = this.getDateRange();
-      const result = await this.postMetricsService.getAggregateMetrics(start, end, this.currentPage(), this.pageSize);
+      const result = await this.postMetricsService.getAggregateMetrics(
+        start, end, this.currentPage(), this.pageSize, this.selectedChannelId()
+      );
       this.globalPosts.set(result.posts);
       this.totalPostsCount.set(result.total);
     } catch (e) {
       console.error('Failed to load aggregate metrics', e);
+      this.apiError.set(true);
       this.globalPosts.set([]);
       this.totalPostsCount.set(0);
     } finally {
       this.isLoading.set(false);
+    }
+  }
+
+  async loadChannelTrend(channelId: string) {
+    try {
+      const trend = await this.postMetricsService.getChannelTrend(channelId, 30);
+      const labels = trend.map(t => new Date(t.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }));
+      const data = trend.map(t => t.count);
+      
+      this.lineChartData = {
+        labels,
+        datasets: [{
+          ...this.lineChartData.datasets[0],
+          data
+        }]
+      };
+    } catch (e) {
+      console.error('Failed to load channel trend', e);
+      this.lineChartData = { ...this.lineChartData, labels: [], datasets: [{ ...this.lineChartData.datasets[0], data: [] }] };
     }
   }
 
@@ -320,20 +448,24 @@ export class MetricsComponent implements OnInit {
   }
 
   private async downloadCSV(rows: any[], filename: string) {
-    if (!rows.length) return;
     const headers = ['Fecha', 'Contenido', 'Canal', 'Tipo', 'Tiempo en vivo', '# Post en canal', 'Hora', 'Día', 'Intentos'];
-    const csvRows = rows.map(p => [
-      p.publishedAt instanceof Date ? p.publishedAt.toISOString() : new Date(p.publishedAt).toISOString(),
-      `"${(p.content || '').replace(/"/g, '""')}"`,
-      p.channelName || '',
-      p.mediaType || 'Texto',
-      this.formatTimeSince(p.publishedAt),
-      p.postNumber ?? '',
-      p.publishedAt instanceof Date ? p.publishedAt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
-      this.formatDayOfWeek(new Date(p.publishedAt)),
-      (p.retryCount ?? 0) + 1
-    ]);
-    const csvContent = [headers.join(','), ...csvRows.map(r => r.join(','))].join('\n');
+    let csvContent = headers.join(',');
+    
+    if (rows.length > 0) {
+      const csvRows = rows.map(p => [
+        p.publishedAt instanceof Date ? p.publishedAt.toISOString() : new Date(p.publishedAt).toISOString(),
+        `"${(p.content || '').replace(/"/g, '""')}"`,
+        p.channelName || '',
+        p.mediaType || 'Texto',
+        this.formatTimeSince(p.publishedAt),
+        p.postNumber ?? '',
+        p.publishedAt instanceof Date ? p.publishedAt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
+        this.formatDayOfWeek(new Date(p.publishedAt)),
+        (p.retryCount ?? 0) + 1
+      ]);
+      csvContent = [headers.join(','), ...csvRows.map(r => r.join(','))].join('\n');
+    }
+    
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -357,7 +489,7 @@ export class MetricsComponent implements OnInit {
   async exportAllInRange() {
     try {
       const { start, end } = this.getDateRange();
-      const allPosts = await this.postMetricsService.getAllPostsForExport(start, end);
+      const allPosts = await this.postMetricsService.getAllPostsForExport(start, end, this.selectedChannelId());
       this.downloadCSV(allPosts, `metricas_${this.datePresetLabel().replace(/\s/g, '_')}_${Date.now()}.csv`);
     } catch (e) {
       console.error('Failed to export all posts', e);
@@ -370,7 +502,7 @@ export class MetricsComponent implements OnInit {
       const start = new Date(this.exportDateFrom());
       const end = new Date(this.exportDateTo());
       end.setHours(23, 59, 59, 999);
-      const allPosts = await this.postMetricsService.getAllPostsForExport(start, end);
+      const allPosts = await this.postMetricsService.getAllPostsForExport(start, end, this.selectedChannelId());
       this.downloadCSV(allPosts, `metricas_${this.exportDateFrom()}_${this.exportDateTo()}_${Date.now()}.csv`);
     } catch (e) {
       console.error('Failed to export custom range', e);

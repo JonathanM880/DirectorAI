@@ -112,7 +112,7 @@ export class RecoverComponent {
     try {
       const { email } = this.recoverForm.value;
       await this.authService.resetPassword(email!);
-      this.successMessage.set('¡Enlace de restablecimiento enviado! Por favor, comprueba tu correo electrónico.');
+      this.successMessage.set('Si el correo electrónico está registrado en nuestro sistema, recibirás un enlace para restablecer tu contraseña.');
     } catch (err) {
       this.errorMessage.set('Ocurrió un error inesperado. Por favor, inténtalo de nuevo.');
     } finally {

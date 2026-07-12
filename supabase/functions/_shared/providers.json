@@ -31,18 +31,18 @@
   ],
   "image": [
     {
-      "id": "pollinations",
-      "type": "pollinations",
-      "baseUrl": "https://gen.pollinations.ai/image",
-      "model": "default",
-      "apiKeyEnv": "POLLINATIONS_API_KEY"
-    },
-    {
       "id": "gemini-image",
       "type": "gemini-native",
       "baseUrl": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent",
       "model": "gemini-3.1-flash-lite-image",
       "apiKeyEnv": "GEMINI_API_KEY"
+    },
+    {
+      "id": "pollinations",
+      "type": "pollinations",
+      "baseUrl": "https://gen.pollinations.ai/image",
+      "model": "default",
+      "apiKeyEnv": "POLLINATIONS_API_KEY"
     },
     {
       "id": "huggingface",
