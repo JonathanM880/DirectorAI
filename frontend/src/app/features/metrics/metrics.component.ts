@@ -97,7 +97,7 @@ type DatePreset = '7d' | '30d' | 'all';
 
             <!-- CURVA DE TENDENCIA (Sólo visible cuando se selecciona un canal específico) -->
             <div *ngIf="selectedChannelId() !== 'all'" class="mt-8 border border-border rounded-3xl p-6 bg-transparent w-full">
-              <h3 class="mt-0 mb-4 text-lg font-bold text-white">Tendencia de publicaciones (últimos 30 días)</h3>
+              <h3 class="mt-0 mb-4 text-lg font-bold text-white">Tendencia de vistas (últimos 30 días)</h3>
               <div class="w-full h-[300px]">
                 <canvas baseChart
                   *ngIf="lineChartData.labels?.length"
@@ -275,7 +275,7 @@ export class MetricsComponent implements OnInit {
     datasets: [
       {
         data: [],
-        label: 'Publicaciones',
+        label: 'Vistas',
         fill: true,
         tension: 0.4,
         borderColor: 'rgba(255, 255, 255, 0.8)',

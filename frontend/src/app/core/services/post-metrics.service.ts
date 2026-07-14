@@ -273,7 +273,7 @@ export class PostMetricsService {
     
     const { data, error } = await this.supabase
       .from('scheduled_posts')
-      .select('published_at')
+      .select('published_at, post_metrics(views)')
       .eq('channel_id', channelId)
       .eq('status', 'published')
       .gte('published_at', startDate.toISOString())
@@ -293,7 +293,15 @@ export class PostMetricsService {
     (data || []).forEach((post: any) => {
       const dateKey = post.published_at.split('T')[0];
       if (trendMap.has(dateKey)) {
-        trendMap.set(dateKey, trendMap.get(dateKey)! + 1);
+        let postViews = 0;
+        if (post.post_metrics) {
+          if (Array.isArray(post.post_metrics)) {
+            postViews = post.post_metrics[0]?.views ?? 0;
+          } else {
+            postViews = (post.post_metrics as any).views ?? 0;
+          }
+        }
+        trendMap.set(dateKey, trendMap.get(dateKey)! + postViews);
       }
     });
 

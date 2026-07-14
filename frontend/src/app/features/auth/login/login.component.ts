@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
@@ -71,7 +71,7 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
                   <button
                     hlmBtn
                     type="submit"
-                    [disabled]="loginForm.invalid || isLoading()"
+                    [disabled]="loginForm.invalid || isLoading() || lockoutRemaining() > 0"
                     class="w-full"
                   >
                     {{ isLoading() ? 'Iniciando sesión...' : 'Iniciar sesión' }}
@@ -107,7 +107,7 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
     </div>
   `
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AngularAuthService);
   private readonly router = inject(Router);
@@ -120,9 +120,63 @@ export class LoginComponent {
 
   public readonly isLoading = signal(false);
   public readonly errorMessage = signal<string | null>(null);
+  public readonly lockoutRemaining = signal<number>(0);
+  private lockoutTimer: any = null;
+
+  ngOnInit() {
+    this.checkLockout();
+  }
+
+  ngOnDestroy() {
+    if (this.lockoutTimer) {
+      clearInterval(this.lockoutTimer);
+    }
+  }
+
+  private getLockoutRemainingTime(): number {
+    const lockoutTimeStr = localStorage.getItem('login_lockout_time');
+    if (!lockoutTimeStr) return 0;
+    const lockoutTime = parseInt(lockoutTimeStr, 10);
+    const now = Date.now();
+    if (now < lockoutTime) {
+      return Math.ceil((lockoutTime - now) / 1000);
+    }
+    // Lockout expired, clear it
+    localStorage.removeItem('login_lockout_time');
+    localStorage.removeItem('login_failed_attempts');
+    return 0;
+  }
+
+  private checkLockout() {
+    const remaining = this.getLockoutRemainingTime();
+    this.lockoutRemaining.set(remaining);
+
+    if (remaining > 0) {
+      this.errorMessage.set(`Demasiados intentos fallidos. Acceso bloqueado temporalmente. Por favor, inténtalo de nuevo en ${remaining} segundos.`);
+      this.loginForm.disable();
+
+      if (this.lockoutTimer) {
+        clearInterval(this.lockoutTimer);
+      }
+
+      this.lockoutTimer = setInterval(() => {
+        const rem = this.getLockoutRemainingTime();
+        this.lockoutRemaining.set(rem);
+        if (rem <= 0) {
+          clearInterval(this.lockoutTimer);
+          this.errorMessage.set(null);
+          this.loginForm.enable();
+        } else {
+          this.errorMessage.set(`Demasiados intentos fallidos. Acceso bloqueado temporalmente. Por favor, inténtalo de nuevo en ${rem} segundos.`);
+        }
+      }, 1000);
+    } else {
+      this.loginForm.enable();
+    }
+  }
 
   async onSubmit() {
-    if (this.loginForm.invalid) {
+    if (this.loginForm.invalid || this.lockoutRemaining() > 0) {
       return;
     }
 
@@ -134,15 +188,29 @@ export class LoginComponent {
       const result = await this.authService.signIn(email!, password!);
 
       if (result.error) {
-        if (result.error.message.toLowerCase().includes('too many requests') || result.error.status === 429) {
-          this.errorMessage.set('Demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por seguridad. Por favor, inténtalo más tarde.');
-        } else if (result.error.message.toLowerCase().includes('invalid login credentials')) {
-          this.errorMessage.set('Correo electrónico o contraseña incorrectos.');
+        let attempts = parseInt(localStorage.getItem('login_failed_attempts') || '0', 10);
+        attempts++;
+        localStorage.setItem('login_failed_attempts', attempts.toString());
+
+        if (attempts >= 5 || result.error.message.toLowerCase().includes('too many requests') || result.error.status === 429) {
+          const lockoutTime = Date.now() + 60 * 1000; // 60 seconds lockout
+          localStorage.setItem('login_lockout_time', lockoutTime.toString());
+          this.checkLockout();
+          return;
+        }
+
+        if (result.error.message.toLowerCase().includes('invalid login credentials')) {
+          const remaining = 5 - attempts;
+          this.errorMessage.set(`Correo electrónico o contraseña incorrectos. Intentos restantes: ${remaining}`);
         } else {
           this.errorMessage.set(result.error.message);
         }
         return;
       }
+
+      // Reset lockout status on successful login
+      localStorage.removeItem('login_failed_attempts');
+      localStorage.removeItem('login_lockout_time');
 
       const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/app';
       this.router.navigateByUrl(returnUrl);
