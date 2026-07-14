@@ -513,7 +513,6 @@ export class AssetsComponent implements OnInit {
     const { data, error } = await this.supabase
       .from('assets')
       .select('*')
-      .eq('source', 'user_upload')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -575,61 +574,17 @@ export class AssetsComponent implements OnInit {
     if (files && files.length > 0) {
       this.handleFiles(Array.from(files));
     }
+    event.target.value = '';
   }
 
   private async handleFiles(files: File[]) {
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) return;
-
     this.notificationService.notify('upload_start', 'info', 'Subiendo', `Subiendo ${files.length} archivo(s)...`);
     try {
       for (const file of files) {
-        const path = `${session.user.id}/${Date.now()}-${file.name}`;
-        const { data: uploadData, error: uploadErr } = await this.supabase.storage
-          .from('assets')
-          .upload(path, file);
-          
-        if (uploadErr) throw uploadErr;
-        
-        const { data: assetData, error: insertErr } = await this.supabase
-          .from('assets')
-          .insert({
-            user_id: session.user.id,
-            filename: file.name,
-            mime_type: file.type,
-            size_bytes: file.size,
-            storage_path: path,
-            folder: '/',
-            tags: [],
-            source: 'user_upload'
-          })
-          .select()
-          .single();
-          
-        if (insertErr) throw insertErr;
-        
-        let preview = null;
-        if (file.type.startsWith('image/')) {
-          const { data: urlData } = await this.supabase.storage.from('assets').createSignedUrl(path, 3600);
-          preview = urlData?.signedUrl;
-        }
-
-        const newAsset = {
-          id: assetData.id,
-          filename: assetData.filename,
-          type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'document',
-          source: 'user_upload',
-          size: (file.size / 1024).toFixed(1) + ' KB',
-          date: new Date(),
-          preview,
-          storage_path: path,
-          mime_type: file.type,
-          size_bytes: file.size
-        };
-        this.mockAssets.update(assets => [newAsset, ...assets]);
+        await this.assetUpload.upload(file, 'user_upload');
       }
       this.notificationService.notify('upload_success', 'success', 'Subida completada', 'Archivos subidos correctamente.');
-      this.loadAssets();
+      await this.loadAssets();
     } catch (e: any) {
       console.error(e);
       this.notificationService.notify('upload_error', 'error', 'Error de subida', e.message);

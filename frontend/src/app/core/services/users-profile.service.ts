@@ -30,7 +30,9 @@ export class UsersProfileService {
             avatar_url: session.user.user_metadata?.['avatar_url'] || '',
             timezone: 'UTC',
             plan_id: 'free',
-            onboarding_completed: false
+            onboarding_completed: false,
+            ai_generations_usage: 0,
+            ai_generations_limit: 10
           };
           return await this.createProfile(profile);
         } catch (createError) {
@@ -44,7 +46,7 @@ export class UsersProfileService {
     return this.mapRow(data);
   }
 
-  async createProfile(profile: { id: string; email: string; display_name?: string; avatar_url?: string; timezone?: string; plan_id?: string; onboarding_completed?: boolean }): Promise<UserProfile> {
+  async createProfile(profile: { id: string; email: string; display_name?: string; avatar_url?: string; timezone?: string; plan_id?: string; onboarding_completed?: boolean; ai_generations_usage?: number; ai_generations_limit?: number }): Promise<UserProfile> {
     const { data, error } = await this.supabase
       .from('users_profile')
       .insert(profile)
@@ -67,10 +69,16 @@ export class UsersProfileService {
     if (profile.timezone !== undefined) payload.timezone = profile.timezone;
     if (profile.planId !== undefined) payload.plan_id = profile.planId;
     if (profile.onboardingCompleted !== undefined) payload.onboarding_completed = profile.onboardingCompleted;
+    if (profile.aiGenerationsUsage !== undefined) payload.ai_generations_usage = profile.aiGenerationsUsage;
+    if (profile.aiGenerationsLimit !== undefined) payload.ai_generations_limit = profile.aiGenerationsLimit;
+
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session?.user) throw new Error('No user session');
 
     const { data, error } = await this.supabase
       .from('users_profile')
       .update(payload)
+      .eq('id', session.user.id)
       .select()
       .single();
 
@@ -91,6 +99,8 @@ export class UsersProfileService {
       timezone: row.timezone,
       planId: row.plan_id,
       onboardingCompleted: row.onboarding_completed,
+      aiGenerationsUsage: row.ai_generations_usage ?? 0,
+      aiGenerationsLimit: row.ai_generations_limit ?? 10,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at)
     };

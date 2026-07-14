@@ -146,24 +146,31 @@ export class PostMetricsService {
     startDate: Date,
     endDate: Date,
     page = 1,
-    pageSize = 5
+    pageSize = 5,
+    channelId?: string
   ): Promise<{ posts: any[]; total: number }> {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { count: total, error: countError } = await this.supabase
+    let countQuery = this.supabase
       .from('scheduled_posts')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'published')
       .gte('published_at', startDate.toISOString())
       .lte('published_at', endDate.toISOString());
+      
+    if (channelId && channelId !== 'all') {
+      countQuery = countQuery.eq('channel_id', channelId);
+    }
+
+    const { count: total, error: countError } = await countQuery;
 
     if (countError) {
       console.error('Error counting posts:', countError);
       throw countError;
     }
 
-    const { data, error } = await this.supabase
+    let dataQuery = this.supabase
       .from('scheduled_posts')
       .select(`
         id,
@@ -178,7 +185,13 @@ export class PostMetricsService {
       `)
       .eq('status', 'published')
       .gte('published_at', startDate.toISOString())
-      .lte('published_at', endDate.toISOString())
+      .lte('published_at', endDate.toISOString());
+      
+    if (channelId && channelId !== 'all') {
+      dataQuery = dataQuery.eq('channel_id', channelId);
+    }
+
+    const { data, error } = await dataQuery
       .order('published_at', { ascending: false })
       .range(from, to);
 
@@ -206,9 +219,10 @@ export class PostMetricsService {
 
   async getAllPostsForExport(
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    channelId?: string
   ): Promise<any[]> {
-    const { data, error } = await this.supabase
+    let query = this.supabase
       .from('scheduled_posts')
       .select(`
         id,
@@ -222,8 +236,13 @@ export class PostMetricsService {
       `)
       .eq('status', 'published')
       .gte('published_at', startDate.toISOString())
-      .lte('published_at', endDate.toISOString())
-      .order('published_at', { ascending: false });
+      .lte('published_at', endDate.toISOString());
+      
+    if (channelId && channelId !== 'all') {
+      query = query.eq('channel_id', channelId);
+    }
+    
+    const { data, error } = await query.order('published_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching all posts for export:', error);
@@ -245,5 +264,41 @@ export class PostMetricsService {
 
   async fetchTelegramMetrics(postId: string): Promise<PostMetrics | null> {
     return this.getPostMetrics(postId);
+  }
+
+  async getChannelTrend(channelId: string, days: number = 30): Promise<{ date: string; count: number }[]> {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const { data, error } = await this.supabase
+      .from('scheduled_posts')
+      .select('published_at')
+      .eq('channel_id', channelId)
+      .eq('status', 'published')
+      .gte('published_at', startDate.toISOString())
+      .lte('published_at', endDate.toISOString());
+
+    if (error) {
+      console.error('Error fetching channel trend:', error);
+      throw error;
+    }
+
+    const trendMap = new Map<string, number>();
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      trendMap.set(d.toISOString().split('T')[0], 0);
+    }
+
+    (data || []).forEach((post: any) => {
+      const dateKey = post.published_at.split('T')[0];
+      if (trendMap.has(dateKey)) {
+        trendMap.set(dateKey, trendMap.get(dateKey)! + 1);
+      }
+    });
+
+    return Array.from(trendMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   }
 }

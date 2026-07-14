@@ -86,7 +86,7 @@ export class AssetUploadService {
    * Upload a File to Supabase Storage and record its metadata in `assets`.
    * Throws a descriptive Error on any failure so the caller can surface it.
    */
-  async upload(file: File, source: 'user_upload' | 'ai_generated' = 'user_upload'): Promise<UploadedAsset> {
+  async upload(file: File, source: 'user_upload' | 'ai_generated' = 'user_upload', tags: string[] = []): Promise<UploadedAsset> {
     // ── Step 1: Resolve user ID ──────────────────────────────────────────────
     const user = await this.authService.getUser();
     if (!user) throw new Error('You must be logged in to upload files.');
@@ -118,7 +118,7 @@ export class AssetUploadService {
         size_bytes:   file.size,
         storage_path: storagePath,
         folder:       '/',
-        tags:         [],
+        tags:         tags,
         source,
       })
       .select('id, filename, mime_type, size_bytes, storage_path')

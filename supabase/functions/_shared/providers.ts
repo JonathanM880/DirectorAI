@@ -275,7 +275,11 @@ export async function generateImage(
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error(`Pollinations API failed with status HTTP ${response.status}`);
+          const errorText = await response.text();
+          if (response.status === 400 || response.status === 422) {
+             throw new Error(`Fatal request error: Contenido no permitido`);
+          }
+          throw new Error(`Pollinations API failed with status HTTP ${response.status}: ${errorText}`);
         }
 
         const buffer = await response.arrayBuffer();
@@ -305,6 +309,10 @@ export async function generateImage(
         }
 
         const data = await response.json();
+        if (data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason === 'SAFETY' || data.candidates?.[0]?.finishReason === 'BLOCKLIST') {
+          throw new Error('Fatal request error: Contenido no permitido');
+        }
+        
         const imagePart = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
         if (!imagePart) {
           throw new Error('Gemini API returned no image data: ' + JSON.stringify(data));
@@ -329,6 +337,10 @@ export async function generateImage(
         if (!response.ok) {
           const errorText = await response.text();
           if (response.status === 400 || response.status === 404) {
+            // Map 400 from Hugging Face / Pollinations to inappropriate content if it contains safety keywords
+            if (errorText.toLowerCase().includes('safet') || errorText.toLowerCase().includes('inappropriate') || errorText.toLowerCase().includes('policy')) {
+              throw new Error(`Fatal request error: Contenido no permitido`);
+            }
             throw new Error(`Fatal request error from Hugging Face (HTTP ${response.status}): ${errorText}`);
           }
           throw new Error(`Hugging Face API failed with status HTTP ${response.status}: ${errorText}`);

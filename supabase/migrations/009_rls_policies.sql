@@ -7,7 +7,6 @@ ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scheduled_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.recurrence_rules ENABLE ROW LEVEL SECURITY;
 
@@ -36,11 +35,6 @@ CREATE POLICY "scheduled_posts_user_scope"
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "subscriptions_user_scope"
-  ON public.subscriptions
-  FOR ALL
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "notifications_user_scope"
   ON public.notifications

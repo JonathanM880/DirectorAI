@@ -105,6 +105,16 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     } else if (action === 'generateImage') {
+      const promptLower = (payload.prompt || '').toLowerCase();
+      const forbiddenWords = ['asesinato', 'sangrient', 'sangre', 'gore', 'matar', 'muerte', 'violencia', 'extremidades', 'tetas'];
+      
+      if (forbiddenWords.some(word => promptLower.includes(word))) {
+        return new Response(JSON.stringify({ error: 'Contenido no permitido' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+
       const result = await genAI.generateImage(payload)
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -118,7 +128,15 @@ Deno.serve(async (req) => {
 
   } catch (err: any) {
     console.error('gen-ai-studio error:', err.message, err.stack)
-    return new Response(JSON.stringify({ error: err.message, stack: err.stack }), {
+    
+    let errorMessage = err.message;
+    if (errorMessage.includes('Contenido no permitido')) {
+      errorMessage = 'Contenido no permitido';
+    } else if (errorMessage.includes('All configured text providers failed') || errorMessage.includes('All configured image providers failed') || errorMessage.includes('Provider transient error')) {
+      errorMessage = 'Servicio no disponible';
+    }
+    
+    return new Response(JSON.stringify({ error: errorMessage, stack: err.stack }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })
